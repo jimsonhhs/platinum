@@ -120,23 +120,21 @@ Unmarshal 是 PATCH 语义：JSON 里传了哪些 key 就改哪些字段，未�
 
 **约束**：Args 只放允许 LLM 自由修改的字段。Finder 字段（`character_id` / `entry_id` / `relation_id` 等）的 json tag 刻意与 DB 模型 PK（`id`）不同名——不是因为 unmarshal 有风险，而是让 json tag 自说明字段用途，LLM 看到 `entry_id` 就知道填什么。
 
-## 10. create 工具 — 批量 INSERT 模式
+## 10. create 工具 — 循环+事务模式
 
-所有 create 工具统一使用 `db.Create(&[]T)` 批量写入：
+所有 create 工具统一使用循环+事务写入（原先使用 `db.Create(&[]T)` 批量 INSERT，但因 GORM afterCreate 回调在切片 Dest 下无法逐行提取主键，导致 operation_log 记录失效，故改为循环+事务）：
 
 1. **Item 结构体** — 单条数据的字段，含 `jsonschema` 和 `validate` tag
 2. **Args 包裹** — 一个 slice 字段，`validate:"min=1,max=N,dive"`
 3. **预校验** — 业务检查放外面，返回 `*ToolResult{Success: false, Error: "..."}, nil`；系统错误返回 `nil, error`
-4. **批量 INSERT** — `db.WithContext(ctx).Create(&[]T)` 生成单条 `INSERT INTO ... VALUES (...), (...)`，SQLite 单语句天然原子，不需要显式 `gorm.Transaction`
+4. **循环+事务** — `db.WithContext(ctx).Transaction(func(tx *gorm.DB) error { for ... { tx.Create(&entity) } })`，保证原子性，失败时返回具体条目原因（如 `创建角色 [alice] 失败: ...`）
 5. **返回值** — `{"ids": [...], "count": N}`
 
-禁止：
-- 显式 `gorm.Transaction` 包裹 create 操作
-- 循环内 `tx.Create(&one)`（INSERT N+1）
+工具描述统一为"保证原子性，失败时返回具体条目原因"，不暴露事务实现细节。
 
 预校验 SELECT：
 - 单列 IN（如 `WHERE id IN (1,2,3)`）用 batch 查询
-- 双列 pair 匹配 GORM 无现成 API，小 N 循环可接受——INSERT N+1 才是真问题，SELECT N+1 在本地 SQLite 上开销可忽略
+- 双列 pair 匹配 GORM 无现成 API，小 N 循环可接受
 
 ## 11.代码要求
 - 除了查询工具，其余的工具 不再回传llm传过的字段，比如update，llm传过来了要更改哪些字段，不需要再次回传，只需要说明修改成功即可

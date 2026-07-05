@@ -221,7 +221,7 @@ type CreateLocationTool struct{}
 
 func (t *CreateLocationTool) Name() string { return "create_location" }
 func (t *CreateLocationTool) Description() string {
-	return "批量创建地点（1-10个）。所有地点在一次批量 INSERT 中写入，单语句保证原子性。" +
+	return "批量创建地点（1-10个）。保证原子性，失败时返回具体条目原因。" +
 		"name 必填，location_type 自由文本。" +
 		"parent_location_id 可接入已有层级树，如创建'大殿'时设为'王宫'的 ID。"
 }
@@ -233,19 +233,6 @@ func (t *CreateLocationTool) NewArgs() any                { return &CreateLocati
 
 func (t *CreateLocationTool) Execute(ctx context.Context, args any, tc ToolContext) (*ToolResult, error) {
 	a := args.(*CreateLocationArgs)
-
-	items := make([]location.Location, len(a.Locations))
-	for i, item := range a.Locations {
-		items[i] = location.Location{
-			NovelID:          tc.NovelID,
-			Name:             item.Name,
-			LocationType:     item.LocationType,
-			Description:      item.Description,
-			DetailJSON:       item.DetailJSON,
-			Tags:             item.Tags,
-			ParentLocationID: item.ParentLocationID,
-		}
-	}
 
 	// 预校验：批量验证父地点存在性
 	parentIDSet := make(map[int64]bool)
@@ -270,13 +257,34 @@ func (t *CreateLocationTool) Execute(ctx context.Context, args any, tc ToolConte
 		}
 	}
 
-	if err := tc.DB.WithContext(ctx).Create(&items).Error; err != nil {
-		return nil, fmt.Errorf("create locations: %w", err)
-	}
-
-	ids := make([]int64, len(items))
-	for i := range items {
-		ids[i] = items[i].ID
+	var ids []int64
+	var failedName string
+	var failedErr error
+	err := tc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, item := range a.Locations {
+			loc := location.Location{
+				NovelID:          tc.NovelID,
+				Name:             item.Name,
+				LocationType:     item.LocationType,
+				Description:      item.Description,
+				DetailJSON:       item.DetailJSON,
+				Tags:             item.Tags,
+				ParentLocationID: item.ParentLocationID,
+			}
+			if err := tx.Create(&loc).Error; err != nil {
+				failedName = item.Name
+				failedErr = err
+				return err
+			}
+			ids = append(ids, loc.ID)
+		}
+		return nil
+	})
+	if err != nil {
+		return &ToolResult{
+			Success: false,
+			Error:   fmt.Sprintf("创建地点 [%s] 失败: %s", failedName, failedErr),
+		}, nil
 	}
 
 	return &ToolResult{
@@ -378,7 +386,7 @@ type CreateLocationRelationTool struct{}
 
 func (t *CreateLocationRelationTool) Name() string { return "create_location_relation" }
 func (t *CreateLocationRelationTool) Description() string {
-	return "批量创建地点间的空间连通关系（1-10个）。所有关系在一次批量 INSERT 中写入，单语句保证原子性。" +
+	return "批量创建地点间的空间连通关系（1-10个）。保证原子性，失败时返回具体条目原因。" +
 		"关系为无向边（A-B 等价 B-A），已存在边时返回错误，需修改已有边请用 update_location_relation。"
 }
 func (t *CreateLocationRelationTool) Category() ToolCategory { return CategoryWritingAssistant }
@@ -454,24 +462,32 @@ func (t *CreateLocationRelationTool) Execute(ctx context.Context, args any, tc T
 		return &ToolResult{Success: false, Error: fmt.Sprintf("地点 %d 和 %d 之间已存在关系边，请使用 update_location_relation 修改", existing[0].LocationA, existing[0].LocationB)}, nil
 	}
 
-	items := make([]location.LocationRelation, len(a.Relations))
-	for i, item := range a.Relations {
-		items[i] = location.LocationRelation{
-			NovelID:      tc.NovelID,
-			LocationA:    item.LocationA,
-			LocationB:    item.LocationB,
-			RelationType: item.RelationType,
-			Description:  item.Description,
+	var ids []int64
+	var failedIdx int
+	var failedErr error
+	err := tc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for i, item := range a.Relations {
+			rel := location.LocationRelation{
+				NovelID:      tc.NovelID,
+				LocationA:    item.LocationA,
+				LocationB:    item.LocationB,
+				RelationType: item.RelationType,
+				Description:  item.Description,
+			}
+			if err := tx.Create(&rel).Error; err != nil {
+				failedIdx = i + 1
+				failedErr = err
+				return err
+			}
+			ids = append(ids, rel.ID)
 		}
-	}
-
-	if err := tc.DB.WithContext(ctx).Create(&items).Error; err != nil {
-		return nil, fmt.Errorf("create relations: %w", err)
-	}
-
-	ids := make([]int64, len(items))
-	for i := range items {
-		ids[i] = items[i].ID
+		return nil
+	})
+	if err != nil {
+		return &ToolResult{
+			Success: false,
+			Error:   fmt.Sprintf("创建关系第 %d 条失败: %s", failedIdx, failedErr),
+		}, nil
 	}
 
 	return &ToolResult{Success: true, Data: map[string]any{"ids": ids, "count": len(ids)}}, nil

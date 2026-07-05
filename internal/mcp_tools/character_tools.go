@@ -169,7 +169,7 @@ type CreateCharacterTool struct{}
 
 func (t *CreateCharacterTool) Name() string { return "create_character" }
 func (t *CreateCharacterTool) Description() string {
-	return "批量创建角色（1-10个）。所有角色在一次批量 INSERT 中写入，单语句保证原子性。" +
+	return "批量创建角色（1-10个）。保证原子性，失败时返回具体条目原因。" +
 		"name 必填；personality 为自由 JSON，建议包含 role/traits/background/motivation；" +
 		"abilities 为 JSON 数组。创建后可用 get_characters 查看。"
 }
@@ -182,24 +182,32 @@ func (t *CreateCharacterTool) NewArgs() any                { return &CreateChara
 func (t *CreateCharacterTool) Execute(ctx context.Context, args any, tc ToolContext) (*ToolResult, error) {
 	a := args.(*CreateCharacterArgs)
 
-	items := make([]character.Character, len(a.Characters))
-	for i, item := range a.Characters {
-		items[i] = character.Character{
-			NovelID:     tc.NovelID,
-			Name:        item.Name,
-			Description: item.Description,
-			Personality: item.Personality,
-			Abilities:   item.Abilities,
+	var ids []int64
+	var failedName string
+	var failedErr error
+	err := tc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, item := range a.Characters {
+			ch := character.Character{
+				NovelID:     tc.NovelID,
+				Name:        item.Name,
+				Description: item.Description,
+				Personality: item.Personality,
+				Abilities:   item.Abilities,
+			}
+			if err := tx.Create(&ch).Error; err != nil {
+				failedName = item.Name
+				failedErr = err
+				return err
+			}
+			ids = append(ids, ch.ID)
 		}
-	}
-
-	if err := tc.DB.WithContext(ctx).Create(&items).Error; err != nil {
-		return nil, fmt.Errorf("create characters: %w", err)
-	}
-
-	ids := make([]int64, len(items))
-	for i := range items {
-		ids[i] = items[i].ID
+		return nil
+	})
+	if err != nil {
+		return &ToolResult{
+			Success: false,
+			Error:   fmt.Sprintf("创建角色 [%s] 失败: %s", failedName, failedErr),
+		}, nil
 	}
 
 	return &ToolResult{

@@ -147,7 +147,7 @@ type CreateReaderPerspectiveEntryTool struct{}
 
 func (t *CreateReaderPerspectiveEntryTool) Name() string { return "create_reader_perspective_entry" }
 func (t *CreateReaderPerspectiveEntryTool) Description() string {
-	return "批量添加读者认知条目（1-10个）。所有条目在一次批量 INSERT 中写入，单语句保证原子性。三种类型：\n" +
+	return "批量添加读者认知条目（1-10个）。保证原子性，失败时返回具体条目原因。三种类型：\n" +
 		"- known：读者在某章之后知道了什么\n" +
 		"- suspense：读者当前在等待解答的悬念\n" +
 		"- misconception：读者以为的情况（用于未来反转）\n" +
@@ -172,24 +172,35 @@ func (t *CreateReaderPerspectiveEntryTool) Execute(ctx context.Context, args any
 		}
 	}
 
-	items := make([]reader.ReaderPerspective, len(a.Entries))
-	for i, item := range a.Entries {
-		items[i] = reader.ReaderPerspective{
-			NovelID:        tc.NovelID,
-			Type:           item.Type,
-			Content:        item.Content,
-			PlantedChapter: item.PlantedChapter,
-			RelatedTruth:   item.RelatedTruth,
+	var ids []int64
+	var failedName string
+	var failedErr error
+	err := tc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, item := range a.Entries {
+			rp := reader.ReaderPerspective{
+				NovelID:        tc.NovelID,
+				Type:           item.Type,
+				Content:        item.Content,
+				PlantedChapter: item.PlantedChapter,
+				RelatedTruth:   item.RelatedTruth,
+			}
+			if err := tx.Create(&rp).Error; err != nil {
+				failedName = item.Content
+				if len(failedName) > 20 {
+					failedName = failedName[:20]
+				}
+				failedErr = err
+				return err
+			}
+			ids = append(ids, rp.ID)
 		}
-	}
-
-	if err := tc.DB.WithContext(ctx).Create(&items).Error; err != nil {
-		return nil, fmt.Errorf("create reader perspective: %w", err)
-	}
-
-	ids := make([]int64, len(items))
-	for i := range items {
-		ids[i] = items[i].ID
+		return nil
+	})
+	if err != nil {
+		return &ToolResult{
+			Success: false,
+			Error:   fmt.Sprintf("创建读者认知条目 [%s] 失败: %s", failedName, failedErr),
+		}, nil
 	}
 
 	return &ToolResult{

@@ -6,7 +6,6 @@ import (
 	"gorm.io/gorm"
 
 	"novel/internal/location"
-	"novel/internal/storage"
 )
 
 // GetLocations 返回指定小说的全部地点，供前端侧边栏嵌套树和关系图节点渲染。
@@ -64,17 +63,34 @@ type UpdateLocationInput struct {
 }
 
 // UpdateLocation 更新地点。只更新非零值字段。
+// 用手动 First+if+Save 而非 PatchAndSave，因为 ClearParent 需要特殊处理。
 func (a *App) UpdateLocation(novelID int64, locID int64, input UpdateLocationInput) error {
-	if input.ClearParent {
-		if err := a.location.DB.WithContext(a.ctx).
-			Model(&location.Location{}).
-			Where("id = ? AND novel_id = ?", locID, novelID).
-			Update("parent_location_id", nil).Error; err != nil {
-			return fmt.Errorf("clear parent: %w", err)
-		}
-	}
 	var loc location.Location
-	if err := storage.PatchAndSave(a.location.DB.WithContext(a.ctx), locID, novelID, &input, &loc); err != nil {
+	if err := a.location.DB.WithContext(a.ctx).
+		Where("id = ? AND novel_id = ?", locID, novelID).First(&loc).Error; err != nil {
+		return fmt.Errorf("update location: %w", err)
+	}
+	if input.Name != "" {
+		loc.Name = input.Name
+	}
+	if input.LocationType != "" {
+		loc.LocationType = input.LocationType
+	}
+	if input.Description != "" {
+		loc.Description = input.Description
+	}
+	if input.DetailJSON != "" {
+		loc.DetailJSON = input.DetailJSON
+	}
+	if input.Tags != "" {
+		loc.Tags = input.Tags
+	}
+	if input.ClearParent {
+		loc.ParentLocationID = nil
+	} else if input.ParentLocationID != nil {
+		loc.ParentLocationID = input.ParentLocationID
+	}
+	if err := a.location.DB.WithContext(a.ctx).Save(&loc).Error; err != nil {
 		return fmt.Errorf("update location: %w", err)
 	}
 	return nil
