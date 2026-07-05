@@ -16,6 +16,14 @@ import (
 	"strings"
 )
 
+// 预编译正则，避免循环内反复编译
+var (
+	reUpdateInputStruct = regexp.MustCompile(`^type (Update\w+Input) struct \{`)
+	reJsonTag           = regexp.MustCompile(`json:"([^"]*)"`)
+	reStructName        = regexp.MustCompile(`type (Update\w+Input) struct`)
+	reFieldName         = regexp.MustCompile(`^\s*(\w+)\s`)
+)
+
 func main() {
 	root := "."
 	if len(os.Args) > 1 {
@@ -61,7 +69,7 @@ func checkFile(path, content string) int {
 	for i < len(lines) {
 		line := lines[i]
 		// 匹配 type Update*Input struct {
-		if !regexp.MustCompile(`^type (Update\w+Input) struct \{`).MatchString(line) {
+		if !reUpdateInputStruct.MatchString(line) {
 			i++
 			continue
 		}
@@ -119,8 +127,7 @@ func hasNolintComment(lines []string, typeLineIdx int) bool {
 // hasFieldWithoutOmitempty 检查字段行是否有 json tag 但缺少 omitempty
 func hasFieldWithoutOmitempty(line string) bool {
 	// 匹配 json:"..." tag
-	re := regexp.MustCompile(`json:"([^"]*)"`)
-	matches := re.FindStringSubmatch(line)
+	matches := reJsonTag.FindStringSubmatch(line)
 	if matches == nil {
 		return false // 无 json tag，不检查
 	}
@@ -135,8 +142,7 @@ func hasFieldWithoutOmitempty(line string) bool {
 }
 
 func extractStructName(line string) string {
-	re := regexp.MustCompile(`type (Update\w+Input) struct`)
-	matches := re.FindStringSubmatch(line)
+	matches := reStructName.FindStringSubmatch(line)
 	if matches != nil {
 		return matches[1]
 	}
@@ -144,8 +150,7 @@ func extractStructName(line string) string {
 }
 
 func extractFieldName(line string) string {
-	re := regexp.MustCompile(`^\s*(\w+)\s`)
-	matches := re.FindStringSubmatch(line)
+	matches := reFieldName.FindStringSubmatch(line)
 	if matches != nil {
 		return matches[1]
 	}

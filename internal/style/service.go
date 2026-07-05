@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"novel/internal/text"
@@ -27,7 +26,6 @@ type frontmatter struct {
 
 // Service 管理全局风格素材的 CRUD 和风格提取。
 type Service struct {
-	mu     sync.RWMutex
 	logger *slog.Logger
 	dir    string // ~/.goink/style_samples/
 }
