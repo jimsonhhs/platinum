@@ -26,11 +26,18 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
   const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set())
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editTitle, setEditTitle] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [createError, setCreateError] = useState('')
 
   const loadChapters = useCallback(async () => {
     if (!novelId) { setChapters([]); return }
-    const list = await app.GetChapters(novelId)
-    setChapters(list ?? [])
+    try {
+      const list = await app.GetChapters(novelId)
+      setChapters(list ?? [])
+      setLoadError('')
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : String(err))
+    }
   }, [novelId, app])
 
   useEffect(() => { loadChapters() }, [loadChapters])
@@ -75,10 +82,15 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
 
   async function handleCreateChapter() {
     if (!chapterTitle.trim()) return
-    await app.CreateChapter({ novel_id: novelId, title: chapterTitle.trim() })
-    setChapterTitle('')
-    setShowCreateChapter(false)
-    loadChapters()
+    try {
+      await app.CreateChapter({ novel_id: novelId, title: chapterTitle.trim() })
+      setChapterTitle('')
+      setShowCreateChapter(false)
+      setCreateError('')
+      loadChapters()
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   function startEdit(ch: chapter.Chapter) {
@@ -92,8 +104,12 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
     if (!ch) return
     const newTitle = editTitle.trim()
     if (newTitle && newTitle !== ch.title) {
-      await app.UpdateChapterTitle(novelId, ch.chapter_number, newTitle)
-      loadChapters()
+      try {
+        await app.UpdateChapterTitle(novelId, ch.chapter_number, newTitle)
+        loadChapters()
+      } catch (err) {
+        console.error(err)
+      }
     }
     setEditingId(null)
   }
@@ -129,14 +145,15 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
         <div className="p-3 border-b space-y-2">
           <input
             type="text" value={chapterTitle} autoFocus
-            onChange={e => setChapterTitle(e.target.value)}
+            onChange={e => { setChapterTitle(e.target.value); setCreateError('') }}
             onKeyDown={e => e.key === 'Enter' && handleCreateChapter()}
             placeholder={t('sidebar.chapterTitle')}
             className="w-full h-8 rounded-md border bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
+          {createError && <p className="text-xs text-destructive">{createError}</p>}
           <div className="flex gap-2">
             <Button size="sm" onClick={handleCreateChapter}>{t('sidebar.add')}</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setShowCreateChapter(false); setChapterTitle('') }}>{t('sidebar.cancel')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setShowCreateChapter(false); setChapterTitle(''); setCreateError('') }}>{t('sidebar.cancel')}</Button>
           </div>
         </div>
       )}
@@ -158,8 +175,17 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <FileText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">{t('sidebar.noChapters')}</p>
-              <p className="text-xs text-muted-foreground/60 mt-0.5">{t('sidebar.createFirstChapter')}</p>
+              {loadError ? (
+                <>
+                  <p className="text-xs text-destructive">{loadError}</p>
+                  <button onClick={() => loadChapters()} className="text-xs text-primary underline mt-1">{t('common.retry')}</button>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">{t('sidebar.noChapters')}</p>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5">{t('sidebar.createFirstChapter')}</p>
+                </>
+              )}
             </div>
           </div>
         ) : (

@@ -31,32 +31,27 @@
 - SkillList — DeleteSkill，仅 console.error
 - StyleView — DeleteStyleSample，仅 console.error
 
-### 3. 裸 await 无错误处理（连 try/catch 都没有）
+### 3. 已修复（原裸 await 或吞错）
 
-操作失败时错误作为 unhandled promise rejection 冒泡，行为不可控。
+- [x] ContentPanel.doSave — 加 try/catch + toast.error（sonner），保存失败时保留 isDirty 不清
+- [x] ChapterList.loadChapters — 加 try/catch + 空状态区域红色错误提示 + 重试按钮
+- [x] ChapterList.handleCreateChapter — 加 try/catch + 创建表单下方红色提示
+- [x] ChapterList.commitEdit — 加 try/catch + console.error（行内编辑失败不影响流程）
+- [x] ProfileView.handleFileChange — 加 try/catch + 头像下方红色提示
+- [x] ProfileView.handleNameSave — 加 try/catch + 昵称 input 下方红色提示，失败时保留编辑状态
+- [x] WorkspaceView.handleCreateNovelFromDialog — re-throw → NovelEditDialog 展示
+- [x] WorkspaceView.handleUpdateNovel — re-throw → NovelEditDialog 展示
+- [x] WorkspaceView.handleDeleteNovel — re-throw → NovelDeleteDialog 展示
+- [x] WorkspaceView.handleExportNovel — 加 try/catch + re-throw → ExportDialog 展示
+- [x] 引入 sonner toast 库，App.tsx 配置 `<Toaster position="bottom-right" richColors />`
 
-- ContentPanel — SaveContent (doSave)
-- ChapterList — CreateChapter, UpdateChapterTitle
-- ProfileView — SaveAvatar, SaveUserName
+### 4. WorkspaceView 中保留原样的操作
 
-### 4. WorkspaceView 中的 novel 操作
-
-- handleCreateNovelFromDialog — 已修复（re-throw → Dialog 展示）
-- handleUpdateNovel — 已修复（re-throw → Dialog 展示）
-- handleDeleteNovel — 已修复（re-throw → Dialog 展示）
-- handleSelectNovel — 保留 console.error（无对应 Dialog）
-- handleCreateNovel — 保留 console.error（老版内联创建，无 Dialog）
-- handleSaveCover — 保留 console.error（无对应 Dialog）
-- handleExportNovel — 裸 await（无 try/catch）
+- handleSelectNovel — console.error（无对应 Dialog，切换失败不影响用户）
+- handleCreateNovel — console.error（老版内联创建，无 Dialog）
+- handleSaveCover — console.error（无对应 Dialog）
 
 ## 改进计划
-
-### 优先级高：裸 await 组件加 try/catch
-
-- [ ] ContentPanel.doSave — 加 try/catch + 用户可见错误提示
-- [ ] ChapterList.CreateChapter / UpdateChapterTitle — 加 try/catch + 用户可见错误提示
-- [ ] ProfileView.SaveAvatar / SaveUserName — 加 try/catch + 用户可见错误提示
-- [ ] WorkspaceView.handleExportNovel — 加 try/catch 或 re-throw
 
 ### 优先级中：静默吞错组件加用户可见提示
 
@@ -67,7 +62,8 @@
 
 ### 优先级低：统一错误提示方式
 
-目前各组件的 setError 都是内联红色文字，无统一 toast 机制。未来可考虑：
-- 引入全局 toast 通知组件（react-hot-toast / sonner 等）
-- 统一错误提示样式和位置
+已引入 sonner toast 库，后续可逐步统一：
+- 编辑器保存失败等一次性操作用 toast
+- 表单验证错误用内联红色文字
+- Dialog 内操作失败用 Dialog 内部错误展示
 - 网络错误、权限错误等通用错误统一处理

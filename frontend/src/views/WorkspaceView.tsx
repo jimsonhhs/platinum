@@ -299,7 +299,9 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
 
   async function handleExportNovel(format: 'epub' | 'markdown' | 'txt') {
     if (exportNovelId == null) return
-    await app.ExportNovel(exportNovelId, format)
+    try {
+      await app.ExportNovel(exportNovelId, format)
+    } catch (err) { console.error(err); throw err }
   }
 
   async function handleSaveCover(novelID: number, file: File) {

@@ -26,6 +26,8 @@ export default function ProfileView() {
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [avatarErrored, setAvatarErrored] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+  const [nameError, setNameError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [currentYear] = useState(() => new Date().getFullYear())
 
@@ -64,17 +66,28 @@ export default function ProfileView() {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
-    const buf = await file.arrayBuffer()
-    await app.SaveAvatar(Array.from(new Uint8Array(buf)))
-    setAvatarErrored(false)
-    setAvatarKey(prev => prev + 1)
+    try {
+      const buf = await file.arrayBuffer()
+      await app.SaveAvatar(Array.from(new Uint8Array(buf)))
+      setAvatarErrored(false)
+      setAvatarKey(prev => prev + 1)
+      setAvatarError('')
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   async function handleNameSave() {
     const name = nameDraft.trim()
     if (name && name !== settings?.user_name) {
-      await app.SaveUserName(name)
-      setSettings(prev => prev ? { ...prev, user_name: name } : null)
+      try {
+        await app.SaveUserName(name)
+        setSettings(prev => prev ? { ...prev, user_name: name } : null)
+        setNameError('')
+      } catch (err) {
+        setNameError(err instanceof Error ? err.message : String(err))
+        return
+      }
     }
     setEditingName(false)
   }
@@ -128,16 +141,20 @@ export default function ProfileView() {
               <Camera className="w-5 h-5 text-white" />
             </div>
           </div>
+          {avatarError && <p className="text-xs text-destructive">{avatarError}</p>}
           <div>
             {editingName ? (
-              <input
-                autoFocus
-                value={nameDraft}
-                onChange={e => setNameDraft(e.target.value)}
-                onBlur={handleNameSave}
-                onKeyDown={e => { if (e.key === 'Enter') handleNameSave(); if (e.key === 'Escape') setEditingName(false) }}
-                className="text-lg font-semibold bg-transparent border-b border-primary outline-none text-foreground max-w-[200px]"
-              />
+              <div>
+                <input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={e => { setNameDraft(e.target.value); setNameError('') }}
+                  onBlur={handleNameSave}
+                  onKeyDown={e => { if (e.key === 'Enter') handleNameSave(); if (e.key === 'Escape') setEditingName(false) }}
+                  className="text-lg font-semibold bg-transparent border-b border-primary outline-none text-foreground max-w-[200px]"
+                />
+                {nameError && <p className="text-xs text-destructive mt-0.5">{nameError}</p>}
+              </div>
             ) : (
               <h1
                 onClick={startEditName}
