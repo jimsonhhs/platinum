@@ -1,0 +1,31 @@
+Goink — Additional Terms under GNU AGPLv3 Section 7
+
+These additional terms apply to all copies, modifications, and
+distributions of this software, supplementing the AGPLv3 license.
+
+7(b) — Attribution
+
+Any derivative work based on all or a substantial portion of Goink
+must retain the following attribution in:
+  a) the README file of the derivative project, and
+  b) the "About" dialog or startup screen of the application.
+
+  "Based on Goink by 响滩 (sigpanic) — https://github.com/sigpanic/goink"
+
+7(c) — No Misrepresentation of Origin
+
+  a) Derivative works must not be presented in a misleading manner
+     that suggests they are original works.
+  b) If a derivative work is distributed under a name other than
+     "Goink", it must additionally include the following notice in
+     the same locations:
+
+     "This is a modified version of Goink. It is not endorsed by or
+      affiliated with the original author."
+
+  c) Derivatives published under the name "Goink" are exempt from
+     subsection (b).
+
+These additional terms are non-removable. Any attempt to remove or
+violate them constitutes a breach of AGPLv3, and the license to use,
+modify, or distribute the software automatically terminates.

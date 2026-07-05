@@ -210,7 +210,7 @@ make dev     # 开发模式（热重载）
 
 ## License
 
-Goink is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE) for the full text.
+Goink is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE) for the full text and [NOTICE](NOTICE) for additional terms under AGPLv3 Section 7.
 
 ## Star History
 
