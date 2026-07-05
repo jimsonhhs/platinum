@@ -23,16 +23,44 @@ func AppDir() (string, error) {
 }
 
 // ResolveGit 返回 git 可执行文件的路径。
-// 优先使用 app 自带的 runtime/git/，找不到再从系统 PATH 查找。
+// 搜索顺序: app 自带 runtime/git/ → 用户数据目录 runtime/git/ → 系统 PATH。
+// 每个候选路径都会验证可执行性（git --version），不可用则跳过继续 fallback。
 func ResolveGit() (string, error) {
-	appDir, err := AppDir()
-	if err == nil {
-		bundled := bundledGitPath(appDir)
-		if _, err := os.Stat(bundled); err == nil {
-			return bundled, nil
+	// 1. app 自带的 bundled git
+	if appDir, err := AppDir(); err == nil {
+		if path := bundledGitPath(appDir); verifyGit(path) == nil {
+			return path, nil
 		}
 	}
-	return exec.LookPath("git")
+
+	// 2. 用户数据目录下的 runtime/git/ (开发模式或手动安装)
+	dataGit := filepath.Join(DataDir(), "runtime", "git", gitBinName())
+	if verifyGit(dataGit) == nil {
+		return dataGit, nil
+	}
+
+	// 3. 系统 PATH
+	if path, err := exec.LookPath("git"); err == nil {
+		return path, nil
+	}
+
+	return "", fmt.Errorf("git: 找不到可用的 git 可执行文件，请安装 Git")
+}
+
+// verifyGit 验证 git 可执行文件是否存在且能正常运行。
+func verifyGit(path string) error {
+	if _, err := os.Stat(path); err != nil {
+		return err
+	}
+	return exec.Command(path, "--version").Run()
+}
+
+// gitBinName 返回当前平台 git 二进制文件名。
+func gitBinName() string {
+	if runtime.GOOS == "windows" {
+		return "git.exe"
+	}
+	return "git"
 }
 
 // ResolveOnnxLib 返回 ONNX Runtime 动态库的路径。
