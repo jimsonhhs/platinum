@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, BookOpen, Clock, Plus, Pencil, Trash2, X, Eye } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { reader } from '@/hooks/useApp'
 
@@ -11,22 +12,22 @@ type StatusFilter = 'all' | 'unrevealed' | 'revealed'
 const WINDOW = 20
 
 const TYPE_FILTERS: { key: TypeFilter; label: string; icon: typeof BookOpen; color: string }[] = [
-  { key: 'all', label: '全部', icon: BookOpen, color: 'text-muted-foreground' },
-  { key: 'known', label: '已知', icon: BookOpen, color: 'text-tag-green-foreground' },
-  { key: 'suspense', label: '悬念', icon: Clock, color: 'text-tag-amber-foreground' },
-  { key: 'misconception', label: '误解', icon: AlertTriangle, color: 'text-tag-rose-foreground' },
+  { key: 'all', label: 'reader.all', icon: BookOpen, color: 'text-muted-foreground' },
+  { key: 'known', label: 'reader.known', icon: BookOpen, color: 'text-tag-green-foreground' },
+  { key: 'suspense', label: 'reader.suspense', icon: Clock, color: 'text-tag-amber-foreground' },
+  { key: 'misconception', label: 'reader.misunderstanding', icon: AlertTriangle, color: 'text-tag-rose-foreground' },
 ]
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: 'all', label: '全部' },
-  { key: 'unrevealed', label: '未回收' },
-  { key: 'revealed', label: '已回收' },
+  { key: 'all', label: 'reader.all' },
+  { key: 'unrevealed', label: 'reader.unrecovered' },
+  { key: 'revealed', label: 'reader.recovered' },
 ]
 
 const TYPES = [
-  { value: 'known', label: '已知' },
-  { value: 'suspense', label: '悬念' },
-  { value: 'misconception', label: '误解' },
+  { value: 'known', label: 'reader.known' },
+  { value: 'suspense', label: 'reader.suspense' },
+  { value: 'misconception', label: 'reader.misunderstanding' },
 ]
 
 type EditMode = { type: 'create' } | { type: 'edit'; item: reader.ReaderPerspective } | null
@@ -47,14 +48,14 @@ const EMPTY_FORM: EditForm = {
   revealed_chapter: 0,
 }
 
-function typeMeta(type: string) {
+function typeMeta(type: string, t: (key: string) => string) {
   switch (type) {
     case 'known':
-      return { icon: BookOpen, color: 'text-tag-green-foreground', bg: 'bg-tag-green', label: '已知' }
+      return { icon: BookOpen, color: 'text-tag-green-foreground', bg: 'bg-tag-green', label: t('reader.known') }
     case 'suspense':
-      return { icon: Clock, color: 'text-tag-amber-foreground', bg: 'bg-tag-amber', label: '悬念' }
+      return { icon: Clock, color: 'text-tag-amber-foreground', bg: 'bg-tag-amber', label: t('reader.suspense') }
     case 'misconception':
-      return { icon: AlertTriangle, color: 'text-tag-rose-foreground', bg: 'bg-tag-rose', label: '误解' }
+      return { icon: AlertTriangle, color: 'text-tag-rose-foreground', bg: 'bg-tag-rose', label: t('reader.misunderstanding') }
     default:
       return { icon: BookOpen, color: 'text-muted-foreground', bg: 'bg-muted', label: type }
   }
@@ -62,6 +63,7 @@ function typeMeta(type: string) {
 
 export default function ReaderView({ novelId, focusId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
 
   const [entries, setEntries] = useState<reader.ReaderPerspective[]>([])
   const [loading, setLoading] = useState(false)
@@ -86,11 +88,11 @@ export default function ReaderView({ novelId, focusId }: Props) {
         setWindowCenter(prev => prev || maxCh)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('reader.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [app, novelId])
+  }, [app, novelId, t])
 
   useEffect(() => { load() }, [load])
 
@@ -126,7 +128,6 @@ export default function ReaderView({ novelId, focusId }: Props) {
   const beforeChapters = groupedDesc.filter(([ch]) => ch < windowFrom)
 
   const beforeCount = beforeChapters.reduce((s, [, items]) => s + items.length, 0)
-  const minChapter = groupedDesc.length > 0 ? groupedDesc[groupedDesc.length - 1][0] : 0
   const maxChapter = groupedDesc.length > 0 ? groupedDesc[0][0] : 0
 
   function shiftWindow(delta: number) {
@@ -154,8 +155,8 @@ export default function ReaderView({ novelId, focusId }: Props) {
   }
 
   async function handleCreate() {
-    if (!form.content.trim()) { setError('请输入内容'); return }
-    if (!form.type) { setError('请选择类型'); return }
+    if (!form.content.trim()) { setError(t('reader.pleaseEnterContent')); return }
+    if (!form.type) { setError(t('reader.pleaseSelectType')); return }
     setSaving(true)
     try {
       const created = await app.CreateReaderPerspective(novelId, {
@@ -170,7 +171,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
       await load()
       setExpandedId(created.id)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建失败')
+      setError(err instanceof Error ? err.message : t('reader.createFailed'))
     } finally {
       setSaving(false)
     }
@@ -178,7 +179,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
 
   async function handleUpdate() {
     if (!editMode || editMode.type !== 'edit') return
-    if (!form.content.trim()) { setError('请输入内容'); return }
+    if (!form.content.trim()) { setError(t('reader.pleaseEnterContent')); return }
     const entryId = editMode.item.id
     setSaving(true)
     try {
@@ -194,21 +195,21 @@ export default function ReaderView({ novelId, focusId }: Props) {
       await load()
       setExpandedId(entryId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新失败')
+      setError(err instanceof Error ? err.message : t('reader.updateFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('确定要删除这条读者认知条目吗？此操作不可撤销。')) return
+    if (!confirm(t('reader.confirmDelete'))) return
     setSaving(true)
     try {
       await app.DeleteReaderPerspective(id, novelId)
       if (expandedId === id) setExpandedId(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除失败')
+      setError(err instanceof Error ? err.message : t('reader.deleteFailed'))
     } finally {
       setSaving(false)
     }
@@ -226,7 +227,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
       })
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新失败')
+      setError(err instanceof Error ? err.message : t('reader.updateFailed'))
     } finally {
       setSaving(false)
     }
@@ -238,38 +239,38 @@ export default function ReaderView({ novelId, focusId }: Props) {
     return (
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">类型</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('reader.type')}</label>
           <select
             value={form.type}
             onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            {TYPES.map(opt => <option key={opt.value} value={opt.value}>{t(opt.label)}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">内容</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('reader.contentLabel')}</label>
           <textarea
             value={form.content}
             onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
             rows={3}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-            placeholder="读者知道/想知道/误以为的事情"
+            placeholder={t('reader.contentPlaceholder')}
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">作者视角真相（可选）</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('reader.authorTruth')}</label>
           <textarea
             value={form.related_truth}
             onChange={e => setForm(f => ({ ...f, related_truth: e.target.value }))}
             rows={2}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-            placeholder="真实情况是什么"
+            placeholder={t('reader.authorTruthPlaceholder')}
           />
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">种下章节</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('reader.plantedChapter')}</label>
             <input
               type="number"
               value={form.planted_chapter}
@@ -279,7 +280,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
             />
           </div>
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">回收章节（0=未回收）</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('reader.recoveredChapterLabel')}</label>
             <input
               type="number"
               value={form.revealed_chapter}
@@ -296,7 +297,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
   return (
     <main className="flex-1 min-w-0 overflow-y-auto overscroll-contain bg-background">
       {loading ? (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t('reader.loading')}</div>
       ) : error ? (
         <div className="flex h-full items-center justify-center text-sm text-destructive">{error}</div>
       ) : (
@@ -306,23 +307,23 @@ export default function ReaderView({ novelId, focusId }: Props) {
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-tag-blue-foreground" />
               <h2 className="text-sm font-semibold text-foreground">
-                读者视角
-                <span className="ml-2 text-xs font-normal text-muted-foreground">{filtered.length} 条</span>
+                {t('reader.readerPerspective')}
+                <span className="ml-2 text-xs font-normal text-muted-foreground">{filtered.length} {t('reader.countUnit')}</span>
               </h2>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-muted-foreground">
-                第 {windowFrom}-{windowTo} 章 · 共 {minChapter}-{maxChapter} 章
+                {t('sidebar.chapterRange', { start: windowFrom, end: windowTo })} · {t('storyarc.totalChapters', { count: maxChapter })}
               </span>
               <button onClick={load} className="text-xs text-muted-foreground hover:text-muted-foreground transition-colors">
-                刷新
+                {t('reader.refresh')}
               </button>
               <button
                 onClick={openCreate}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
               >
                 <Plus className="h-3 w-3" />
-                新建
+                {t('reader.new')}
               </button>
             </div>
           </div>
@@ -342,7 +343,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
                   }`}
                 >
                   <Icon className={`h-3 w-3 ${typeFilter === f.key ? f.color : ''}`} />
-                  {f.label}
+                  {t(f.label)}
                   {f.key !== 'all' && (
                     <span className="text-muted-foreground">({entries.filter(e => e.type === f.key).length})</span>
                   )}
@@ -363,7 +364,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {f.label}
+                {t(f.label)}
                 {f.key === 'unrevealed' && (
                   <span className="ml-1 text-muted-foreground">({entries.filter(e => e.revealed_chapter === 0).length})</span>
                 )}
@@ -378,20 +379,20 @@ export default function ReaderView({ novelId, focusId }: Props) {
           {editMode?.type === 'create' && (
             <div className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-foreground">新建读者认知条目</span>
+                <span className="text-xs font-semibold text-foreground">{t('reader.newReaderEntry')}</span>
                 <button onClick={() => { setEditMode(null); setForm(EMPTY_FORM) }} className="p-0.5 rounded text-muted-foreground hover:text-foreground">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
               {renderFormFields()}
               <div className="flex items-center gap-2 justify-end mt-3">
-                <button onClick={() => { setEditMode(null); setForm(EMPTY_FORM) }} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">取消</button>
+                <button onClick={() => { setEditMode(null); setForm(EMPTY_FORM) }} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">{t('reader.cancel')}</button>
                 <button
                   onClick={handleCreate}
                   disabled={saving || !form.content.trim()}
                   className="px-3 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  {saving ? '创建中...' : '创建'}
+                  {saving ? t('reader.creating') : t('reader.create')}
                 </button>
               </div>
             </div>
@@ -401,7 +402,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
           {groupedDesc.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-sm text-muted-foreground">
-                {entries.length === 0 ? '暂无读者认知数据' : '没有匹配的条目'}
+                {entries.length === 0 ? t('reader.noReaderData') : t('reader.noMatchingEntries')}
               </p>
             </div>
           ) : (
@@ -411,19 +412,19 @@ export default function ReaderView({ novelId, focusId }: Props) {
                   onClick={() => shiftWindow(-WINDOW)}
                   className="w-full rounded-lg border border-dashed border-border bg-card/60 px-4 py-2.5 text-xs text-muted-foreground hover:bg-card hover:border-border hover:text-foreground transition-colors"
                 >
-                  ← 第 {beforeChapters[beforeChapters.length - 1]?.[0]}-{beforeChapters[0]?.[0]} 章 · {beforeCount} 条
+                  ← {t('storyarc.earlierChapters', { start: beforeChapters[beforeChapters.length - 1]?.[0], end: beforeChapters[0]?.[0] })} · {beforeCount} {t('reader.countUnit')}
                 </button>
               )}
 
               {visibleChapters.map(([ch, items]) => (
                 <div key={ch}>
                   <div className="flex items-center gap-1.5 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">第 {ch} 章</span>
-                    <span className="text-[10px] text-muted-foreground">{items.length} 条</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t('sidebar.chapterN', { n: ch })}</span>
+                    <span className="text-[10px] text-muted-foreground">{items.length} {t('reader.countUnit')}</span>
                   </div>
                   <div className="space-y-2">
                     {items.map(entry => {
-                      const meta = typeMeta(entry.type)
+                      const meta = typeMeta(entry.type, t)
                       const Icon = meta.icon
                       const isEditing = editMode?.type === 'edit' && editMode.item.id === entry.id
                       const isExpanded = expandedId === entry.id && !isEditing
@@ -432,7 +433,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
                       return isEditing ? (
                         <div key={entry.id} className="rounded-lg border border-border bg-card p-4">
                           <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-semibold text-foreground">编辑条目</span>
+                            <span className="text-xs font-semibold text-foreground">{t('reader.editEntry')}</span>
                             <button onClick={() => { setEditMode(null); setForm(EMPTY_FORM) }} className="p-0.5 rounded text-muted-foreground hover:text-foreground">
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -444,15 +445,15 @@ export default function ReaderView({ novelId, focusId }: Props) {
                               className="px-3 py-1 rounded text-xs text-destructive hover:bg-destructive/10 transition-colors"
                               disabled={saving}
                             >
-                              <Trash2 className="h-3 w-3 inline mr-1" />删除
+                              <Trash2 className="h-3 w-3 inline mr-1" />{t('reader.delete')}
                             </button>
-                            <button onClick={() => { setEditMode(null); setForm(EMPTY_FORM) }} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">取消</button>
+                            <button onClick={() => { setEditMode(null); setForm(EMPTY_FORM) }} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">{t('reader.cancel')}</button>
                             <button
                               onClick={handleUpdate}
                               disabled={saving || !form.content.trim()}
                               className="px-3 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
                             >
-                              {saving ? '保存中...' : '保存'}
+                              {saving ? t('reader.saving') : t('reader.save')}
                             </button>
                           </div>
                         </div>
@@ -478,18 +479,18 @@ export default function ReaderView({ novelId, focusId }: Props) {
                                 </span>
                                 {isRevealed ? (
                                   <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-tag-green text-tag-green-foreground">
-                                    第{entry.revealed_chapter}章回收
+                                    {t('reader.recoveredInChapter', { n: entry.revealed_chapter })}
                                   </span>
                                 ) : (
                                   <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-tag-blue text-tag-blue-foreground">
-                                    未回收
+                                    {t('reader.unrecovered')}
                                   </span>
                                 )}
                               </div>
                               <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                                <span>种于第 {entry.planted_chapter} 章</span>
+                                <span>{t('reader.plantedInChapter', { n: entry.planted_chapter })}</span>
                                 {entry.related_truth && (
-                                  <span className="text-muted-foreground">· 有真相</span>
+                                  <span className="text-muted-foreground">· {t('reader.hasTruth')}</span>
                                 )}
                               </div>
                             </div>
@@ -499,7 +500,7 @@ export default function ReaderView({ novelId, focusId }: Props) {
                                 <button
                                   onClick={() => handleQuickReveal(entry)}
                                   className="p-1 rounded text-muted-foreground hover:text-tag-green-foreground hover:bg-tag-green/20 transition-colors"
-                                  title="标记已回收"
+                                  title={t('reader.markRecovered')}
                                 >
                                   <span className="text-[11px]">✓</span>
                                 </button>
@@ -507,14 +508,14 @@ export default function ReaderView({ novelId, focusId }: Props) {
                               <button
                                 onClick={() => { setExpandedId(null); openEdit(entry) }}
                                 className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                                title="编辑"
+                                title={t('reader.edit')}
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 onClick={() => handleDelete(entry.id)}
                                 className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                title="删除"
+                                title={t('reader.delete')}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -525,19 +526,19 @@ export default function ReaderView({ novelId, focusId }: Props) {
                           {isExpanded && (
                             <div className="border-t border-border px-4 py-3 space-y-3">
                               <div>
-                                <p className="text-xs text-muted-foreground mb-1">内容</p>
+                                <p className="text-xs text-muted-foreground mb-1">{t('reader.contentLabel')}</p>
                                 <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{entry.content}</p>
                               </div>
                               {entry.related_truth && (
                                 <div>
-                                  <p className="text-xs text-muted-foreground mb-1">作者视角真相</p>
+                                  <p className="text-xs text-muted-foreground mb-1">{t('reader.authorTruthLabel')}</p>
                                   <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{entry.related_truth}</p>
                                 </div>
                               )}
                               {entry.revealed_chapter > 0 && (
                                 <div>
-                                  <p className="text-xs text-muted-foreground mb-1">回收章节</p>
-                                  <p className="text-xs text-muted-foreground">第 {entry.revealed_chapter} 章</p>
+                                  <p className="text-xs text-muted-foreground mb-1">{t('reader.recoveredChapterLabel')}</p>
+                                  <p className="text-xs text-muted-foreground">{t('reader.chapterN', { n: entry.revealed_chapter })}</p>
                                 </div>
                               )}
                             </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, X, User, MapPin, History, GitBranch, FileText, Sparkles, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { SearchAll } from '@/lib/wailsjs/go/app/App'
 import { search } from '@/lib/wailsjs/go/models'
 
@@ -14,19 +15,20 @@ interface Props {
   onNavigateChapter: (filePath: string, title: string, chapterNum: number, matchPos: number, matchLen: number) => void
 }
 
-const TYPE_CONFIG: Record<string, { icon: typeof Search; label: string }> = {
-  content:  { icon: FileText, label: '正文匹配' },
-  character: { icon: User, label: '人物' },
-  location:  { icon: MapPin, label: '地点' },
-  timeline:  { icon: History, label: '时间线' },
-  storyarc:  { icon: GitBranch, label: '故事弧' },
-  chapter:   { icon: FileText, label: '章节' },
-  rag:       { icon: Sparkles, label: '语义匹配' },
+const TYPE_CONFIG: Record<string, { icon: typeof Search; labelKey: string }> = {
+  content:  { icon: FileText, labelKey: 'search.textMatch' },
+  character: { icon: User, labelKey: 'search.character' },
+  location:  { icon: MapPin, labelKey: 'search.location' },
+  timeline:  { icon: History, labelKey: 'search.timeline' },
+  storyarc:  { icon: GitBranch, labelKey: 'search.storyArc' },
+  chapter:   { icon: FileText, labelKey: 'search.chapter' },
+  rag:       { icon: Sparkles, labelKey: 'search.semanticMatch' },
 }
 
 const GROUP_ORDER = ['content', 'character', 'location', 'chapter', 'timeline', 'storyarc', 'rag']
 
 export default function SearchPanel({ novelId, query, results, onResultsChange, onNavigateEntity, onNavigateChapter }: Props) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -34,7 +36,7 @@ export default function SearchPanel({ novelId, query, results, onResultsChange, 
   const timerRef = useRef<number>(0)
   const reqIdRef = useRef(0)
   const onResultsChangeRef = useRef(onResultsChange)
-  onResultsChangeRef.current = onResultsChange
+  useEffect(() => { onResultsChangeRef.current = onResultsChange }, [onResultsChange])
 
   const doSearch = useCallback(async (q: string, reqId: number) => {
     if (!q.trim() || !novelId) {
@@ -73,10 +75,10 @@ export default function SearchPanel({ novelId, query, results, onResultsChange, 
       map.set(r.type, existing)
     }
     const ordered: { type: string; label: string; icon: typeof Search; items: SearchResult[] }[] = []
-    for (const t of GROUP_ORDER) {
-      const items = map.get(t)
+    for (const gt of GROUP_ORDER) {
+      const items = map.get(gt)
       if (items && items.length > 0) {
-        ordered.push({ type: t, label: TYPE_CONFIG[t]?.label ?? t, icon: TYPE_CONFIG[t]?.icon ?? FileText, items })
+        ordered.push({ type: gt, label: t(TYPE_CONFIG[gt]?.labelKey ?? gt), icon: TYPE_CONFIG[gt]?.icon ?? FileText, items })
       }
     }
     return ordered
@@ -102,7 +104,7 @@ export default function SearchPanel({ novelId, query, results, onResultsChange, 
 
   function selectResult(r: SearchResult) {
     if (r.type === 'content' || r.type === 'rag' || r.type === 'chapter') {
-      const displayTitle = r.title ? `第${r.chapter_num}章 ${r.title}` : `第${r.chapter_num}章`
+      const displayTitle = r.title ? t('search.chapterN', { n: r.chapter_num }) + ` ${r.title}` : t('search.chapterN', { n: r.chapter_num })
       onNavigateChapter(r.file_path, displayTitle, r.chapter_num, r.match_position ?? 0, r.match_len ?? 0)
     } else {
       onNavigateEntity(r.panel_id, r.id)
@@ -131,7 +133,7 @@ export default function SearchPanel({ novelId, query, results, onResultsChange, 
             value={query}
             onChange={e => onResultsChange(e.target.value, [])}
             onKeyDown={handleKeyDown}
-            placeholder="搜索人物、地点、时间线、正文..."
+            placeholder={t('search.searchPlaceholder')}
             className="w-full h-7 rounded-md border bg-background pl-7 pr-7 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           {(query || loading) && (
@@ -149,7 +151,7 @@ export default function SearchPanel({ novelId, query, results, onResultsChange, 
       <div ref={listRef} className="flex-1 overflow-y-auto overscroll-contain">
         {!query.trim() ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-xs text-muted-foreground">输入关键词搜索</p>
+            <p className="text-xs text-muted-foreground">{t('search.inputKeyword')}</p>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center h-20">
@@ -157,7 +159,7 @@ export default function SearchPanel({ novelId, query, results, onResultsChange, 
           </div>
         ) : grouped.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-xs text-muted-foreground">无搜索结果</p>
+            <p className="text-xs text-muted-foreground">{t('search.noResults')}</p>
           </div>
         ) : (
           <div className="py-2">

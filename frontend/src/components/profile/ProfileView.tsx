@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import ContributionGrid from './ContributionGrid'
 import { PenLine, CalendarDays, Flame, User, Camera } from 'lucide-react'
@@ -15,6 +16,7 @@ interface WritingStats {
 
 export default function ProfileView() {
   const app = useApp()
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activity, setActivity] = useState<Record<string, number>>({})
@@ -25,6 +27,7 @@ export default function ProfileView() {
   const [nameDraft, setNameDraft] = useState('')
   const [avatarErrored, setAvatarErrored] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [currentYear] = useState(() => new Date().getFullYear())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -45,11 +48,11 @@ export default function ProfileView() {
       setStats(st as WritingStats)
       setSettings(cfg as config.AppSettings)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('profile.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [app])
+  }, [app, t])
 
   useEffect(() => { load() }, [load])
 
@@ -84,7 +87,7 @@ export default function ProfileView() {
   if (loading) {
     return (
       <main className="flex-1 min-w-0 overflow-y-auto overscroll-contain bg-background">
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t('profile.loading')}</div>
       </main>
     )
   }
@@ -140,11 +143,11 @@ export default function ProfileView() {
                 onClick={startEditName}
                 className={`text-lg font-semibold cursor-pointer hover:text-primary transition-colors select-none ${settings?.user_name ? 'text-foreground' : 'text-muted-foreground'}`}
               >
-                {settings?.user_name || '未设置昵称'}
+                {settings?.user_name || t('profile.noNickname')}
               </h1>
             )}
             <p className="text-xs text-muted-foreground mt-0.5">
-              过去一年 · {Object.keys(activity).length} 天有写作记录
+              {t('profile.pastYearStats', { count: Object.keys(activity).length })}
             </p>
           </div>
         </div>
@@ -153,36 +156,36 @@ export default function ProfileView() {
         <div className="grid grid-cols-2 gap-3">
           <StatCard
             icon={PenLine}
-            label="累计字数"
+            label={t('profile.totalWords')}
             value={(stats?.total_words ?? 0).toLocaleString()}
           />
           <StatCard
             icon={CalendarDays}
-            label="写作天数"
+            label={t('profile.writingDays')}
             value={`${stats?.total_days_active ?? 0}`}
           />
           <StatCard
             icon={Flame}
-            label="连续写作"
-            value={`${stats?.current_streak ?? 0} 天`}
+            label={t('profile.streakDays')}
+            value={`${stats?.current_streak ?? 0} ${t('profile.day')}`}
           />
           <StatCard
             icon={Flame}
-            label="最长连续"
-            value={`${stats?.longest_streak ?? 0} 天`}
+            label={t('profile.longestStreak')}
+            value={`${stats?.longest_streak ?? 0} ${t('profile.day')}`}
           />
         </div>
 
         {/* 作品/章节概览 */}
         <div className="flex gap-6 text-xs text-muted-foreground">
-          <span>作品 <b className="text-foreground">{stats?.total_novels ?? 0}</b> 部</span>
-          <span>章节 <b className="text-foreground">{stats?.total_chapters ?? 0}</b> 章</span>
+          <span>{t('profile.worksCount', { count: stats?.total_novels ?? 0 })}</span>
+          <span>{t('profile.chaptersCount', { count: stats?.total_chapters ?? 0 })}</span>
         </div>
 
         {/* 绿格子 */}
         <section>
           <h2 className="text-sm font-medium text-foreground mb-4">
-            {new Date().getFullYear()} 年写作日历
+            {t('profile.yearCalendar', { year: currentYear })}
           </h2>
           <div className="overflow-x-auto">
             <ContributionGrid data={activity} />
@@ -193,7 +196,7 @@ export default function ProfileView() {
           <div className="text-center py-12">
             <PenLine className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">
-              还没有写作记录。开始写吧，每天的字数都会被记录下来。
+              {t('profile.noWritingRecord')}
             </p>
           </div>
         )}

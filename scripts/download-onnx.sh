@@ -42,11 +42,7 @@ download_onnx() {
     mkdir -p "$RUNTIME_DIR"
     echo "下载 ONNX Runtime ${ONNX_VERSION} (${os_tag})..."
 
-    if ! curl -fsSL --retry 3 --connect-timeout 30 -o "/tmp/${file}" "$url"; then
-        local mirror="https://ghproxy.net/${url}"
-        echo "GitHub 直连失败，尝试镜像..."
-        curl -fsSL --retry 3 --connect-timeout 30 -o "/tmp/${file}" "$mirror"
-    fi
+    curl -fsSL --retry 3 --connect-timeout 30 -o "/tmp/${file}" "$url"
 
     # 校验下载内容不是 HTML 错误页
     if file "/tmp/${file}" | grep -qi "html"; then

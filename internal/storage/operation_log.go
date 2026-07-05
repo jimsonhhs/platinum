@@ -52,11 +52,11 @@ func withoutTurn(ctx context.Context) context.Context {
 // 不通过 GORM AutoMigrate 创建，由 migrate.go 统一管理建表。
 type OperationLogRecord struct {
 	ID        int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	TurnID    int       `gorm:"column:turn_id;not null"`
-	SessionID string    `gorm:"column:session_id;not null"`
+	TurnID    int       `gorm:"column:turn_id;not null;index:idx_oplog_rollback"`
+	SessionID string    `gorm:"column:session_id;not null;index:idx_oplog_rollback"`
 	Operation string    `gorm:"column:operation;not null"`  // "create" | "update" | "delete"
-	Table     string    `gorm:"column:table_name;not null"` // 目标表名，如 "characters"
-	EntityID  string    `gorm:"column:entity_id;not null"`  // JSON 化的主键条件，如 {"id":5} 或 {"novel_id":1,"scope":"next"}
+	Table     string    `gorm:"column:table_name;not null;index:idx_oplog_entity"` // 目标表名，如 "characters"
+	EntityID  string    `gorm:"column:entity_id;not null;index:idx_oplog_entity"`  // JSON 化的主键条件，如 {"id":5} 或 {"novel_id":1,"scope":"next"}
 	OldValues string    `gorm:"column:old_values"`          // JSON，create 时为 ""
 	NewValues string    `gorm:"column:new_values"`          // JSON，delete 时为 ""
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
@@ -119,7 +119,9 @@ func afterCreate(db *gorm.DB) {
 	}
 	info, ok := getTurnInfo(db.Statement.Context)
 	if !ok {
-		return
+		// 前端 CRUD 无 TurnInfo：查 operation_log 继承同实体上一条记录的 session/turn，
+		// 使回滚时用户编辑与 AI 操作一起撤销。无历史记录则 fallback 为 turn_id=0（不被回滚）。
+		info = resolveTurnForEntity(db)
 	}
 
 	newJSON := serializeDest(db)
@@ -160,7 +162,7 @@ func afterUpdate(db *gorm.DB) {
 	}
 	info, ok := getTurnInfo(db.Statement.Context)
 	if !ok {
-		return
+		info = resolveTurnForEntity(db)
 	}
 
 	oldRow, _ := db.InstanceGet("oplog:update_old")
@@ -200,7 +202,7 @@ func afterDelete(db *gorm.DB) {
 	}
 	info, ok := getTurnInfo(db.Statement.Context)
 	if !ok {
-		return
+		info = resolveTurnForEntity(db)
 	}
 
 	oldRow, _ := db.InstanceGet("oplog:delete_old")
@@ -220,6 +222,33 @@ func afterDelete(db *gorm.DB) {
 }
 
 // ── 回调辅助 ────────────────────────────────────────────────
+
+// resolveTurnForEntity 为无 TurnInfo 的前端 CRUD 操作确定 session/turn 归属。
+// 策略：查询 operation_log 中同一实体的最近一条记录，继承其 session_id/turn_id。
+// 这样用户在前端编辑 AI 创建的实体时，该编辑归入 AI 所在的 turn，回滚时一起撤销。
+// 如果该实体从未被 AI 操作过，返回零值 TurnInfo（turn_id=0, session_id=""），
+// 记录仍写入 operation_log 但回滚时自然排除（WHERE turn_id >= ? 不匹配 0）。
+func resolveTurnForEntity(db *gorm.DB) TurnInfo {
+	if db.Statement.Schema == nil {
+		return TurnInfo{}
+	}
+	table := db.Statement.Schema.Table
+	entityID := buildEntityID(db)
+	if entityID == "{}" {
+		return TurnInfo{}
+	}
+
+	var last OperationLogRecord
+	err := db.Session(&gorm.Session{NewDB: true, SkipHooks: true}).
+		Where("table_name = ? AND entity_id = ?", table, entityID).
+		Order("id DESC").
+		Limit(1).
+		Find(&last).Error
+	if err != nil || last.ID == 0 {
+		return TurnInfo{}
+	}
+	return TurnInfo{SessionID: last.SessionID, TurnID: last.TurnID}
+}
 
 // buildRecord 从 Statement 提取公共字段，组装 OperationLogRecord。
 func buildRecord(db *gorm.DB, info TurnInfo, op, oldJSON, newJSON string) OperationLogRecord {

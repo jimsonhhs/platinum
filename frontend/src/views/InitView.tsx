@@ -2,13 +2,9 @@ import { useState, useEffect } from 'react'
 import { useApp } from '@/hooks/useApp'
 import { useTheme, type Theme } from '@/hooks/useTheme'
 import { Button } from '@/components/ui/button'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon, Languages } from 'lucide-react'
 import Logo from '@/components/Logo'
-
-const THEME_OPTIONS: { key: Theme; icon: React.ReactNode; label: string }[] = [
-  { key: 'light', icon: <Sun className="w-5 h-5" />, label: '浅色模式' },
-  { key: 'dark', icon: <Moon className="w-5 h-5" />, label: '深色模式' },
-]
+import { useTranslation } from 'react-i18next'
 
 function ThemePreview({ theme }: { theme: Theme }) {
   const isLight = theme === 'light'
@@ -46,8 +42,15 @@ interface Props {
 
 export default function InitView({ onInitialized }: Props) {
   const app = useApp()
+  const { t, i18n } = useTranslation()
   const { theme, setTheme } = useTheme()
+
+  const THEME_OPTIONS: { key: Theme; icon: React.ReactNode; label: string }[] = [
+    { key: 'light', icon: <Sun className="w-5 h-5" />, label: t('init.lightMode') },
+    { key: 'dark', icon: <Moon className="w-5 h-5" />, label: t('init.darkMode') },
+  ]
   const [selectedTheme, setSelectedTheme] = useState<Theme>(theme)
+  const [selectedLang, setSelectedLang] = useState(i18n.language)
   const [dataDir, setDataDir] = useState('')
   const [error, setError] = useState('')
   const [initializing, setInitializing] = useState(false)
@@ -56,7 +59,7 @@ export default function InitView({ onInitialized }: Props) {
     app.GetPlatform().then((info) => {
       if (info.defaultPath) setDataDir(info.defaultPath as string)
     })
-  }, [])
+  }, [app])
 
   function handleThemeSelect(t: Theme) {
     setSelectedTheme(t)
@@ -81,16 +84,16 @@ export default function InitView({ onInitialized }: Props) {
         <Logo className="h-16 w-16 mx-auto mb-8" />
 
         <h1 className="text-3xl font-semibold tracking-tight mb-3">
-          欢迎使用 Goink
+          {t('init.welcome')}
         </h1>
 
         <p className="text-base text-muted-foreground mb-8">
-          你的 AI 创作伙伴
+          {t('init.subtitle')}
         </p>
 
         {/* 主题选择 */}
         <div className="mb-8">
-          <p className="text-sm text-muted-foreground mb-3">选择界面主题</p>
+          <p className="text-sm text-muted-foreground mb-3">{t('init.chooseTheme')}</p>
           <div className="grid grid-cols-2 gap-3">
             {THEME_OPTIONS.map((opt) => {
               const selected = selectedTheme === opt.key
@@ -123,13 +126,54 @@ export default function InitView({ onInitialized }: Props) {
           </div>
         </div>
 
+        {/* 语言选择 */}
+        <div className="mb-8">
+          <p className="text-sm text-muted-foreground mb-3">{t('init.chooseLanguage')}</p>
+          <div className="grid grid-cols-2 gap-3">
+            {([
+              { key: 'zh-CN', label: '中文', desc: '简体中文' },
+              { key: 'en', label: 'English', desc: 'English' },
+            ] as const).map(opt => {
+              const selected = selectedLang === opt.key || (opt.key === 'zh-CN' && selectedLang.startsWith('zh'))
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => {
+                    setSelectedLang(opt.key)
+                    i18n.changeLanguage(opt.key)
+                  }}
+                  className={`
+                    rounded-xl border-2 p-3 text-left transition-all cursor-pointer
+                    ${selected
+                      ? 'border-primary ring-2 ring-primary/20'
+                      : 'border-border hover:border-muted-foreground/50 hover:-translate-y-0.5 hover:shadow-md'}
+                  `}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Languages className={`w-5 h-5 ${selected ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <div>
+                      <div className="text-sm font-medium">{opt.label}</div>
+                      <div className="text-[11px] text-muted-foreground">{opt.desc}</div>
+                    </div>
+                    {selected && (
+                      <span className="ml-auto w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                        <span className="w-1.5 h-1.5 rounded-full bg-background" />
+                      </span>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         <div className="bg-muted/40 rounded-lg px-5 py-4 mb-3 text-left">
-          <p className="text-xs text-muted-foreground mb-1">创作数据将存储在此目录</p>
-          <p className="text-sm font-mono break-all">{dataDir || '加载中...'}</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('init.dataDirHint')}</p>
+          <p className="text-sm font-mono break-all">{dataDir || t('init.loading')}</p>
         </div>
 
         <p className="text-xs text-muted-foreground mb-10">
-          所有小说、角色、设置等数据可整体备份或迁移
+          {t('init.backupNote')}
         </p>
 
         {error && (
@@ -142,7 +186,7 @@ export default function InitView({ onInitialized }: Props) {
           onClick={handleInit}
           disabled={!dataDir || initializing}
         >
-          {initializing ? '正在初始化...' : '开始使用'}
+          {initializing ? t('init.initializing') : t('init.start')}
         </Button>
       </div>
     </div>

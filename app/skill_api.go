@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"novel/internal/config"
+	"novel/internal/git"
 	"novel/internal/skill"
 )
 
@@ -21,50 +22,6 @@ func (a *App) ListSkills(input ListSkillsInput) []skill.SkillMeta {
 		return nil
 	}
 	return a.skill.ListMeta(input.NovelID)
-}
-
-// ExtractStyleInput 是 ExtractStyle 的入参。
-type ExtractStyleInput struct {
-	NovelID         int64  `json:"novel_id"`
-	Sample          string `json:"sample"`
-	ProviderName    string `json:"provider_name"`
-	ModelID         string `json:"model_id"`
-	ReasoningEffort string `json:"reasoning_effort"`
-}
-
-// ExtractStyleResult 是 ExtractStyle 的返回值。
-type ExtractStyleResult struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	RawContent  string `json:"raw_content"`
-	FilePath    string `json:"file_path"`
-}
-
-// ExtractStyle 分析样本文字的写作风格，调用 LLM 生成仿写 skill，返回预览结果。
-// 不自动保存——前端让用户确认后再调 SaveContent 写入。
-func (a *App) ExtractStyle(input ExtractStyleInput) (*ExtractStyleResult, error) {
-	if a.llmClient == nil {
-		return nil, fmt.Errorf("LLM 客户端未初始化")
-	}
-
-	sk, err := skill.Extract(a.ctx, a.llmClient, input.Sample, input.ProviderName, input.ModelID, input.ReasoningEffort)
-	if err != nil {
-		return nil, fmt.Errorf("提取风格失败: %w", err)
-	}
-
-	safeName := strings.Map(func(r rune) rune {
-		if r == '/' || r == '\\' || r == ':' {
-			return -1
-		}
-		return r
-	}, sk.Name)
-
-	return &ExtractStyleResult{
-		Name:        sk.Name,
-		Description: sk.Description,
-		RawContent:  sk.RawContent,
-		FilePath:    fmt.Sprintf("skills/%s.md", safeName),
-	}, nil
 }
 
 // DeleteSkillInput 是 DeleteSkill 的入参。
@@ -82,6 +39,10 @@ func (a *App) DeleteSkill(input DeleteSkillInput) error {
 	if input.Name == "" {
 		return fmt.Errorf("技能名称不能为空")
 	}
+	name := strings.TrimSuffix(filepath.Base(input.Name), ".md")
+	if name == "" || name != input.Name {
+		return fmt.Errorf("技能名称非法")
+	}
 
 	source := input.Source
 	if source != "novel" && source != "user" {
@@ -94,14 +55,22 @@ func (a *App) DeleteSkill(input DeleteSkillInput) error {
 		if input.NovelID <= 0 {
 			return fmt.Errorf("小说 ID 无效")
 		}
-		filePath = filepath.Join(config.NovelSkillsDir(input.NovelID), input.Name+".md")
+		var err error
+		filePath, err = git.SafePath(config.NovelSkillsDir(input.NovelID), name+".md")
+		if err != nil {
+			return fmt.Errorf("技能名称非法: %w", err)
+		}
 	case "user":
-		filePath = filepath.Join(config.UserSkillsDir(), input.Name+".md")
+		var err error
+		filePath, err = git.SafePath(config.UserSkillsDir(), name+".md")
+		if err != nil {
+			return fmt.Errorf("技能名称非法: %w", err)
+		}
 	}
 
 	if err := os.Remove(filePath); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("技能文件不存在: %s", input.Name)
+			return fmt.Errorf("技能文件不存在: %s", name)
 		}
 		return fmt.Errorf("删除技能文件失败: %w", err)
 	}
@@ -110,11 +79,11 @@ func (a *App) DeleteSkill(input DeleteSkillInput) error {
 	switch source {
 	case "novel":
 		if err := a.skill.ReloadNovel(input.NovelID, config.NovelSkillsDir(input.NovelID)); err != nil {
-			a.logger.Warn("删除技能后重新加载小说级技能失败", "name", input.Name, "err", err)
+			a.logger.Warn("删除技能后重新加载小说级技能失败", "name", name, "err", err)
 		}
 	case "user":
 		if err := a.skill.ReloadUser(config.UserSkillsDir()); err != nil {
-			a.logger.Warn("删除技能后重新加载用户级技能失败", "name", input.Name, "err", err)
+			a.logger.Warn("删除技能后重新加载用户级技能失败", "name", name, "err", err)
 		}
 	}
 

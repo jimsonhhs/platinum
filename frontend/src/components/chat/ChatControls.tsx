@@ -1,4 +1,5 @@
 import type { llm } from '@/hooks/useApp'
+import { useTranslation } from 'react-i18next'
 import PopSelect from './PopSelect'
 import ContextRing from './ContextRing'
 import type { UsageInfo } from './ContextRing'
@@ -34,6 +35,7 @@ export default function ChatControls({
   isTurnRunning,
   isCompressing,
 }: Props) {
+  const { t } = useTranslation()
   const selected = models.find(m => m.Key === selectedKey)
   const supportsReasoning = selected?.ReasoningLevels && selected.ReasoningLevels.length > 0
 
@@ -41,7 +43,7 @@ export default function ChatControls({
   const reasoningOptions = supportsReasoning
     ? selected.ReasoningLevels.map(level => ({
         value: level,
-        label: level === 'high' ? '高推理' : '最大推理',
+        label: level === 'high' ? t('chat.highReasoning') : t('chat.maxReasoning'),
       }))
     : []
 
@@ -52,7 +54,7 @@ export default function ChatControls({
         options={modelOptions}
         onChange={onSelectModel}
         onOpen={onRefreshModels}
-        footerAction={{ label: '配置模型...', onClick: onConfigModel }}
+        footerAction={{ label: t('chat.configureModel'), onClick: onConfigModel }}
       />
 
       {supportsReasoning && (
@@ -74,7 +76,7 @@ export default function ChatControls({
             : 'text-muted-foreground'
         }`}
       >
-        自动
+        {t('chat.auto')}
       </button>
 
       <ContextRing usage={usage} onCompress={onCompress} isTurnRunning={isTurnRunning} isCompressing={isCompressing} />

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { splitFrontmatter } from '@/components/content/types'
 
+const KNOWN_FIELDS = ['name', 'description', 'category', 'mode', 'author', 'version']
+
 const MODE_OPTIONS = [
-  { value: 'auto', label: '智能 — AI 可自主调用，用户也可 / 触发' },
-  { value: 'manual', label: '指令 — 仅用户 / 手动触发，不出现在目录中' },
-  { value: 'always', label: '常驻 — 会话开头自动注入，始终生效' },
+  { value: 'auto', labelKey: 'skill.modeSmart' },
+  { value: 'manual', labelKey: 'skill.modeCommand' },
+  { value: 'always', labelKey: 'skill.modePermanent' },
 ]
 
 interface Props {
@@ -15,7 +18,7 @@ interface Props {
 }
 
 export default function SkillEditForm({ content, readOnly, onSave, onCancel }: Props) {
-  const KNOWN_FIELDS = ['name', 'description', 'category', 'mode', 'author', 'version']
+  const { t } = useTranslation()
 
   const { meta, body } = splitFrontmatter(content)
 
@@ -52,15 +55,15 @@ export default function SkillEditForm({ content, readOnly, onSave, onCancel }: P
   if (readOnly) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm text-muted-foreground">内置技能不可编辑</p>
+        <p className="text-sm text-muted-foreground">{t('skill.builtinNotEditable')}</p>
       </div>
     )
   }
 
   const handleSave = async () => {
     if (saving) return
-    if (!name.trim()) { setError('名称不能为空'); return }
-    if (!description.trim()) { setError('简介不能为空'); return }
+    if (!name.trim()) { setError(t('skill.nameRequired')); return }
+    if (!description.trim()) { setError(t('skill.summaryRequired')); return }
     setSaving(true)
     setError('')
     try {
@@ -68,7 +71,7 @@ export default function SkillEditForm({ content, readOnly, onSave, onCancel }: P
         '---',
         `name: ${name.trim()}`,
         `description: ${description.trim()}`,
-        `category: ${category.trim() || '未分类'}`,
+        `category: ${category.trim() || t('skill.uncategorized')}`,
         `mode: ${mode}`,
       ]
       if (author.trim()) {
@@ -81,7 +84,7 @@ export default function SkillEditForm({ content, readOnly, onSave, onCancel }: P
       lines.push('---', '', bodyText.trim())
       await onSave(lines.join('\n'))
     } catch (e: any) {
-      setError(typeof e === 'string' ? e : (e?.message || e?.toString() || '保存失败，请重试'))
+      setError(typeof e === 'string' ? e : (e?.message || e?.toString() || t('skill.saveFailed')))
     } finally {
       setSaving(false)
     }
@@ -101,62 +104,62 @@ export default function SkillEditForm({ content, readOnly, onSave, onCancel }: P
         )}
 
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1.5">名称 *</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('skill.nameLabel')}</label>
           <input
             type="text" value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="技能名称，如 scene-beats"
+            placeholder={t('skill.namePlaceholder')}
             className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             autoFocus
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1.5">简介 *</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('skill.summaryLabel')}</label>
           <textarea
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="简要描述此技能的功能和触发时机"
+            placeholder={t('skill.summaryPlaceholder')}
             rows={3}
             className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1.5">分类</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('skill.category')}</label>
           <input
             type="text" value={category}
             onChange={e => setCategory(e.target.value)}
-            placeholder="如：结构、风格、系统"
+            placeholder={t('skill.categoryPlaceholder')}
             className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1.5">模式</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('skill.mode')}</label>
           <select
             value={mode}
             onChange={e => setMode(e.target.value)}
             className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {MODE_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
             ))}
           </select>
         </div>
 
         <div className="flex gap-4">
           <div className="flex-1">
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">作者</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('skill.author')}</label>
             <input
               type="text" value={author}
               onChange={e => setAuthor(e.target.value)}
-              placeholder="技能创建者"
+              placeholder={t('skill.authorPlaceholder')}
               className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
           <div className="w-24">
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">版本</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('skill.version')}</label>
             <input
               type="number" value={version}
               onChange={e => setVersion(e.target.value)}
@@ -166,11 +169,11 @@ export default function SkillEditForm({ content, readOnly, onSave, onCancel }: P
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1.5">内容</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('skill.content')}</label>
           <textarea
             value={bodyText}
             onChange={e => setBodyText(e.target.value)}
-            placeholder="技能正文内容（markdown）"
+            placeholder={t('skill.contentPlaceholder')}
             rows={16}
             className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
@@ -181,14 +184,14 @@ export default function SkillEditForm({ content, readOnly, onSave, onCancel }: P
             onClick={onCancel}
             className="h-9 px-4 rounded-md text-sm border hover:bg-muted transition-colors"
           >
-            取消
+            {t('skill.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="h-9 px-4 rounded-md text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {saving ? '保存中...' : '保存'}
+            {saving ? t('skill.saving') : t('skill.save')}
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
-import { Plus, Pencil, Trash2, BookOpen, Camera, Download } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Plus, Pencil, Trash2, BookOpen, Camera, Download, Upload } from 'lucide-react'
 import BookCover from '@/components/sidebar/BookCover'
 import type { novel } from '@/hooks/useApp'
 
@@ -12,13 +13,15 @@ interface Props {
   onCreateNovel: () => void
   onSaveCover: (novelID: number, file: File) => Promise<void>
   onExportNovel: (n: novel.Novel) => void
+  onImportNovel: () => void
 }
 
 export default function BookshelfView({
   novels, activeNovelId,
   onSelectNovel, onEditNovel, onDeleteNovel, onCreateNovel,
-  onSaveCover, onExportNovel,
+  onSaveCover, onExportNovel, onImportNovel,
 }: Props) {
+  const { t } = useTranslation()
   const [coverKeys, setCoverKeys] = useState<Record<number, number>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadingRef = useRef<number | null>(null)
@@ -53,22 +56,31 @@ export default function BookshelfView({
       {/* 顶部工具栏 */}
       <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
         <span className="text-sm text-muted-foreground">
-          共 <b className="text-foreground">{novels.length}</b> 部作品
+          {t('novel.totalWorks', { count: novels.length })}
         </span>
-        <button
-          onClick={onCreateNovel}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4" />
-          新建作品
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onImportNovel}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-sm border hover:bg-muted transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            {t('novel.importBook')}
+          </button>
+          <button
+            onClick={onCreateNovel}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" />
+            {t('novel.newWork')}
+          </button>
+        </div>
       </div>
 
       {/* 空状态 */}
       {novels.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
           <BookOpen className="w-12 h-12 opacity-30" />
-          <p className="text-sm">还没有作品，创建第一部吧</p>
+          <p className="text-sm">{t('novel.noWorksYet')}</p>
         </div>
       ) : (
         /* 书架网格 */
@@ -91,7 +103,7 @@ export default function BookshelfView({
                     <button
                       onClick={(e) => handleCoverClick(n.id, e)}
                       className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="更换封面"
+                      title={t('novel.changeCover')}
                     >
                       <Camera className="w-5 h-5 text-white" />
                     </button>
@@ -103,7 +115,7 @@ export default function BookshelfView({
                     </span>
                   ) : (
                     <span className="inline-block self-start text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground mb-1.5">
-                      未分类
+                      {t('novel.uncategorized')}
                     </span>
                   )}
                   {n.description && (
@@ -118,21 +130,21 @@ export default function BookshelfView({
                   <button
                     onClick={(e) => { e.stopPropagation(); onExportNovel(n) }}
                     className="w-7 h-7 flex items-center justify-center rounded-md bg-background/90 border shadow-sm hover:bg-muted transition-colors"
-                    title="导出"
+                    title={t('novel.export')}
                   >
                     <Download className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onEditNovel(n) }}
                     className="w-7 h-7 flex items-center justify-center rounded-md bg-background/90 border shadow-sm hover:bg-muted transition-colors"
-                    title="编辑"
+                    title={t('novel.edit')}
                   >
                     <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onDeleteNovel(n) }}
                     className="w-7 h-7 flex items-center justify-center rounded-md bg-background/90 border shadow-sm hover:bg-danger-bg hover:border-danger-border transition-colors"
-                    title="删除"
+                    title={t('novel.delete')}
                   >
                     <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
                   </button>

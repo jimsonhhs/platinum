@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   content: string
@@ -56,6 +57,7 @@ function computeStats(text: string): DetailedStats {
 }
 
 export default function StatusBar({ content, isDirty }: Props) {
+  const { t } = useTranslation()
   const stats = useMemo(() => computeStats(content), [content])
   const [showDetail, setShowDetail] = useState(false)
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(0)
@@ -77,9 +79,9 @@ export default function StatusBar({ content, isDirty }: Props) {
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          字数 {stats.wordCount}
+          {t('shell.wordCount')} {stats.wordCount}
         </span>
-        <span>行数 {stats.lineCount}</span>
+        <span>{t('shell.lineCount')} {stats.lineCount}</span>
       </div>
 
       {showDetail && (
@@ -88,43 +90,43 @@ export default function StatusBar({ content, isDirty }: Props) {
           onMouseEnter={() => { if (hoverTimer.current) clearTimeout(hoverTimer.current); setShowDetail(true) }}
           onMouseLeave={handleMouseLeave}
         >
-          <div className="font-medium text-foreground mb-2">字数统计</div>
+          <div className="font-medium text-foreground mb-2">{t('shell.wordStats')}</div>
           <div className="flex justify-between gap-8">
-            <span>字数</span>
+            <span>{t('shell.wordCount')}</span>
             <span className="tabular-nums">{stats.wordCount}</span>
           </div>
           <div className="flex justify-between gap-8">
-            <span className="pl-3">中文字符</span>
+            <span className="pl-3">{t('shell.chineseChars')}</span>
             <span className="tabular-nums">{stats.chineseChars}</span>
           </div>
           <div className="flex justify-between gap-8">
-            <span className="pl-3">英文单词</span>
+            <span className="pl-3">{t('shell.englishWords')}</span>
             <span className="tabular-nums">{stats.englishWords}</span>
           </div>
           <div className="border-t my-1.5" />
           <div className="flex justify-between gap-8">
-            <span>字符数（不计空格）</span>
+            <span>{t('shell.charsNoSpace')}</span>
             <span className="tabular-nums">{stats.charCountNoSpace}</span>
           </div>
           <div className="flex justify-between gap-8">
-            <span>字符数（计空格）</span>
+            <span>{t('shell.charsWithSpace')}</span>
             <span className="tabular-nums">{stats.charCountSpace}</span>
           </div>
           <div className="border-t my-1.5" />
           <div className="flex justify-between gap-8">
-            <span>行数</span>
+            <span>{t('shell.lineCount')}</span>
             <span className="tabular-nums">{stats.lineCount}</span>
           </div>
           <div className="flex justify-between gap-8">
-            <span>段落数</span>
+            <span>{t('shell.paragraphCount')}</span>
             <span className="tabular-nums">{stats.paragraphCount}</span>
           </div>
         </div>
       )}
 
       <span className="flex items-center gap-1">
-        <span className={`w-1.5 h-1.5 rounded-full ${isDirty ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-        {isDirty ? '未保存' : '已保存'}
+        <span className={`w-1.5 h-1.5 rounded-full ${isDirty ? 'bg-status-warning' : 'bg-status-ok'}`} />
+        {isDirty ? t('shell.unsaved') : t('shell.saved')}
       </span>
     </div>
   )

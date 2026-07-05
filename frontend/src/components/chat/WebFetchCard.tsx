@@ -1,4 +1,6 @@
 import { memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Globe, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react'
 import Markdown from '@/components/Markdown'
 import './WebFetchCard.css'
@@ -8,13 +10,14 @@ interface Props {
   displayText: string
 }
 
-function openExternal(url: string) {
-  if (window.confirm(`是否在浏览器中打开\n${url}`)) {
+function openExternal(url: string, t: TFunction) {
+  if (window.confirm(`${t('chat.openInBrowser')}\n${url}`)) {
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 }
 
 export default memo(function WebFetchCard({ result, displayText }: Props) {
+  const { t } = useTranslation()
   const [contentOpen, setContentOpen] = useState(false)
 
   const url = (result.url as string) || ''
@@ -27,7 +30,7 @@ export default memo(function WebFetchCard({ result, displayText }: Props) {
       <div className="fetch-card-row">
         <span className="fetch-card-icon"><Globe size={14} /></span>
         <span className="fetch-card-label">{displayText}</span>
-        <span className="fetch-card-badge fetch-card-badge-done">完成</span>
+        <span className="fetch-card-badge fetch-card-badge-done">{t('chat.done')}</span>
       </div>
 
       <div className="fetch-card-meta">
@@ -35,7 +38,7 @@ export default memo(function WebFetchCard({ result, displayText }: Props) {
           <span className="fetch-card-title">{title || url}</span>
           <button
             className="fetch-card-ext-btn"
-            onClick={() => openExternal(url)}
+            onClick={() => openExternal(url, t)}
             title={url}
           >
             <ExternalLink size={12} />
@@ -53,7 +56,7 @@ export default memo(function WebFetchCard({ result, displayText }: Props) {
             onClick={() => setContentOpen(!contentOpen)}
           >
             {contentOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            页面内容 ({wordCount.toLocaleString()} 字)
+            {t('chat.pageContent', { count: wordCount.toLocaleString() })}
           </button>
           {contentOpen && (
             <div className="fetch-card-content-body">

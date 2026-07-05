@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 
+	"novel/internal/storage"
 	"novel/internal/timeline"
 )
 
@@ -108,10 +109,8 @@ type UpdateTimelineEntryInput struct {
 
 // UpdateTimelineEntry 更新伏笔或用户指令。只更新非零值字段。
 func (a *App) UpdateTimelineEntry(novelID int64, entryID int64, input UpdateTimelineEntryInput) error {
-	if err := a.timeline.DB.WithContext(a.ctx).
-		Model(&timeline.TimelineEntry{}).
-		Where("id = ? AND novel_id = ?", entryID, novelID).
-		Updates(&input).Error; err != nil {
+	var entry timeline.TimelineEntry
+	if err := storage.PatchAndSave(a.timeline.DB.WithContext(a.ctx), entryID, novelID, &input, &entry); err != nil {
 		return fmt.Errorf("update timeline entry: %w", err)
 	}
 	return nil

@@ -10,12 +10,28 @@ export function CancelChat(arg1) {
   return window['go']['app']['App']['CancelChat'](arg1);
 }
 
+export function CancelExtract(arg1) {
+  return window['go']['app']['App']['CancelExtract'](arg1);
+}
+
+export function CancelExtractPattern(arg1) {
+  return window['go']['app']['App']['CancelExtractPattern'](arg1);
+}
+
 export function Chat(arg1) {
   return window['go']['app']['App']['Chat'](arg1);
 }
 
+export function CheckUpdate(arg1) {
+  return window['go']['app']['App']['CheckUpdate'](arg1);
+}
+
 export function CompressContext(arg1) {
   return window['go']['app']['App']['CompressContext'](arg1);
+}
+
+export function ComputeStyleStats(arg1) {
+  return window['go']['app']['App']['ComputeStyleStats'](arg1);
 }
 
 export function CreateArcNode(arg1, arg2) {
@@ -48,6 +64,10 @@ export function CreateReaderPerspective(arg1, arg2) {
 
 export function CreateStoryArc(arg1, arg2) {
   return window['go']['app']['App']['CreateStoryArc'](arg1, arg2);
+}
+
+export function CreateStyleSample(arg1) {
+  return window['go']['app']['App']['CreateStyleSample'](arg1);
 }
 
 export function CreateTimelineEntry(arg1, arg2) {
@@ -90,6 +110,10 @@ export function DeleteStoryArc(arg1, arg2) {
   return window['go']['app']['App']['DeleteStoryArc'](arg1, arg2);
 }
 
+export function DeleteStyleSample(arg1) {
+  return window['go']['app']['App']['DeleteStyleSample'](arg1);
+}
+
 export function DeleteTimelineEntry(arg1, arg2) {
   return window['go']['app']['App']['DeleteTimelineEntry'](arg1, arg2);
 }
@@ -98,8 +122,16 @@ export function DiscoverModels(arg1, arg2) {
   return window['go']['app']['App']['DiscoverModels'](arg1, arg2);
 }
 
+export function DismissUpdate(arg1) {
+  return window['go']['app']['App']['DismissUpdate'](arg1);
+}
+
 export function ExportNovel(arg1, arg2) {
   return window['go']['app']['App']['ExportNovel'](arg1, arg2);
+}
+
+export function ExtractPattern(arg1) {
+  return window['go']['app']['App']['ExtractPattern'](arg1);
 }
 
 export function ExtractStyle(arg1) {
@@ -130,8 +162,20 @@ export function GetCharacters(arg1) {
   return window['go']['app']['App']['GetCharacters'](arg1);
 }
 
+export function GetCommitFileList(arg1, arg2) {
+  return window['go']['app']['App']['GetCommitFileList'](arg1, arg2);
+}
+
+export function GetCommitLog(arg1, arg2, arg3) {
+  return window['go']['app']['App']['GetCommitLog'](arg1, arg2, arg3);
+}
+
 export function GetContent(arg1, arg2) {
   return window['go']['app']['App']['GetContent'](arg1, arg2);
+}
+
+export function GetFileDiff(arg1, arg2, arg3) {
+  return window['go']['app']['App']['GetFileDiff'](arg1, arg2, arg3);
 }
 
 export function GetLLMConfig() {
@@ -190,8 +234,16 @@ export function GetStoryArcs(arg1) {
   return window['go']['app']['App']['GetStoryArcs'](arg1);
 }
 
+export function GetStyleSample(arg1) {
+  return window['go']['app']['App']['GetStyleSample'](arg1);
+}
+
 export function GetTimelineEntries(arg1, arg2, arg3) {
   return window['go']['app']['App']['GetTimelineEntries'](arg1, arg2, arg3);
+}
+
+export function GetVersion() {
+  return window['go']['app']['App']['GetVersion']();
 }
 
 export function GetWritingActivity(arg1) {
@@ -200,6 +252,10 @@ export function GetWritingActivity(arg1) {
 
 export function GetWritingStats() {
   return window['go']['app']['App']['GetWritingStats']();
+}
+
+export function ImportNovel(arg1) {
+  return window['go']['app']['App']['ImportNovel'](arg1);
 }
 
 export function Initialize(arg1) {
@@ -218,6 +274,14 @@ export function ListSlashCommands(arg1) {
   return window['go']['app']['App']['ListSlashCommands'](arg1);
 }
 
+export function ListStyleSamples() {
+  return window['go']['app']['App']['ListStyleSamples']();
+}
+
+export function PickAndImportNovel() {
+  return window['go']['app']['App']['PickAndImportNovel']();
+}
+
 export function RebuildNovelIndex(arg1) {
   return window['go']['app']['App']['RebuildNovelIndex'](arg1);
 }
@@ -232,6 +296,10 @@ export function SaveContent(arg1) {
 
 export function SaveCover(arg1, arg2) {
   return window['go']['app']['App']['SaveCover'](arg1, arg2);
+}
+
+export function SaveGitConfig(arg1, arg2) {
+  return window['go']['app']['App']['SaveGitConfig'](arg1, arg2);
 }
 
 export function SaveLLMConfig(arg1) {
@@ -256,10 +324,6 @@ export function SetActiveNovel(arg1) {
 
 export function SetApprovalMode(arg1) {
   return window['go']['app']['App']['SetApprovalMode'](arg1);
-}
-
-export function SetChatPanelWidth(arg1) {
-  return window['go']['app']['App']['SetChatPanelWidth'](arg1);
 }
 
 export function SetLastSession(arg1) {
@@ -316,6 +380,10 @@ export function UpdateReaderPerspective(arg1, arg2, arg3) {
 
 export function UpdateStoryArc(arg1, arg2, arg3) {
   return window['go']['app']['App']['UpdateStoryArc'](arg1, arg2, arg3);
+}
+
+export function UpdateStyleSample(arg1) {
+  return window['go']['app']['App']['UpdateStyleSample'](arg1);
 }
 
 export function UpdateTimelineEntry(arg1, arg2, arg3) {

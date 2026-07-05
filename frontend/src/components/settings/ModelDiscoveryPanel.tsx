@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, X, Search, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { llm } from '@/hooks/useApp'
 import { DiscoverModels } from '@/lib/wailsjs/go/app/App'
 import ModelEditForm from './ModelEditForm'
@@ -20,6 +21,7 @@ const emptyModel = (): llm.ModelInfo => ({
 } as unknown as llm.ModelInfo)
 
 export default function ModelDiscoveryPanel({ chatUrl, apiKey, existingIds, onAddModel }: Props) {
+  const { t } = useTranslation()
   // 手动添加
   const [showAddForm, setShowAddForm] = useState(false)
   const [draftModel, setDraftModel] = useState<llm.ModelInfo>(emptyModel())
@@ -49,7 +51,7 @@ export default function ModelDiscoveryPanel({ chatUrl, apiKey, existingIds, onAd
     try {
       const models = await DiscoverModels(chatUrl, apiKey)
       if (!models || models.length === 0) {
-        setDiscoverError('未发现任何模型')
+        setDiscoverError(t('settings.noModelsFound'))
       } else {
         setDiscoveredModels(models)
         setSelectedForImport(new Set(models.map(m => m.id)))
@@ -86,7 +88,7 @@ export default function ModelDiscoveryPanel({ chatUrl, apiKey, existingIds, onAd
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-muted-foreground">模型列表</span>
+        <span className="text-xs text-muted-foreground">{t('settings.modelList')}</span>
         <div className="flex items-center gap-2">
           <button
             onClick={handleDiscover}
@@ -94,13 +96,13 @@ export default function ModelDiscoveryPanel({ chatUrl, apiKey, existingIds, onAd
             className="text-xs text-primary flex items-center gap-0.5 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {discovering ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-            自动发现
+            {t('settings.autoDiscover')}
           </button>
           <button
             onClick={startAddForm}
             className="text-xs text-primary flex items-center gap-0.5 hover:underline"
           >
-            <Plus className="w-3 h-3" /> 添加
+            <Plus className="w-3 h-3" /> {t('settings.add')}
           </button>
         </div>
       </div>
@@ -115,7 +117,7 @@ export default function ModelDiscoveryPanel({ chatUrl, apiKey, existingIds, onAd
             }
             onSave={() => handleSavePending(i, m)}
             onCancel={() => setPendingImports(prev => prev.filter((_, j) => j !== i))}
-            title={`模型 #${i + 1}`}
+            title={t('settings.modelNumber', { n: i + 1 })}
           />
         </div>
       ))}
@@ -142,7 +144,7 @@ export default function ModelDiscoveryPanel({ chatUrl, apiKey, existingIds, onAd
         <div className="border rounded-md mb-2">
           <div className="flex items-center justify-between px-3 py-2 border-b">
             <span className="text-xs font-medium">
-              发现 {discoveredModels.length} 个模型
+              {t('settings.foundModels', { count: discoveredModels.length })}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -152,12 +154,12 @@ export default function ModelDiscoveryPanel({ chatUrl, apiKey, existingIds, onAd
                   setSelectedForImport(allSelected ? new Set() : new Set(allIds))
                 }}
                 className="text-xs text-muted-foreground hover:underline"
-              >全选</button>
+              >{t('settings.selectAll')}</button>
               <button
                 onClick={handleImportSelected}
                 disabled={selectedForImport.size === 0}
                 className="h-7 px-2.5 rounded-md bg-primary text-primary-foreground text-xs disabled:opacity-50"
-              >导入选中</button>
+              >{t('settings.importSelected')}</button>
               <button
                 onClick={() => { setDiscoveredModels([]); setDiscoverError('') }}
                 className="text-muted-foreground hover:text-destructive"
@@ -189,9 +191,9 @@ export default function ModelDiscoveryPanel({ chatUrl, apiKey, existingIds, onAd
                       {m.context_window >= 1_000_000 ? (m.context_window / 1_000_000).toFixed(0) + 'M' : (m.context_window / 1_000).toFixed(0) + 'K'}
                     </span>
                   )}
-                  {m.supports_thinking && <span className="text-muted-foreground">思考</span>}
-                  {m.supports_vision && <span className="text-muted-foreground">视觉</span>}
-                  {exists && <span className="text-muted-foreground">已添加</span>}
+                  {m.supports_thinking && <span className="text-muted-foreground">{t('settings.thinking')}</span>}
+                  {m.supports_vision && <span className="text-muted-foreground">{t('settings.vision')}</span>}
+                  {exists && <span className="text-muted-foreground">{t('settings.alreadyAdded')}</span>}
                 </label>
               )
             })}

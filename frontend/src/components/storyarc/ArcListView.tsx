@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GitBranch, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import { useTheme } from '@/hooks/useTheme'
 import type { storyarc } from '@/hooks/useApp'
@@ -33,30 +34,30 @@ type Filter = 'all' | 'pending' | 'completed' | 'abandoned'
 const WINDOW = 20
 
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: '全部' },
-  { key: 'pending', label: '进行中' },
-  { key: 'completed', label: '已完成' },
-  { key: 'abandoned', label: '已废弃' },
+  { key: 'all', label: 'storyarc.all' },
+  { key: 'pending', label: 'storyarc.inProgress' },
+  { key: 'completed', label: 'storyarc.completed' },
+  { key: 'abandoned', label: 'storyarc.abandoned' },
 ]
 
 const ARC_TYPES = [
-  { value: 'main', label: '主线' },
-  { value: 'sub', label: '支线' },
-  { value: 'character', label: '角色线' },
-  { value: 'background', label: '背景线' },
+  { value: 'main', label: 'storyarc.mainline' },
+  { value: 'sub', label: 'storyarc.subplot' },
+  { value: 'character', label: 'storyarc.characterLine' },
+  { value: 'background', label: 'storyarc.backgroundLine' },
 ]
 
 const ARC_STATUSES = [
-  { value: 'active', label: '活跃' },
-  { value: 'paused', label: '暂停' },
-  { value: 'completed', label: '已完成' },
-  { value: 'abandoned', label: '已废弃' },
+  { value: 'active', label: 'storyarc.active' },
+  { value: 'paused', label: 'storyarc.paused' },
+  { value: 'completed', label: 'storyarc.completed' },
+  { value: 'abandoned', label: 'storyarc.abandoned' },
 ]
 
 const NODE_STATUSES = [
-  { value: 'pending', label: '进行中' },
-  { value: 'completed', label: '已完成' },
-  { value: 'abandoned', label: '已废弃' },
+  { value: 'pending', label: 'storyarc.inProgress' },
+  { value: 'completed', label: 'storyarc.completed' },
+  { value: 'abandoned', label: 'storyarc.abandoned' },
 ]
 
 const IMPORTANCES = [1, 2, 3, 4, 5]
@@ -77,6 +78,7 @@ const EMPTY_NODE: NodeForm = { story_arc_id: 0, title: '', target_chapter: 1 }
 
 export default function ArcListView({ novelId, focusArcId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
   const { theme } = useTheme()
   const PALETTE = { light: PALETTE_LIGHT, dark: PALETTE_DARK }[theme]
 
@@ -108,11 +110,11 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
       setAllNodes(nodeList ?? [])
       setWindowCenter(Math.max(1, maxCh))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('storyarc.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [app, novelId])
+  }, [app, novelId, t])
 
   useEffect(() => { load() }, [load])
 
@@ -156,7 +158,6 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
   const afterChapters = grouped.filter(([ch]) => ch > windowTo)
   const beforeCount = beforeChapters.reduce((s, [, items]) => s + items.length, 0)
   const afterCount = afterChapters.reduce((s, [, items]) => s + items.length, 0)
-  const minChapter = grouped.length > 0 ? grouped[0][0] : 0
   const maxChapter = grouped.length > 0 ? grouped[grouped.length - 1][0] : 0
 
   function shiftWindow(delta: number) {
@@ -194,15 +195,15 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
   }
 
   async function handleCreateArc() {
-    if (!arcForm.name.trim()) { setError('请输入弧线名称'); return }
-    if (!arcForm.arc_type) { setError('请选择弧线类型'); return }
+    if (!arcForm.name.trim()) { setError(t('storyarc.pleaseEnterArcName')); return }
+    if (!arcForm.arc_type) { setError(t('storyarc.pleaseSelectArcType')); return }
     setSaving(true)
     try {
       await app.CreateStoryArc(novelId, arcForm)
       setEditMode(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建弧线失败')
+      setError(err instanceof Error ? err.message : t('storyarc.createArcFailed'))
     } finally {
       setSaving(false)
     }
@@ -216,21 +217,21 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
       setEditMode(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新弧线失败')
+      setError(err instanceof Error ? err.message : t('storyarc.updateArcFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDeleteArc(arcId: number) {
-    if (!confirm('确定要删除这条弧线吗？关联的所有节点也会被删除。此操作不可撤销。')) return
+    if (!confirm(t('storyarc.confirmDeleteArc'))) return
     setSaving(true)
     try {
       await app.DeleteStoryArc(novelId, arcId)
       setExpandedId(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除弧线失败')
+      setError(err instanceof Error ? err.message : t('storyarc.deleteArcFailed'))
     } finally {
       setSaving(false)
     }
@@ -256,9 +257,9 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
   }
 
   async function handleCreateNode() {
-    if (!nodeForm.title.trim()) { setError('请输入节点标题'); return }
-    if (!nodeForm.story_arc_id) { setError('请选择所属弧线'); return }
-    if (!nodeForm.target_chapter) { setError('请输入目标章节'); return }
+    if (!nodeForm.title.trim()) { setError(t('storyarc.pleaseEnterNodeTitle')); return }
+    if (!nodeForm.story_arc_id) { setError(t('storyarc.pleaseSelectParentArc')); return }
+    if (!nodeForm.target_chapter) { setError(t('storyarc.pleaseEnterTargetChapter')); return }
     setSaving(true)
     try {
       const created = await app.CreateArcNode(novelId, nodeForm)
@@ -266,7 +267,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
       await load()
       setExpandedId(created.id)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建节点失败')
+      setError(err instanceof Error ? err.message : t('storyarc.createNodeFailed'))
     } finally {
       setSaving(false)
     }
@@ -274,7 +275,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
 
   async function handleUpdateNode() {
     if (!editMode || editMode.type !== 'edit_node') return
-    if (!nodeForm.title.trim()) { setError('请输入节点标题'); return }
+    if (!nodeForm.title.trim()) { setError(t('storyarc.pleaseEnterNodeTitle')); return }
     const nodeId = editMode.node.id
     setSaving(true)
     try {
@@ -283,21 +284,21 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
       await load()
       setExpandedId(nodeId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新节点失败')
+      setError(err instanceof Error ? err.message : t('storyarc.updateNodeFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDeleteNode(nodeId: number) {
-    if (!confirm('确定要删除这个节点吗？')) return
+    if (!confirm(t('storyarc.confirmDeleteNode'))) return
     setSaving(true)
     try {
       await app.DeleteArcNode(novelId, nodeId)
       setExpandedId(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除节点失败')
+      setError(err instanceof Error ? err.message : t('storyarc.deleteNodeFailed'))
     } finally {
       setSaving(false)
     }
@@ -309,7 +310,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
       await app.UpdateArcNode(novelId, node.id, { status: newStatus })
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新节点状态失败')
+      setError(err instanceof Error ? err.message : t('storyarc.updateNodeStatusFailed'))
     } finally {
       setSaving(false)
     }
@@ -317,9 +318,9 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
 
   const nodeStatusStyle = (status: string) => {
     switch (status) {
-      case 'completed': return { bg: 'bg-tag-green', text: 'text-tag-green-foreground', label: '已完成' }
-      case 'abandoned': return { bg: 'bg-secondary', text: 'text-muted-foreground', label: '已废弃' }
-      default: return { bg: 'bg-tag-blue', text: 'text-tag-blue-foreground', label: '进行中' }
+      case 'completed': return { bg: 'bg-tag-green', text: 'text-tag-green-foreground', label: t('storyarc.completed') }
+      case 'abandoned': return { bg: 'bg-secondary', text: 'text-muted-foreground', label: t('storyarc.abandoned') }
+      default: return { bg: 'bg-tag-blue', text: 'text-tag-blue-foreground', label: t('storyarc.inProgress') }
     }
   }
 
@@ -336,28 +337,28 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
     return (
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">名称</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.name')}</label>
           <input
             type="text"
             value={arcForm.name}
             onChange={e => setArcForm(f => ({ ...f, name: e.target.value }))}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="弧线名称"
+            placeholder={t('storyarc.arcName')}
           />
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">类型</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.type')}</label>
             <select
               value={arcForm.arc_type}
               onChange={e => setArcForm(f => ({ ...f, arc_type: e.target.value }))}
               className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {ARC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              {ARC_TYPES.map(opt => <option key={opt.value} value={opt.value}>{t(opt.label)}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">重要度</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.importance')}</label>
             <select
               value={arcForm.importance}
               onChange={e => setArcForm(f => ({ ...f, importance: parseInt(e.target.value) }))}
@@ -368,24 +369,24 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
           </div>
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">描述</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.description')}</label>
           <textarea
             value={arcForm.description}
             onChange={e => setArcForm(f => ({ ...f, description: e.target.value }))}
             rows={2}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-            placeholder="弧线整体描述"
+            placeholder={t('storyarc.arcDescription')}
           />
         </div>
         {!isCreate && editMode?.type === 'edit_arc' && (
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">状态</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.status')}</label>
             <select
               value={arcForm.status ?? editMode.arc.status}
               onChange={e => setArcForm(f => ({ ...f, status: e.target.value }))}
               className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {ARC_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              {ARC_STATUSES.map(opt => <option key={opt.value} value={opt.value}>{t(opt.label)}</option>)}
             </select>
           </div>
         )}
@@ -398,7 +399,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
       <div className="space-y-3">
         {editMode?.type === 'create_node' && (
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">所属弧线</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.parentArc')}</label>
             <select
               value={nodeForm.story_arc_id}
               onChange={e => setNodeForm(f => ({ ...f, story_arc_id: parseInt(e.target.value) }))}
@@ -409,28 +410,28 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
           </div>
         )}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">标题</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.title')}</label>
           <input
             type="text"
             value={nodeForm.title}
             onChange={e => setNodeForm(f => ({ ...f, title: e.target.value }))}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="节点标题"
+            placeholder={t('storyarc.nodeTitle')}
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">描述</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.description')}</label>
           <textarea
             value={nodeForm.description}
             onChange={e => setNodeForm(f => ({ ...f, description: e.target.value }))}
             rows={2}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-            placeholder="节点详情"
+            placeholder={t('storyarc.nodeDetails')}
           />
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">目标章节</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.targetChapter')}</label>
             <input
               type="number"
               value={nodeForm.target_chapter}
@@ -441,13 +442,13 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
           </div>
           {editMode?.type === 'edit_node' && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">状态</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('storyarc.status')}</label>
               <select
                 value={nodeForm.status ?? editMode.node.status}
                 onChange={e => setNodeForm(f => ({ ...f, status: e.target.value }))}
                 className="rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {NODE_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                {NODE_STATUSES.map(opt => <option key={opt.value} value={opt.value}>{t(opt.label)}</option>)}
               </select>
             </div>
           )}
@@ -461,12 +462,12 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
       <div className="flex items-center gap-2 justify-end mt-3">
         {onDelete && (
           <button onClick={onDelete} disabled={saving} className="px-3 py-1 rounded text-xs text-destructive hover:bg-destructive/10 transition-colors">
-            <Trash2 className="h-3 w-3 inline mr-1" />删除
+            <Trash2 className="h-3 w-3 inline mr-1" />{t('storyarc.delete')}
           </button>
         )}
-        <button onClick={() => setEditMode(null)} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">取消</button>
+        <button onClick={() => setEditMode(null)} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">{t('storyarc.cancel')}</button>
         <button onClick={onSubmit} disabled={saving} className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
-          {saving ? '保存中...' : '保存'}
+          {saving ? t('storyarc.saving') : t('storyarc.save')}
         </button>
       </div>
     )
@@ -484,7 +485,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
               : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
           }`}
         >
-          列表
+          {t('storyarc.list')}
         </button>
         <button
           onClick={() => setViewTab('swimlane')}
@@ -494,14 +495,14 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
               : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
           }`}
         >
-          泳道图
+          {t('storyarc.swimlane')}
         </button>
       </div>
 
       {viewTab === 'swimlane' ? (
         <StoryArcGraph novelId={novelId} />
       ) : loading ? (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t('storyarc.loading')}</div>
       ) : error ? (
         <div className="flex h-full items-center justify-center text-sm text-destructive">{error}</div>
       ) : (
@@ -512,15 +513,15 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
             <div className="flex items-center gap-2">
               <GitBranch className="h-4 w-4 text-tag-purple-foreground" />
               <h2 className="text-sm font-semibold text-foreground">
-                弧线节点
-                <span className="ml-2 text-xs font-normal text-muted-foreground">{filteredNodes.length} 个</span>
+                {t('storyarc.arcNode')}
+                <span className="ml-2 text-xs font-normal text-muted-foreground">{filteredNodes.length} {t('storyarc.countUnit')}</span>
               </h2>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-muted-foreground">
-                第 {windowFrom}-{windowTo} 章 · 共 {minChapter}-{maxChapter} 章
+                {t('sidebar.chapterRange', { start: windowFrom, end: windowTo })} · {t('storyarc.totalChapters', { count: maxChapter })}
               </span>
-              <button onClick={load} className="text-xs text-muted-foreground hover:text-muted-foreground transition-colors">刷新</button>
+              <button onClick={load} className="text-xs text-muted-foreground hover:text-muted-foreground transition-colors">{t('storyarc.refresh')}</button>
             </div>
           </div>
 
@@ -531,7 +532,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
                 ? 'bg-card border border-border text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
             }`}>
-              全部
+              {t('storyarc.all')}
             </button>
             {arcs.map((arc, i) => {
               const c = PALETTE[i % PALETTE.length]
@@ -553,14 +554,14 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
                     <span
                       onClick={(e) => { e.stopPropagation(); openEditArc(arc) }}
                       className="p-0.5 rounded hover:opacity-70"
-                      title="编辑"
+                      title={t('storyarc.edit')}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </span>
                     <span
                       onClick={(e) => { e.stopPropagation(); handleDeleteArc(arc.id) }}
                       className="p-0.5 rounded hover:opacity-70"
-                      title="删除"
+                      title={t('storyarc.delete')}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </span>
@@ -572,7 +573,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
               onClick={openCreateArc}
               className="px-3 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card/60 transition-colors border border-dashed border-border"
             >
-              <Plus className="h-3 w-3 inline mr-1" />新弧线
+              <Plus className="h-3 w-3 inline mr-1" />{t('storyarc.newArc2')}
             </button>
           </div>
 
@@ -580,7 +581,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
           {editMode?.type === 'create_arc' && (
             <div className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-foreground">新建弧线</span>
+                <span className="text-xs font-semibold text-foreground">{t('storyarc.newArc')}</span>
                 <button onClick={() => setEditMode(null)} className="p-0.5 rounded text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
               </div>
               {renderArcForm(true)}
@@ -590,7 +591,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
           {editMode?.type === 'edit_arc' && (
             <div className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-foreground">编辑弧线：{editMode.arc.name}</span>
+                <span className="text-xs font-semibold text-foreground">{t('storyarc.editArc')}{editMode.arc.name}</span>
                 <button onClick={() => setEditMode(null)} className="p-0.5 rounded text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
               </div>
               {renderArcForm(false)}
@@ -605,7 +606,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
                 <button key={f.key} onClick={() => setFilter(f.key)} className={`px-3 py-1 rounded text-xs transition-colors ${
                   filter === f.key ? 'bg-card border border-border text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                 }`}>
-                  {f.label}
+                  {t(f.label)}
                   {f.key !== 'all' && (
                     <span className="ml-1 text-muted-foreground">({allNodes.filter(n => activeArcIds.has(n.story_arc_id) && n.status === f.key).length})</span>
                   )}
@@ -614,7 +615,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
             </div>
             {arcs.length > 0 && (
               <button onClick={() => openCreateNode()} className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
-                <Plus className="h-3 w-3" />新建节点
+                <Plus className="h-3 w-3" />{t('storyarc.newNode')}
               </button>
             )}
           </div>
@@ -623,7 +624,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
           {editMode?.type === 'create_node' && (
             <div className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-foreground">新建节点</span>
+                <span className="text-xs font-semibold text-foreground">{t('storyarc.newNode')}</span>
                 <button onClick={() => setEditMode(null)} className="p-0.5 rounded text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
               </div>
               {renderNodeForm()}
@@ -637,21 +638,21 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-tag-purple text-tag-purple-foreground">
                 <GitBranch className="h-5 w-5" />
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">{arcs.length === 0 ? '暂无叙事弧线' : '没有匹配的节点'}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{arcs.length === 0 ? t('storyarc.noNarrativeArcs') : t('storyarc.noMatchingNodes')}</p>
             </div>
           ) : (
             <div className="space-y-6">
               {beforeCount > 0 && (
                 <button onClick={() => shiftWindow(-WINDOW)} className="w-full rounded-lg border border-dashed border-border bg-card/60 px-4 py-2.5 text-xs text-muted-foreground hover:bg-card hover:border-border hover:text-foreground transition-colors">
-                  ← 第 {beforeChapters[0]?.[0]}-{beforeChapters[beforeChapters.length - 1]?.[0]} 章 · {beforeCount} 个节点
+                  ← {t('storyarc.earlierChapters', { start: beforeChapters[0]?.[0], end: beforeChapters[beforeChapters.length - 1]?.[0] })} · {t('storyarc.nodeCount', { count: beforeCount })}
                 </button>
               )}
 
               {visibleChapters.map(([ch, items]) => (
                 <div key={ch}>
                   <div className="flex items-center gap-1.5 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">第 {ch} 章</span>
-                    <span className="text-[10px] text-muted-foreground">{items.length} 个节点</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t('sidebar.chapterN', { n: ch })}</span>
+                    <span className="text-[10px] text-muted-foreground">{t('storyarc.nodeCount', { count: items.length })}</span>
                   </div>
                   <div className="space-y-2">
                     {items.map(node => {
@@ -668,7 +669,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
                         return (
                           <div key={node.id} className="rounded-lg border border-border bg-card p-4">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-semibold text-foreground">编辑：{node.title}</span>
+                              <span className="text-xs font-semibold text-foreground">{t('storyarc.editing')}{node.title}</span>
                               <button onClick={() => setEditMode(null)} className="p-0.5 rounded text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
                             </div>
                             {renderNodeForm()}
@@ -696,22 +697,22 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
                                 )}
                               </div>
                               <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                                <span>目标第 {node.target_chapter} 章</span>
-                                {node.actual_chapter > 0 && <span className="text-tag-green-foreground">· 实际第 {node.actual_chapter} 章</span>}
+                                <span>{t('storyarc.targetChapterN', { n: node.target_chapter })}</span>
+                                {node.actual_chapter > 0 && <span className="text-tag-green-foreground">· {t('storyarc.actualChapterN', { n: node.actual_chapter })}</span>}
                                 {arc && <span className="text-muted-foreground">· {arc.arc_type}</span>}
                               </div>
                             </div>
                             {/* Hover actions */}
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               {node.status === 'pending' && (
-                                <button onClick={() => handleQuickNodeStatus(node, 'completed')} className="p-1 rounded text-muted-foreground hover:text-tag-green-foreground hover:bg-tag-green/20 transition-colors" title="标记完成">
+                                <button onClick={() => handleQuickNodeStatus(node, 'completed')} className="p-1 rounded text-muted-foreground hover:text-tag-green-foreground hover:bg-tag-green/20 transition-colors" title={t('storyarc.markComplete')}>
                                   <span className="text-[10px]">✓</span>
                                 </button>
                               )}
-                              <button onClick={() => openEditNode(node)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="编辑">
+                              <button onClick={() => openEditNode(node)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title={t('storyarc.edit')}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
-                              <button onClick={() => handleDeleteNode(node.id)} className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="删除">
+                              <button onClick={() => handleDeleteNode(node.id)} className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title={t('storyarc.delete')}>
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
@@ -725,7 +726,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
                           )}
                           {isExpanded && !hasContent && (
                             <div className="border-t border-border px-4 py-3">
-                              <p className="text-xs text-muted-foreground">暂无详细描述</p>
+                              <p className="text-xs text-muted-foreground">{t('storyarc.noDetailDescription')}</p>
                             </div>
                           )}
                         </div>
@@ -737,7 +738,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
 
               {afterCount > 0 && (
                 <button onClick={() => shiftWindow(WINDOW)} className="w-full rounded-lg border border-dashed border-border bg-card/60 px-4 py-2.5 text-xs text-muted-foreground hover:bg-card hover:border-border hover:text-foreground transition-colors">
-                  → 第 {afterChapters[0]?.[0]}-{afterChapters[afterChapters.length - 1]?.[0]} 章 · {afterCount} 个节点
+                  → {t('storyarc.laterChapters', { start: afterChapters[0]?.[0], end: afterChapters[afterChapters.length - 1]?.[0] })} · {t('storyarc.nodeCount', { count: afterCount })}
                 </button>
               )}
             </div>

@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	"novel/internal/location"
+	"novel/internal/storage"
 )
 
 // GetLocations 返回指定小说的全部地点，供前端侧边栏嵌套树和关系图节点渲染。
@@ -72,10 +73,8 @@ func (a *App) UpdateLocation(novelID int64, locID int64, input UpdateLocationInp
 			return fmt.Errorf("clear parent: %w", err)
 		}
 	}
-	if err := a.location.DB.WithContext(a.ctx).
-		Model(&location.Location{}).
-		Where("id = ? AND novel_id = ?", locID, novelID).
-		Updates(&input).Error; err != nil {
+	var loc location.Location
+	if err := storage.PatchAndSave(a.location.DB.WithContext(a.ctx), locID, novelID, &input, &loc); err != nil {
 		return fmt.Errorf("update location: %w", err)
 	}
 	return nil

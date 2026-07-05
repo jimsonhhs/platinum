@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import InitView from '@/views/InitView'
 import WorkspaceView from '@/views/WorkspaceView'
@@ -6,6 +7,7 @@ import WorkspaceView from '@/views/WorkspaceView'
 type View = 'loading' | 'init' | 'workspace'
 
 export default function App() {
+  const { t } = useTranslation()
   const [view, setView] = useState<View>('loading')
   const [initialNovelId, setInitialNovelId] = useState(0)
   const [fromInit, setFromInit] = useState(false)
@@ -24,12 +26,12 @@ export default function App() {
       console.error('App initialization failed', err)
       setView('init')
     })
-  }, [])
+  }, [app])
 
   if (view === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <p className="text-muted-foreground">加载中...</p>
+        <p className="text-muted-foreground">{t('app.loading')}</p>
       </div>
     )
   }

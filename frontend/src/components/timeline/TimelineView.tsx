@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, BookOpen, Flag, Lightbulb, Pencil, Plus, Target, Trash2, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { timeline } from '@/hooks/useApp'
 
@@ -11,21 +12,21 @@ type Filter = 'all' | 'pending' | 'resolved' | 'abandoned'
 const ENTRY_WINDOW = 20
 
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: '全部' },
-  { key: 'pending', label: '进行中' },
-  { key: 'resolved', label: '已回收' },
-  { key: 'abandoned', label: '已废弃' },
+  { key: 'all', label: 'timeline.all' },
+  { key: 'pending', label: 'timeline.inProgress' },
+  { key: 'resolved', label: 'timeline.recovered' },
+  { key: 'abandoned', label: 'timeline.abandoned' },
 ]
 
-const PLAN_LABELS: Record<Tab, string> = { next: '下一章', near: '近期', far: '远期' }
+const PLAN_LABELS: Record<Tab, string> = { next: 'timeline.nextChapter', near: 'timeline.nearTerm', far: 'timeline.farTerm' }
 const CATEGORIES = [
-  { value: 'foreshadowing', label: '伏笔' },
-  { value: 'user_directive', label: '用户指令' },
+  { value: 'foreshadowing', label: 'timeline.foreshadowing' },
+  { value: 'user_directive', label: 'timeline.userInstruction' },
 ]
 const STATUSES = [
-  { value: 'pending', label: '进行中' },
-  { value: 'resolved', label: '已回收' },
-  { value: 'abandoned', label: '已废弃' },
+  { value: 'pending', label: 'timeline.inProgress' },
+  { value: 'resolved', label: 'timeline.recovered' },
+  { value: 'abandoned', label: 'timeline.abandoned' },
 ]
 const IMPORTANCES = [1, 2, 3, 4, 5]
 
@@ -61,6 +62,7 @@ const EDIT_FORM_EMPTY: EditForm = {
 
 export default function TimelineView({ novelId, focusEntryId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
 
   const [plans, setPlans] = useState<timeline.ChapterPlan[]>([])
   const [entries, setEntries] = useState<timeline.TimelineEntry[]>([])
@@ -88,11 +90,11 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
       setEntries(entryList ?? [])
       setWindowCenter(Math.max(1, maxCh))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('timeline.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [app, novelId])
+  }, [app, novelId, t])
 
   useEffect(() => { load() }, [load])
 
@@ -136,7 +138,6 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
   const afterChapters = grouped.filter(([ch]) => ch > windowTo)
   const beforeCount = beforeChapters.reduce((s, [, items]) => s + items.length, 0)
   const afterCount = afterChapters.reduce((s, [, items]) => s + items.length, 0)
-  const minChapter = grouped.length > 0 ? grouped[0][0] : 0
   const maxChapter = grouped.length > 0 ? grouped[grouped.length - 1][0] : 0
 
   function shiftWindow(delta: number) {
@@ -145,17 +146,17 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
 
   const statusStyle = (status: string) => {
     switch (status) {
-      case 'pending': return { bg: 'bg-tag-blue', text: 'text-tag-blue-foreground', label: '进行中' }
-      case 'resolved': return { bg: 'bg-tag-green', text: 'text-tag-green-foreground', label: '已回收' }
-      case 'abandoned': return { bg: 'bg-secondary', text: 'text-muted-foreground', label: '已废弃' }
+      case 'pending': return { bg: 'bg-tag-blue', text: 'text-tag-blue-foreground', label: t('timeline.inProgress') }
+      case 'resolved': return { bg: 'bg-tag-green', text: 'text-tag-green-foreground', label: t('timeline.recovered') }
+      case 'abandoned': return { bg: 'bg-secondary', text: 'text-muted-foreground', label: t('timeline.abandoned') }
       default: return { bg: 'bg-muted', text: 'text-muted-foreground', label: status }
     }
   }
 
   const catStyle = (category: string) => {
     switch (category) {
-      case 'foreshadowing': return { icon: Target, color: 'text-tag-amber-foreground', bg: 'bg-tag-amber', label: '伏笔' }
-      case 'user_directive': return { icon: Lightbulb, color: 'text-tag-purple-foreground', bg: 'bg-tag-purple', label: '用户指令' }
+      case 'foreshadowing': return { icon: Target, color: 'text-tag-amber-foreground', bg: 'bg-tag-amber', label: t('timeline.foreshadowing') }
+      case 'user_directive': return { icon: Lightbulb, color: 'text-tag-purple-foreground', bg: 'bg-tag-purple', label: t('timeline.userInstruction') }
       default: return { icon: Flag, color: 'text-muted-foreground', bg: 'bg-muted', label: category }
     }
   }
@@ -197,15 +198,15 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
       setEditMode(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '保存计划失败')
+      setError(err instanceof Error ? err.message : t('timeline.savePlanFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   async function handleCreate() {
-    if (!form.title.trim()) { setError('请输入标题'); return }
-    if (!form.target_chapter) { setError('请输入目标章节'); return }
+    if (!form.title.trim()) { setError(t('timeline.pleaseEnterTitle')); return }
+    if (!form.target_chapter) { setError(t('timeline.pleaseEnterTargetChapter')); return }
     setSaving(true)
     try {
       await app.CreateTimelineEntry(novelId, {
@@ -221,7 +222,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
       setEditMode(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建失败')
+      setError(err instanceof Error ? err.message : t('timeline.createFailed'))
     } finally {
       setSaving(false)
     }
@@ -229,7 +230,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
 
   async function handleUpdate() {
     if (!editMode || editMode.type !== 'edit') return
-    if (!form.title.trim()) { setError('请输入标题'); return }
+    if (!form.title.trim()) { setError(t('timeline.pleaseEnterTitle')); return }
     setSaving(true)
     try {
       const payload = {
@@ -245,20 +246,20 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
       setEditMode(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新失败')
+      setError(err instanceof Error ? err.message : t('timeline.updateFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(entryId: number) {
-    if (!confirm('确定要删除这条记录吗？此操作不可撤销。')) return
+    if (!confirm(t('timeline.confirmDelete'))) return
     setSaving(true)
     try {
       await app.DeleteTimelineEntry(novelId, entryId)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除失败')
+      setError(err instanceof Error ? err.message : t('timeline.deleteFailed'))
     } finally {
       setSaving(false)
     }
@@ -278,7 +279,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
       })
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新状态失败')
+      setError(err instanceof Error ? err.message : t('timeline.updateStatusFailed'))
     } finally {
       setSaving(false)
     }
@@ -291,39 +292,39 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
       <div className="space-y-3">
         {showCategory && (
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">类型</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('timeline.type')}</label>
             <select
               value={createCat}
               onChange={e => setCreateCat(e.target.value)}
               className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              {CATEGORIES.map(c => <option key={c.value} value={c.value}>{t(c.label)}</option>)}
             </select>
           </div>
         )}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">标题</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('timeline.title')}</label>
           <input
             type="text"
             value={form.title}
             onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="简短标题"
+            placeholder={t('timeline.shortTitle')}
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">内容</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('timeline.content')}</label>
           <textarea
             value={form.content}
             onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
             rows={3}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-            placeholder="详细描述"
+            placeholder={t('timeline.detailedDescription')}
           />
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">目标章节</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('timeline.targetChapter')}</label>
             <input
               type="number"
               value={form.target_chapter}
@@ -333,7 +334,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">重要度</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('timeline.importance')}</label>
             <select
               value={form.importance}
               onChange={e => setForm(f => ({ ...f, importance: parseInt(e.target.value) }))}
@@ -345,13 +346,13 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
         </div>
         {showStatus && (
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">状态</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('timeline.status')}</label>
             <select
               value={form.status}
               onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
               className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              {STATUSES.map(s => <option key={s.value} value={s.value}>{t(s.label)}</option>)}
             </select>
           </div>
         )}
@@ -362,7 +363,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
   return (
     <main className="relative flex-1 min-w-0 overflow-y-auto overscroll-contain bg-background">
       {loading ? (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t('timeline.loading')}</div>
       ) : error ? (
         <div className="flex h-full items-center justify-center text-sm text-destructive">{error}</div>
       ) : (
@@ -371,7 +372,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <BookOpen className="h-4 w-4 text-tag-green-foreground" />
-              <h2 className="text-sm font-semibold text-foreground">章节计划</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t('timeline.chapterPlan')}</h2>
             </div>
             <div className="flex gap-1 mb-3">
               {(['next', 'near', 'far'] as Tab[]).map(tab => (
@@ -386,7 +387,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                     }
                   `}
                 >
-                  {PLAN_LABELS[tab]}
+                  {t(PLAN_LABELS[tab])}
                 </button>
               ))}
             </div>
@@ -398,21 +399,21 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                     onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
                     rows={4}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-                    placeholder={`${PLAN_LABELS[planTab]}计划内容...`}
+                    placeholder={t('timeline.planContent', { type: t(PLAN_LABELS[planTab]) })}
                   />
                   <div className="flex items-center gap-2 justify-end">
                     <button
                       onClick={() => { setEditMode(null); setForm(EDIT_FORM_EMPTY) }}
                       className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      取消
+                      {t('timeline.cancel')}
                     </button>
                     <button
                       onClick={handleSavePlan}
                       disabled={saving}
                       className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                     >
-                      {saving ? '保存中...' : '保存'}
+                      {saving ? t('timeline.saving') : t('timeline.save')}
                     </button>
                   </div>
                 </div>
@@ -421,12 +422,12 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                   {planMap[planTab] ? (
                     <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{planMap[planTab]}</p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">暂无{PLAN_LABELS[planTab]}计划</p>
+                    <p className="text-sm text-muted-foreground">{t('timeline.noPlan', { type: t(PLAN_LABELS[planTab]) })}</p>
                   )}
                   <button
                     onClick={() => openPlanEdit(planTab, planMap[planTab])}
                     className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    title="编辑"
+                    title={t('timeline.edit')}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
@@ -441,21 +442,21 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-tag-amber-foreground" />
                 <h2 className="text-sm font-semibold text-foreground">
-                  伏笔与指令
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">{entries.length} 条</span>
+                  {t('timeline.foreshadowingAndInstructions')}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">{entries.length} {t('timeline.countUnit')}</span>
                 </h2>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-muted-foreground">
-                  第 {windowFrom}-{windowTo} 章 · 共 {minChapter}-{maxChapter} 章
+                  {t('sidebar.chapterRange', { start: windowFrom, end: windowTo })} · {t('storyarc.totalChapters', { count: maxChapter })}
                 </span>
-                <button onClick={load} className="text-xs text-muted-foreground hover:text-muted-foreground transition-colors">刷新</button>
+                <button onClick={load} className="text-xs text-muted-foreground hover:text-muted-foreground transition-colors">{t('timeline.refresh')}</button>
                 <button
                   onClick={openCreate}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
                 >
                   <Plus className="h-3 w-3" />
-                  新建
+                  {t('timeline.new')}
                 </button>
               </div>
             </div>
@@ -474,7 +475,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                     }
                   `}
                 >
-                  {f.label}
+                  {t(f.label)}
                   {f.key !== 'all' && (
                     <span className="ml-1 text-muted-foreground">({entries.filter(e => e.status === f.key).length})</span>
                   )}
@@ -486,20 +487,20 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
             {editMode?.type === 'create' && (
               <div className="rounded-lg border border-border bg-card p-4 mb-4">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-foreground">新建条目</span>
+                  <span className="text-xs font-semibold text-foreground">{t('timeline.newEntry')}</span>
                   <button onClick={() => { setEditMode(null); setForm(EDIT_FORM_EMPTY) }} className="p-0.5 rounded text-muted-foreground hover:text-foreground">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
                 {renderFormFields(true, false)}
                 <div className="flex items-center gap-2 justify-end mt-3">
-                  <button onClick={() => { setEditMode(null); setForm(EDIT_FORM_EMPTY) }} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">取消</button>
+                  <button onClick={() => { setEditMode(null); setForm(EDIT_FORM_EMPTY) }} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">{t('timeline.cancel')}</button>
                   <button
                     onClick={handleCreate}
                     disabled={saving || !form.title.trim()}
                     className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    {saving ? '创建中...' : '创建'}
+                    {saving ? t('timeline.creating') : t('timeline.create')}
                   </button>
                 </div>
               </div>
@@ -511,22 +512,22 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                   <Target className="h-5 w-5" />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {filter === 'all' ? '暂无伏笔或用户指令' : '没有匹配的条目'}
+                  {filter === 'all' ? t('timeline.noForeshadowing') : t('timeline.noMatchingEntries')}
                 </p>
               </div>
             ) : (
               <div className="space-y-6">
                 {beforeCount > 0 && (
                   <button onClick={() => shiftWindow(-ENTRY_WINDOW)} className="w-full rounded-lg border border-dashed border-border bg-card/60 px-4 py-2.5 text-xs text-muted-foreground hover:bg-card hover:border-border hover:text-foreground transition-colors">
-                    ← 第 {beforeChapters[0]?.[0]}-{beforeChapters[beforeChapters.length - 1]?.[0]} 章 · {beforeCount} 条
+                    ← {t('storyarc.earlierChapters', { start: beforeChapters[0]?.[0], end: beforeChapters[beforeChapters.length - 1]?.[0] })} · {beforeCount} {t('timeline.countUnit')}
                   </button>
                 )}
 
                 {visibleChapters.map(([ch, items]) => (
                   <div key={ch}>
                     <div className="flex items-center gap-1.5 mb-2">
-                      <span className="text-xs font-medium text-muted-foreground">第 {ch} 章</span>
-                      <span className="text-[11px] text-muted-foreground">{items.length} 条</span>
+                      <span className="text-xs font-medium text-muted-foreground">{t('sidebar.chapterN', { n: ch })}</span>
+                      <span className="text-[11px] text-muted-foreground">{items.length} {t('timeline.countUnit')}</span>
                     </div>
                     <div className="space-y-2">
                       {items.map(entry => {
@@ -538,7 +539,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                         return isEditing ? (
                           <div key={entry.id} className="rounded-lg border border-border bg-card p-4">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-semibold text-foreground">编辑：{entry.title}</span>
+                              <span className="text-xs font-semibold text-foreground">{t('storyarc.editing')}{entry.title}</span>
                               <button onClick={() => { setEditMode(null); setForm(EDIT_FORM_EMPTY) }} className="p-0.5 rounded text-muted-foreground hover:text-foreground">
                                 <X className="h-3.5 w-3.5" />
                               </button>
@@ -546,11 +547,11 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                             {renderFormFields(false, true)}
                             <div className="flex items-center gap-2 justify-end mt-3">
                               <button onClick={() => handleDelete(entry.id)} className="px-3 py-1 rounded text-xs text-destructive hover:bg-destructive/10 transition-colors" disabled={saving}>
-                                <Trash2 className="h-3 w-3 inline mr-1" />删除
+                                <Trash2 className="h-3 w-3 inline mr-1" />{t('timeline.delete')}
                               </button>
-                              <button onClick={() => { setEditMode(null); setForm(EDIT_FORM_EMPTY) }} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">取消</button>
+                              <button onClick={() => { setEditMode(null); setForm(EDIT_FORM_EMPTY) }} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">{t('timeline.cancel')}</button>
                               <button onClick={handleUpdate} disabled={saving || !form.title.trim()} className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
-                                {saving ? '保存中...' : '保存'}
+                                {saving ? t('timeline.saving') : t('timeline.save')}
                               </button>
                             </div>
                           </div>
@@ -572,10 +573,10 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
                                   <span className="text-tag-amber-foreground text-[11px]">{importStars(entry.importance)}</span>
-                                  <span>目标第 {entry.target_chapter} 章</span>
-                                  {entry.source_chapter_id > 0 && <span>· 埋于第 {entry.source_chapter_id} 章</span>}
-                                  {entry.resolved_chapter_id > 0 && <span className="text-tag-green-foreground">· 回收于第 {entry.resolved_chapter_id} 章</span>}
-                                  <span className="text-muted-foreground">· {entry.source === 'ai' ? 'AI' : '用户'}</span>
+                                  <span>{t('timeline.targetChapterN', { n: entry.target_chapter })}</span>
+                                  {entry.source_chapter_id > 0 && <span>· {t('timeline.plantedInChapter', { n: entry.source_chapter_id })}</span>}
+                                  {entry.resolved_chapter_id > 0 && <span className="text-tag-green-foreground">· {t('timeline.recoveredInChapter', { n: entry.resolved_chapter_id })}</span>}
+                                  <span className="text-muted-foreground">· {entry.source === 'ai' ? t('timeline.ai') : t('timeline.user')}</span>
                                 </div>
                               </div>
                               {/* Quick actions */}
@@ -584,7 +585,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                                   <button
                                     onClick={() => handleQuickStatus(entry, 'resolved')}
                                     className="p-1 rounded text-muted-foreground hover:text-tag-green-foreground hover:bg-tag-green/20 transition-colors"
-                                    title="标记已回收"
+                                    title={t('timeline.markRecovered')}
                                   >
                                     <span className="text-[11px]">✓</span>
                                   </button>
@@ -592,14 +593,14 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                                 <button
                                   onClick={() => openEdit(entry)}
                                   className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                                  title="编辑"
+                                  title={t('timeline.edit')}
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   onClick={() => handleDelete(entry.id)}
                                   className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                  title="删除"
+                                  title={t('timeline.delete')}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -619,7 +620,7 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
 
                 {afterCount > 0 && (
                   <button onClick={() => shiftWindow(ENTRY_WINDOW)} className="w-full rounded-lg border border-dashed border-border bg-card/60 px-4 py-2.5 text-xs text-muted-foreground hover:bg-card hover:border-border hover:text-foreground transition-colors">
-                    → 第 {afterChapters[0]?.[0]}-{afterChapters[afterChapters.length - 1]?.[0]} 章 · {afterCount} 条
+                    → {t('storyarc.laterChapters', { start: afterChapters[0]?.[0], end: afterChapters[afterChapters.length - 1]?.[0] })} · {afterCount} {t('timeline.countUnit')}
                   </button>
                 )}
               </div>

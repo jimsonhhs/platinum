@@ -1,6 +1,8 @@
 import { BrowserOpenURL } from '@/lib/wailsjs/runtime/runtime'
+import { useTranslation } from 'react-i18next'
 
 export default function GitHubLink() {
+  const { t } = useTranslation()
   const url = 'https://github.com/sigpanic/goink'
 
   return (
@@ -15,8 +17,8 @@ export default function GitHubLink() {
 
       <div className="absolute top-full right-0 mt-1.5 w-56 bg-popover border rounded-md shadow-md p-3 z-50
         opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none">
-        <p className="text-xs text-foreground mb-1">有任何问题？去提 Issue</p>
-        <p className="text-xs text-foreground mb-1.5">如果对你有帮助，欢迎 Star</p>
+        <p className="text-xs text-foreground mb-1">{t('shell.githubIssue')}</p>
+        <p className="text-xs text-foreground mb-1.5">{t('shell.githubStar')}</p>
         <p className="text-[10px] text-muted-foreground font-mono">github.com/sigpanic/goink</p>
       </div>
     </button>

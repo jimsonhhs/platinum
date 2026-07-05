@@ -66,10 +66,8 @@ func (a *App) CreateReaderPerspective(novelID int64, input CreateReaderPerspecti
 
 // UpdateReaderPerspective 更新一条读者认知条目。
 func (a *App) UpdateReaderPerspective(id int64, novelID int64, input UpdateReaderPerspectiveInput) error {
-	if err := a.reader.DB.WithContext(a.ctx).
-		Model(&reader.ReaderPerspective{}).
-		Where("id = ? AND novel_id = ?", id, novelID).
-		Updates(&input).Error; err != nil {
+	var item reader.ReaderPerspective
+	if err := storage.PatchAndSave(a.reader.DB.WithContext(a.ctx), id, novelID, &input, &item); err != nil {
 		return fmt.Errorf("update reader perspective: %w", err)
 	}
 	return nil

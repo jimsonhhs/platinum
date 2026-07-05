@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BookOpen, FileText, AlignLeft } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   open: boolean
@@ -12,24 +13,25 @@ const FORMATS = [
   {
     id: 'epub' as const,
     label: 'EPUB',
-    desc: '电子书格式，支持章节导航和封面，可用各类阅读器打开',
+    descKey: 'export.epubDesc',
     icon: BookOpen,
   },
   {
     id: 'markdown' as const,
     label: 'Markdown',
-    desc: '合并所有章节到一个 Markdown 文件，含目录和元信息',
+    descKey: 'export.markdownDesc',
     icon: FileText,
   },
   {
     id: 'txt' as const,
     label: 'TXT',
-    desc: '纯文本格式，原样输出正文内容，通用性最强',
+    descKey: 'export.textDesc',
     icon: AlignLeft,
   },
 ] as const
 
 export default function ExportDialog({ open, novelTitle, onClose, onExport }: Props) {
+  const { t } = useTranslation()
   const [format, setFormat] = useState<'epub' | 'markdown' | 'txt'>('epub')
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
@@ -46,7 +48,7 @@ export default function ExportDialog({ open, novelTitle, onClose, onExport }: Pr
       await onExport(format)
       setSuccess(true)
     } catch (e: any) {
-      setError(e?.message ?? '导出失败，请重试')
+      setError(e?.message ?? t('export.exportFailed'))
     } finally {
       setExporting(false)
     }
@@ -70,7 +72,7 @@ export default function ExportDialog({ open, novelTitle, onClose, onExport }: Pr
           ✕
         </button>
 
-        <h2 className="text-base font-semibold mb-1">导出作品</h2>
+        <h2 className="text-base font-semibold mb-1">{t('export.exportWork')}</h2>
         <p className="text-sm text-muted-foreground mb-5">{novelTitle}</p>
 
         {error && (
@@ -78,8 +80,8 @@ export default function ExportDialog({ open, novelTitle, onClose, onExport }: Pr
         )}
 
         {success && (
-          <p className="text-sm text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2 mb-4">
-            ✓ 导出成功
+          <p className="text-sm text-success-foreground bg-success border-success-border rounded-md px-3 py-2 mb-4">
+            {t('export.exportSuccess')}
           </p>
         )}
 
@@ -98,7 +100,7 @@ export default function ExportDialog({ open, novelTitle, onClose, onExport }: Pr
                 <span className={`text-sm font-medium ${format === f.id ? 'text-primary' : 'text-foreground'}`}>
                   {f.label}
                 </span>
-                <p className="text-xs text-muted-foreground mt-0.5">{f.desc}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t(f.descKey)}</p>
               </div>
             </button>
           ))}
@@ -110,7 +112,7 @@ export default function ExportDialog({ open, novelTitle, onClose, onExport }: Pr
               onClick={onClose}
               className="h-9 px-4 rounded-md text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
             >
-              完成
+              {t('export.done')}
             </button>
           ) : (
             <>
@@ -118,14 +120,14 @@ export default function ExportDialog({ open, novelTitle, onClose, onExport }: Pr
                 onClick={onClose}
                 className="h-9 px-4 rounded-md text-sm border hover:bg-muted transition-colors"
               >
-                取消
+                {t('export.cancel')}
               </button>
               <button
                 onClick={handleExport}
                 disabled={exporting}
                 className="h-9 px-4 rounded-md text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {exporting ? '导出中...' : '导出'}
+                {exporting ? t('export.exporting') : t('export.export')}
               </button>
             </>
           )}

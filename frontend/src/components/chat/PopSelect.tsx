@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronUp } from 'lucide-react'
 
 interface Option {
@@ -18,10 +19,12 @@ interface Props {
   onOpen?: () => void
   className?: string
   minWidth?: string
+  placeholder?: string
   footerAction?: FooterAction
 }
 
-export default function PopSelect({ value, options, onChange, onOpen, className = '', minWidth = '130px', footerAction }: Props) {
+export default function PopSelect({ value, options, onChange, onOpen, className = '', minWidth = '130px', placeholder, footerAction }: Props) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -50,7 +53,7 @@ export default function PopSelect({ value, options, onChange, onOpen, className 
         style={{ minWidth }}
         className="h-[30px] rounded-lg border bg-background px-2.5 text-xs text-muted-foreground flex items-center justify-between gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
-        <span className="truncate">{selected?.label || '无可用模型'}</span>
+        <span className="truncate">{selected?.label || placeholder || t('chat.noModelAvailable')}</span>
         <ChevronUp className={`w-3 h-3 shrink-0 transition-transform ${open ? '' : 'rotate-180'}`} />
       </button>
 

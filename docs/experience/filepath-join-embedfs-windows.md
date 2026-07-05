@@ -29,3 +29,29 @@ ParseFS(fsys, "builtin"+"/"+"foo.md")
 - Go 标准库的 `embed.FS` 内部存储路径始终用 `/`
 - `os.DirFS` 在 Windows 上也接受 `/`
 - `fs.ValidPath()` 拒绝 `\` 分隔符
+
+## 同类案例：EPUB 导入
+
+`internal/import/epub.go` 中 `resolvePath` 函数同样使用了 `filepath.Join` + `filepath.Clean` 处理 ZIP 内部路径。
+
+```go
+// 错误：Windows 上 EPUB 路径 "OEBPS/Text/chapter.html" 被错误转成 "OEBPS\Text\chapter.html"
+filepath.Join("OEBPS/Text", "chapter.html")
+filepath.Clean("OEBPS/Text/chapter.html")
+
+// 正确：始终用 /
+path.Join("OEBPS/Text", "chapter.html")
+path.Clean("OEBPS/Text/chapter.html")
+```
+
+ZIP 格式（以及所有继承了 ZIP 路径规范的格式，如 EPUB、DOCX）内部路径强制使用 `/`。在 Windows 上用 `filepath` 包处理这些路径会导致：
+
+- `filepath.Dir("OEBPS/content.opf")` → `"OEBPS/content.opf"`（无法正确提取目录）
+- `filepath.Join("OEBPS", "chapter.html")` → `"OEBPS\\chapter.html"`（zip reader 找不到）
+- `filepath.Base("OEBPS/chapter.html")` → `"OEBPS/chapter.html"`（无法提取文件名）
+
+修复方式：涉及 ZIP/EPUB 内部路径时，统一使用 `path` 包（`path.Join`、`path.Dir`、`path.Base`、`path.Clean`）或手动 `/` 拼接。
+
+## 通用原则
+
+凡是操作**跨平台标准格式内部的路径**（`embed.FS`、`archive/zip`、URL 路径段等），必须用 `path` 包或手动 `/`，不能用 `filepath`。`filepath` 仅适用于**操作系统本地文件系统路径**。

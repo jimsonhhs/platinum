@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
 import { type OnMount, DiffEditor } from '@monaco-editor/react'
 import { FileText, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import { useEditorTabs } from '@/hooks/useEditorTabs'
 import { useTheme, type Theme } from '@/hooks/useTheme'
@@ -40,6 +41,7 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
   { novelId, onContentChange, onDirtyChange }, ref
 ) {
   const app = useApp()
+  const { t } = useTranslation()
   const {
     tabs, activeTab, activeTabId,
     openTab, closeTab, closeAllTabs, setActiveTabId,
@@ -81,17 +83,18 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
   }, [novelId])
   useEffect(() => {
     if (!initRef.current) return
-    const needsLoad = tabs.filter(t => t.type === 'file' && t.content == null && !loadedRef.current.has(t.id))
+    const needsLoad = tabs.filter(tab => tab.type === 'file' && tab.content == null && !loadedRef.current.has(tab.id))
     if (needsLoad.length === 0) return
-    for (const t of needsLoad) {
-      loadedRef.current.add(t.id)
-      app.GetContent(novelId, t.path).then(content => {
-        updateTab(t.id, { content: content ?? '' })
+    for (const tab of needsLoad) {
+      loadedRef.current.add(tab.id)
+      app.GetContent(novelId, tab.path).then(content => {
+        updateTab(tab.id, { content: content ?? '' })
       }).catch(() => {
-        updateTab(t.id, { content: '加载失败，请关闭标签页后重试' })
+        updateTab(tab.id, { content: t('content.loadFailedCloseTab') })
       })
     }
-  }, [tabs, novelId, initRef.current])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initRef.current is mutable and not a valid dependency; effect should only re-run when tabs/novelId change
+  }, [tabs, novelId, app, t, updateTab])
 
   // Ctrl+Shift+V 切换技能预览
   useEffect(() => {
@@ -277,15 +280,15 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
 
   // ── 打开/激活文件 tab ──────────────────────────────────
 
-  function titleFromPath(p: string): string {
+  const titleFromPath = useCallback((p: string): string => {
     if (p.startsWith('chapters/')) {
       const num = parseInt(p.replace('chapters/', '').replace('.md', ''))
-      return `第${num}章`
+      return t('sidebar.chapterN', { n: num })
     }
-    if (p === 'goink.md') return '故事状态'
-    if (isSkillPath(p)) return `技能: ${skillNameFromPath(p)}`
+    if (p === 'goink.md') return t('content.storyStatus')
+    if (isSkillPath(p)) return `${t('content.skillLabel')}${skillNameFromPath(p)}`
     return p
-  }
+  }, [t])
 
   const doOpenFile = useCallback((path: string, title?: string, readOnly?: boolean, initialViewMode?: string) => {
     const display = title || titleFromPath(path)
@@ -312,7 +315,7 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
       openTab({ type: 'file', path, title: display, content: '', isDirty: false, viewMode: initialMode, readOnly: skReadOnly })
       onContentChange?.('')
     }).finally(() => setIsLoading(false))
-  }, [novelId, tabs, app, openTab, setActiveTabId, onContentChange])
+  }, [novelId, tabs, app, openTab, setActiveTabId, onContentChange, titleFromPath, updateTab])
 
 
   const clearHighlight = useCallback(() => {
@@ -393,7 +396,7 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
           patch.isDirty = false
         }
         updateTab(ft.id, patch)
-      } catch { }
+      } catch { /* ignored */ }
     }
 
     closeTab(dt.id)
@@ -438,12 +441,12 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
           {tabs.length === 0 ? (
             <div className="text-center">
               <FileText className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">选择或创建章节开始写作</p>
+              <p className="text-sm text-muted-foreground">{t('content.selectOrCreateChapter')}</p>
             </div>
           ) : (
             <div className="text-center">
               <FileText className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">选择标签页</p>
+              <p className="text-sm text-muted-foreground">{t('content.selectTab')}</p>
             </div>
           )}
         </div>
@@ -516,7 +519,7 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
               onClick={() => updateTab(activeTab.id, { viewMode: viewMode === 'preview' ? 'content' : 'preview' })}
               className={tabBtnClass(viewMode === 'preview')}
             >
-              预览
+              {t('content.preview')}
             </button>
           ) : isSkillPath(activeTab.path) ? (
             <>
@@ -524,24 +527,24 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
                 onClick={() => updateTab(activeTab.id, { viewMode: 'preview' })}
                 className={tabBtnClass(viewMode === 'preview')}
               >
-                预览
+                {t('content.preview')}
               </button>
               {!activeTab.readOnly && (
                 <button
                   onClick={() => updateTab(activeTab.id, { viewMode: 'edit' })}
                   className={tabBtnClass(viewMode === 'edit')}
                 >
-                  编辑
+                  {t('content.edit')}
                 </button>
               )}
             </>
           ) : (
             <>
               <button onClick={() => handleSetViewMode(activeTab.id, 'content')} className={tabBtnClass(viewMode === 'content')}>
-                正文
+                {t('content.body')}
               </button>
               <button onClick={() => handleSetViewMode(activeTab.id, 'outline')} className={tabBtnClass(viewMode === 'outline')}>
-                大纲
+                {t('content.outline')}
               </button>
             </>
           )}

@@ -17,6 +17,8 @@
   <img src="https://img.shields.io/badge/license-MIT-716B94?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="MIT" />
 </p>
 
+<p align="center"><strong><a href="README_EN.md">English Version</a> | 本文档为中文版</strong></p>
+
 ---
 
 <p align="center"><strong>用过通用 AI 写长篇小说的人都知道——写到第五章它就忘了主角叫什么。到第三十章还要手动翻前文找那句伏笔。写完一章还得自己提醒它"更新角色状态""检查弧线进度"。Goink 不会。它是一个有结构化记忆的桌面 AI 写作系统——角色档案、伏笔状态、弧线进度、地点关系、读者认知，系统记着，Agent 自己查、自己改、自己维护。</strong></p>
@@ -87,6 +89,9 @@
 </p>
 
 ## Skill 系统：3 层覆盖 × 3 种模式
+
+> [!TIP]
+> **欢迎贡献你的 Skill！** 把你的写作方法论变成 `.md` 文件，[提交 PR](skills/README.md) 分享给所有用户。
 
 Skill 是 Goink 的创作方法论模块。每个 Skill 由一个 `.md` 文件定义，包含 YAML frontmatter 元数据和 markdown 正文。**三层覆盖 + 三种模式 = 9 种策略维度**，精确控制"什么内容、在什么范围、以什么方式生效"。
 
@@ -177,6 +182,8 @@ AI 不会直接改正文。每次编辑系统先生成 Diff，等你批准再写
 
 需要 LLM API Key（内置 DeepSeek、GLM、MiMo 模板，兼容 OpenAI 格式）。安装包 < 60MB，不需要 Python、Node.js、数据库或 GPU。Windows SmartScreen 可能弹出提示（未签名），点击"更多信息"→"仍要运行"即可。
 
+> 网络不好？可从网盘下载：[https://wwayx.lanzouu.com/b0kp2iyoj](https://wwayx.lanzouu.com/b0kp2iyoj) 密码：1111
+
 ### 从源码构建
 
 ```bash
@@ -204,3 +211,13 @@ make dev     # 开发模式（热重载）
 ## License
 
 MIT
+
+## Star History
+
+<a href="https://www.star-history.com/#repos=sigpanic%2Fgoink&type=Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sigpanic/goink&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sigpanic/goink&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sigpanic/goink&type=date&legend=top-left" />
+ </picture>
+</a>

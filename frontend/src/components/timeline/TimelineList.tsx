@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, Target, Lightbulb } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { timeline } from '@/hooks/useApp'
 
@@ -7,6 +8,7 @@ interface Props { novelId: number }
 
 export default function SidebarTimelineList({ novelId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
 
   const [entries, setEntries] = useState<timeline.TimelineEntry[]>([])
   const [search, setSearch] = useState('')
@@ -45,7 +47,7 @@ export default function SidebarTimelineList({ novelId }: Props) {
     <>
       <div className="flex items-center justify-between px-3 py-2.5 border-b">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          伏笔/指令 ({entries.length})
+          {t('timeline.foreshadowingOrInstruction')} ({entries.length})
         </span>
       </div>
       <div className="px-2 py-1.5 border-b">
@@ -55,7 +57,7 @@ export default function SidebarTimelineList({ novelId }: Props) {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="搜索时间线..."
+            placeholder={t('timeline.searchTimeline')}
             className="w-full h-7 rounded-md border bg-background pl-7 pr-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
@@ -63,7 +65,7 @@ export default function SidebarTimelineList({ novelId }: Props) {
       <div className="flex-1 overflow-y-auto overscroll-contain">
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-xs text-muted-foreground">{search ? '无匹配条目' : '暂无条目'}</p>
+            <p className="text-xs text-muted-foreground">{search ? t('timeline.noMatchingEntries') : t('timeline.noEntries')}</p>
           </div>
         ) : (
           filtered.map(e => (
@@ -71,7 +73,7 @@ export default function SidebarTimelineList({ novelId }: Props) {
               {catIcon(e.category)}
               <div className="flex-1 min-w-0">
                 <span className="text-xs truncate block text-foreground">{e.title}</span>
-                <span className="text-[10px] text-muted-foreground">目标第{e.target_chapter}章</span>
+                <span className="text-[10px] text-muted-foreground">{t('timeline.targetChapterN2', { n: e.target_chapter })}</span>
               </div>
               <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${statusDot(e.status)}`} />
             </div>

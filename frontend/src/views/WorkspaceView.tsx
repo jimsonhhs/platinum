@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { flushSync } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
-import type { novel, chapter } from '@/hooks/useApp'
+import type { app as appModels, novel, chapter } from '@/hooks/useApp'
+import type { git } from '@/lib/wailsjs/go/models'
 import ActivityBar from '@/components/shell/ActivityBar'
 import StatusBar from '@/components/shell/StatusBar'
 import SidePanel from '@/components/sidebar/SidePanel'
@@ -15,20 +17,29 @@ import PreferenceView from '@/components/preference/PreferenceView'
 import BookshelfView from '@/components/novel/BookshelfView'
 import NovelEditDialog from '@/components/novel/NovelEditDialog'
 import NovelDeleteDialog from '@/components/novel/NovelDeleteDialog'
+import ImportProgressDialog from '@/components/novel/ImportProgressDialog'
 import ExportDialog from '@/components/export/ExportDialog'
 import ChatPanel from '@/components/chat/ChatPanel'
 import GitHubLink from '@/components/shell/GitHubLink'
 import SettingsDialog from '@/components/settings/SettingsDialog'
 import HelpDialog from '@/components/help/HelpDialog'
 import ProfileView from '@/components/profile/ProfileView'
+import GitCommitView from '@/components/git/GitCommitView'
+import ExtractWorkspaceView from '@/components/extract/ExtractWorkspaceView'
+import UpdateDialog from '@/components/update/UpdateDialog'
+import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import { search } from '@/lib/wailsjs/go/models'
+import type { update as updateModels } from '@/lib/wailsjs/go/models'
+import { CheckUpdate } from '@/lib/wailsjs/go/app/App'
 import { Settings, User, HelpCircle, Moon, Sun } from 'lucide-react'
-import { WindowMinimise, WindowToggleMaximise, WindowIsMaximised, Quit } from '@/lib/wailsjs/runtime/runtime'
+import { WindowMinimise, WindowToggleMaximise, Quit } from '@/lib/wailsjs/runtime/runtime'
 import Logo from '@/components/Logo'
 import { useTheme, type Theme } from '@/hooks/useTheme'
+import { useLayoutState } from '@/hooks/useLayoutState'
+import { useWindowState } from '@/hooks/useWindowState'
+import { useImportNovel } from '@/hooks/useImportNovel'
 
 const THEME_ICON: Record<Theme, React.ReactNode> = { light: <Moon className="w-5 h-5" />, dark: <Sun className="w-5 h-5" /> }
-const THEME_LABEL: Record<Theme, string> = { light: '深色模式', dark: '浅色模式' }
 
 interface Props {
   initialNovelId: number
@@ -36,6 +47,8 @@ interface Props {
 }
 
 export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props) {
+  const { t } = useTranslation()
+  const THEME_LABEL: Record<Theme, string> = { light: t('workspace.darkMode'), dark: t('workspace.lightMode') }
   const app = useApp()
   const contentRef = useRef<ContentPanelHandle>(null)
 
@@ -51,6 +64,7 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
   const [arcFocusId, setArcFocusId] = useState<number>(0)
   const [readerFocusId, setReaderFocusId] = useState<number>(0)
   const [preferenceFocusId, setPreferenceFocusId] = useState<number>(0)
+  const [styleSampleFocusId, setStyleSampleFocusId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -60,10 +74,17 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
   const [activeContent, setActiveContent] = useState('')
   const [isDirty, setIsDirty] = useState(false)
   const [activeSkillName, setActiveSkillName] = useState<string | null>(null)
-  const [isMaximised, setIsMaximised] = useState(false)
+  const [selectedGitFile, setSelectedGitFile] = useState<git.FileDiff | null>(null)
   const [platformOS, setPlatformOS] = useState('')
   const loadedRef = useRef(false)
   const { theme, toggle: toggleTheme } = useTheme()
+  const { isMaximised, setIsMaximised } = useWindowState()
+  const { sidePanelWidth, chatPanelWidth, setSidePanelWidth, setChatPanelWidth } = useLayoutState()
+  const [sidebarClosed, setSidebarClosed] = useState(false)
+
+  // ── 更新检查 ────────────────────────────────────────────
+  const [showUpdate, setShowUpdate] = useState(false)
+  const [updateResult, setUpdateResult] = useState<updateModels.CheckResult | null>(null)
 
   // ── 书籍管理弹窗 ──────────────────────────────────────
   const [editingNovel, setEditingNovel] = useState<novel.Novel | null>(null)
@@ -77,8 +98,7 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
     app.GetPlatform().then((info) => {
       if (info.os) setPlatformOS(info.os as string)
     })
-    WindowIsMaximised().then(setIsMaximised)
-  }, [])
+  }, [app])
 
   // ── 首次进入自动弹帮助 ──────────────────────────────────
 
@@ -86,26 +106,55 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
     if (initialShowHelp) setShowHelp(true)
   }, [initialShowHelp])
 
+  // ── 启动后延迟检查更新 ──────────────────────────────────
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        const result = await CheckUpdate(false)
+        if (result && result.hasUpdate) {
+          setUpdateResult(result)
+          setShowUpdate(true)
+        }
+      } catch { /* 静默失败 */ }
+    }, 30_000)
+    return () => clearTimeout(timer)
+  }, [])
+
   // ── 作品列表 ────────────────────────────────────────────
 
   const loadNovels = useCallback(async () => {
     const list = await app.GetNovels()
     setNovels(list ?? [])
     loadedRef.current = true
-  }, [])
+  }, [app])
+
+  const handleImportedNovel = useCallback(async (res: appModels.ImportNovelResult) => {
+    await loadNovels()
+    setActiveNovelId(res.novel_id)
+    setActivePanel('chapters')
+    contentRef.current?.closeAllTabs()
+    setTabTarget(null)
+    setActiveContent('')
+    setSelectedGitFile(null)
+    await app.SetActiveNovel({ novel_id: res.novel_id })
+  }, [app, loadNovels])
+
+  const importNovel = useImportNovel({ app, onImported: handleImportedNovel })
 
   useEffect(() => { loadNovels() }, [loadNovels])
 
   // ── SidePanel → ContentPanel 桥接 ─────────────────────────
 
   function handleSelectChapter(ch: chapter.Chapter) {
-    setTabTarget({ path: ch.file_path, title: `第${ch.chapter_number}章 ${ch.title}` })
-    contentRef.current?.openFile(ch.file_path, `第${ch.chapter_number}章 ${ch.title}`)
+    const chTitle = `${t('sidebar.chapterN', { n: ch.chapter_number })} ${ch.title}`
+    setTabTarget({ path: ch.file_path, title: chTitle })
+    contentRef.current?.openFile(ch.file_path, chTitle)
   }
 
   function handleSelectGoink() {
-    setTabTarget({ path: 'goink.md', title: '故事状态' })
-    contentRef.current?.openFile('goink.md', '故事状态')
+    setTabTarget({ path: 'goink.md', title: t('workspace.storyStatus') })
+    contentRef.current?.openFile('goink.md', t('workspace.storyStatus'))
   }
 
   // ── Approval ────────────────────────────────────────────
@@ -140,9 +189,15 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
     } else if (novels.length === 0) {
       setActivePanel('novels')
     }
-  }, [novels, activeNovelId])
+  }, [app, novels, activeNovelId])
 
   function handleActivitySelect(id: string) {
+    const currentPanel = sidebarPanel ?? activePanel
+    if (id === currentPanel && !sidebarClosed) {
+      setSidebarClosed(true)
+      return
+    }
+    setSidebarClosed(false)
     if (id === 'search') {
       setSidebarPanel('search')
     } else {
@@ -150,6 +205,10 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
       setActivePanel(id)
       contentRef.current?.clearHighlight()
     }
+  }
+
+  function handleSelectGitFile(file: git.FileDiff) {
+    setSelectedGitFile(file)
   }
 
   function handleSearchNavigateEntity(panelId: string, entityId: number) {
@@ -180,51 +239,62 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
   }
 
   async function handleSelectNovel(n: novel.Novel) {
-    setActiveNovelId(n.id)
-    setActivePanel('chapters')
-    contentRef.current?.closeAllTabs()
-    setTabTarget(null)
-    setActiveContent('')
-    await app.SetActiveNovel({ novel_id: n.id })
+    try {
+      setActiveNovelId(n.id)
+      setActivePanel('chapters')
+      contentRef.current?.closeAllTabs()
+      setTabTarget(null)
+      setActiveContent('')
+      setSelectedGitFile(null)
+      await app.SetActiveNovel({ novel_id: n.id })
+    } catch (err) { console.error(err) }
   }
 
   async function handleCreateNovel() {
-    if (!title.trim()) return
-    const n = await app.CreateNovel({ title: title.trim(), description: description.trim() })
-    if (n) {
-      setTitle('')
-      setDescription('')
-      setShowCreate(false)
-      await loadNovels()
-      setActiveNovelId(n.id)
-      setActivePanel('chapters')
-      await app.SetActiveNovel({ novel_id: n.id })
-    }
+    try {
+      if (!title.trim()) return
+      const n = await app.CreateNovel({ title: title.trim(), description: description.trim() })
+      if (n) {
+        setTitle('')
+        setDescription('')
+        setShowCreate(false)
+        await loadNovels()
+        setActiveNovelId(n.id)
+        setActivePanel('chapters')
+        await app.SetActiveNovel({ novel_id: n.id })
+      }
+    } catch (err) { console.error(err) }
   }
 
   async function handleCreateNovelFromDialog(input: { title: string; description: string; genre: string }) {
-    const n = await app.CreateNovel({ title: input.title, description: input.description, genre: input.genre })
-    if (n) {
-      setShowCreateDialog(false)
-      await loadNovels()
-      setActiveNovelId(n.id)
-      setActivePanel('chapters')
-      await app.SetActiveNovel({ novel_id: n.id })
-    }
+    try {
+      const n = await app.CreateNovel({ title: input.title, description: input.description, genre: input.genre })
+      if (n) {
+        setShowCreateDialog(false)
+        await loadNovels()
+        setActiveNovelId(n.id)
+        setActivePanel('chapters')
+        await app.SetActiveNovel({ novel_id: n.id })
+      }
+    } catch (err) { console.error(err) }
   }
 
   async function handleUpdateNovel(input: { title: string; description: string; genre: string }) {
-    if (!editingNovel) return
-    await app.UpdateNovel(editingNovel.id, input)
-    setEditingNovel(null)
-    await loadNovels()
+    try {
+      if (!editingNovel) return
+      await app.UpdateNovel(editingNovel.id, input)
+      setEditingNovel(null)
+      await loadNovels()
+    } catch (err) { console.error(err) }
   }
 
   async function handleDeleteNovel() {
-    if (!deletingNovel) return
-    await app.DeleteNovel(deletingNovel.id)
-    setDeletingNovel(null)
-    await loadNovels()
+    try {
+      if (!deletingNovel) return
+      await app.DeleteNovel(deletingNovel.id)
+      setDeletingNovel(null)
+      await loadNovels()
+    } catch (err) { console.error(err) }
   }
 
   async function handleExportNovel(format: 'epub' | 'markdown' | 'txt') {
@@ -233,8 +303,10 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
   }
 
   async function handleSaveCover(novelID: number, file: File) {
-    const buf = await file.arrayBuffer()
-    await app.SaveCover(novelID, Array.from(new Uint8Array(buf)))
+    try {
+      const buf = await file.arrayBuffer()
+      await app.SaveCover(novelID, Array.from(new Uint8Array(buf)))
+    } catch (err) { console.error(err) }
   }
 
   const activeNovel = novels.find(n => n.id === activeNovelId)
@@ -249,7 +321,7 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
       <header
         className="h-11 flex items-center border-b bg-sidebar shrink-0 select-none cursor-default"
         style={{ '--wails-draggable': 'drag' } as React.CSSProperties}
-        onDoubleClick={() => { WindowToggleMaximise(); setIsMaximised(!isMaximised) }}
+        onDoubleClick={() => { WindowToggleMaximise(); setIsMaximised(prev => !prev) }}
       >
         <Logo className="h-7 w-7 ml-3" />
         <span className="text-sm font-medium pl-2 flex-1">
@@ -260,14 +332,14 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
           <button
             onClick={() => setActivePanel('profile')}
             className={`text-muted-foreground hover:text-foreground transition-colors cursor-pointer w-8 h-8 flex items-center justify-center ml-2 ${activePanel === 'profile' ? 'text-foreground' : ''}`}
-            title="个人中心"
+            title={t('workspace.profile')}
           >
             <User className="w-5 h-5" />
           </button>
           <button
             onClick={() => setShowHelp(true)}
             className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer w-8 h-8 flex items-center justify-center"
-            title="帮助"
+            title={t('workspace.help')}
           >
             <HelpCircle className="w-5 h-5" />
           </button>
@@ -281,19 +353,19 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
           <button
             onClick={() => setShowSettings(true)}
             className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer w-8 h-8 flex items-center justify-center mr-1"
-            title="设置"
+            title={t('workspace.settings')}
           >
             <Settings className="w-5 h-5" />
           </button>
           {platformOS !== 'darwin' && (
             <>
-              <button onClick={WindowMinimise} className={winBtn} title="最小化">
+              <button onClick={WindowMinimise} className={winBtn} title={t('workspace.minimize')}>
                 <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6h7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>
               </button>
               <button
-                onClick={() => { WindowToggleMaximise(); setIsMaximised(!isMaximised) }}
+                onClick={() => { WindowToggleMaximise(); setIsMaximised(prev => !prev) }}
                 className={winBtn}
-                title={isMaximised ? '还原' : '最大化'}
+                title={isMaximised ? t('workspace.restore') : t('workspace.maximize')}
               >
                 {isMaximised ? (
                   <svg width="12" height="12" viewBox="0 0 12 12">
@@ -304,7 +376,7 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
                   <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" stroke="currentColor" strokeWidth=".9" rx=".5" fill="none" /></svg>
                 )}
               </button>
-              <button onClick={Quit} className={closeBtn} title="关闭">
+              <button onClick={Quit} className={closeBtn} title={t('workspace.close')}>
                 <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>
               </button>
             </>
@@ -315,41 +387,47 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
       <div className="flex-1 flex min-h-0 overflow-hidden">
         <ActivityBar activeId={sidebarPanel ?? activePanel} onSelect={handleActivitySelect} />
 
-        <SidePanel
-          activePanel={sidebarPanel ?? activePanel}
-          novels={novels}
-          novelId={activeNovelId}
-          onSelectNovel={handleSelectNovel}
-          onSelectChapter={handleSelectChapter}
-          onSelectGoink={handleSelectGoink}
-          onExportNovel={(id) => setExportNovelId(id)}
-          target={tabTarget}
-          showCreate={showCreate}
-          setShowCreate={setShowCreate}
-          title={title}
-          setTitle={setTitle}
-          description={description}
-          setDescription={setDescription}
-          onCreateNovel={handleCreateNovel}
-          activeSkillName={activeSkillName}
-          onSelectSkill={(path, title, readOnly) => {
-            setActiveSkillName(title)
-            contentRef.current?.openFile(path, title, readOnly)
-          }}
-          onEditSkill={(path, title, readOnly) => {
-            setActiveSkillName(title)
-            contentRef.current?.openFile(path, title, readOnly, 'edit')
-          }}
-          onNewSkill={(name) => {
-            setActiveSkillName(`技能: ${name}`)
-            contentRef.current?.openFile(`skills/${name}.md`, `技能: ${name}`, false, 'edit')
-          }}
-          onSearchNavigateEntity={handleSearchNavigateEntity}
-          onSearchNavigateChapter={handleSearchNavigateChapter}
-          searchQuery={searchQuery}
-          searchResults={searchResults}
-          onSearchChange={(q, r) => { setSearchQuery(q); setSearchResults(r) }}
-        />
+        {!sidebarClosed && (
+          <SidePanel
+            activePanel={sidebarPanel ?? activePanel}
+            novels={novels}
+            novelId={activeNovelId}
+            onSelectNovel={handleSelectNovel}
+            onSelectChapter={handleSelectChapter}
+            onSelectGoink={handleSelectGoink}
+            onExportNovel={(id) => setExportNovelId(id)}
+            target={tabTarget}
+            showCreate={showCreate}
+            setShowCreate={setShowCreate}
+            title={title}
+            setTitle={setTitle}
+            description={description}
+            setDescription={setDescription}
+            onCreateNovel={handleCreateNovel}
+            activeSkillName={activeSkillName}
+            onSelectSkill={(path, title, readOnly) => {
+              setActiveSkillName(title)
+              contentRef.current?.openFile(path, title, readOnly)
+            }}
+            onEditSkill={(path, title, readOnly) => {
+              setActiveSkillName(title)
+              contentRef.current?.openFile(path, title, readOnly, 'edit')
+            }}
+            onNewSkill={(name) => {
+              setActiveSkillName(`${t('workspace.skillLabel')}${name}`)
+              contentRef.current?.openFile(`skills/${name}.md`, `${t('workspace.skillLabel')}${name}`, false, 'edit')
+            }}
+            onSearchNavigateEntity={handleSearchNavigateEntity}
+            onSearchNavigateChapter={handleSearchNavigateChapter}
+            searchQuery={searchQuery}
+            searchResults={searchResults}
+            onSearchChange={(q, r) => { setSearchQuery(q); setSearchResults(r) }}
+            onSelectGitFile={handleSelectGitFile}
+            onSelectStyleSample={(id) => setStyleSampleFocusId(id)}
+            sidePanelWidth={sidePanelWidth}
+            onSidePanelResize={setSidePanelWidth}
+          />
+        )}
 
         {activePanel === 'novels' ? (
           <BookshelfView
@@ -361,29 +439,54 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
             onCreateNovel={() => setShowCreateDialog(true)}
             onSaveCover={handleSaveCover}
             onExportNovel={(n) => setExportNovelId(n.id)}
+            onImportNovel={() => importNovel.startImport()}
           />
-        ) : activePanel !== 'characters' && activePanel !== 'locations' && activePanel !== 'storyarcs' && activePanel !== 'timeline' && activePanel !== 'reader' && activePanel !== 'preferences' && activePanel !== 'profile' && (
+        ) : activePanel !== 'characters' && activePanel !== 'locations' && activePanel !== 'storyarcs' && activePanel !== 'timeline' && activePanel !== 'reader' && activePanel !== 'preferences' && activePanel !== 'profile' && activePanel !== 'git' && activePanel !== 'style-samples' && (
           <ContentPanel ref={contentRef} novelId={activeNovelId} onContentChange={setActiveContent} onDirtyChange={setIsDirty} />
         )}
 
+        {/* Always mounted: pattern extraction is a long-running task, unmounting would interrupt progress listeners */}
+        <div className={activePanel === 'style-samples' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
+          <ErrorBoundary>
+            <ExtractWorkspaceView novelId={activeNovelId} focusSampleId={styleSampleFocusId} onFocusSampleHandled={() => setStyleSampleFocusId(null)} />
+          </ErrorBoundary>
+        </div>
         {activePanel === 'characters' ? (
-          <CharacterListView novelId={activeNovelId} focusId={characterFocusId} />
+          <ErrorBoundary>
+            <CharacterListView novelId={activeNovelId} focusId={characterFocusId} />
+          </ErrorBoundary>
         ) : activePanel === 'locations' ? (
-          <LocationListView novelId={activeNovelId} focusId={locationFocusId} />
+          <ErrorBoundary>
+            <LocationListView novelId={activeNovelId} focusId={locationFocusId} />
+          </ErrorBoundary>
         ) : activePanel === 'storyarcs' ? (
-          <ArcListView novelId={activeNovelId} focusArcId={arcFocusId} />
+          <ErrorBoundary>
+            <ArcListView novelId={activeNovelId} focusArcId={arcFocusId} />
+          </ErrorBoundary>
         ) : activePanel === 'timeline' ? (
-          <TimelineView novelId={activeNovelId} focusEntryId={timelineFocusId} />
+          <ErrorBoundary>
+            <TimelineView novelId={activeNovelId} focusEntryId={timelineFocusId} />
+          </ErrorBoundary>
         ) : activePanel === 'reader' ? (
-          <ReaderView novelId={activeNovelId} focusId={readerFocusId} />
+          <ErrorBoundary>
+            <ReaderView novelId={activeNovelId} focusId={readerFocusId} />
+          </ErrorBoundary>
         ) : activePanel === 'preferences' ? (
-          <PreferenceView novelId={activeNovelId} focusId={preferenceFocusId} />
+          <ErrorBoundary>
+            <PreferenceView novelId={activeNovelId} focusId={preferenceFocusId} />
+          </ErrorBoundary>
+        ) : activePanel === 'git' ? (
+          <ErrorBoundary>
+            <GitCommitView file={selectedGitFile} />
+          </ErrorBoundary>
         ) : activePanel === 'profile' ? (
-          <ProfileView />
+          <ErrorBoundary>
+            <ProfileView />
+          </ErrorBoundary>
         ) : null}
 
         {activePanel !== 'profile' && (
-          <ChatPanel novelId={activeNovelId} onApprove={handleApprove} onReject={handleReject} onApprovalFileEdit={handleApprovalFileEdit} />
+          <ChatPanel novelId={activeNovelId} onApprove={handleApprove} onReject={handleReject} onApprovalFileEdit={handleApprovalFileEdit} chatPanelWidth={chatPanelWidth} onChatPanelResize={setChatPanelWidth} />
         )}
       </div>
 
@@ -423,6 +526,14 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
         novelTitle={novels.find(n => n.id === exportNovelId)?.title ?? ''}
         onClose={() => setExportNovelId(null)}
         onExport={handleExportNovel}
+      />
+
+      <ImportProgressDialog {...importNovel.dialogProps} />
+
+      <UpdateDialog
+        open={showUpdate}
+        result={updateResult}
+        onClose={() => setShowUpdate(false)}
       />
     </div>
   )

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Graph } from '@antv/g6'
 import { ArrowLeft, ArrowRight, GitBranch, LocateFixed, RefreshCw, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import { useGraphColors } from '@/components/graphColors'
 import { useTheme } from '@/hooks/useTheme'
@@ -49,6 +50,7 @@ function centerOnChapter(graph: Graph, containerW: number, containerH: number, c
 
 export default function StoryArcGraph({ novelId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
   const C = useGraphColors()
   const { theme } = useTheme()
   const PALETTE = { light: PALETTE_LIGHT, dark: PALETTE_DARK }[theme]
@@ -69,9 +71,15 @@ export default function StoryArcGraph({ novelId }: Props) {
   const windowTo = useMemo(() => windowCenter + WINDOW, [windowCenter])
   const windowFromRef = useRef(windowFrom)
   const windowToRef = useRef(windowTo)
-  windowFromRef.current = windowFrom
-  windowToRef.current = windowTo
+  useEffect(() => { windowFromRef.current = windowFrom; windowToRef.current = windowTo }, [windowFrom, windowTo])
   const autoExpandRef = useRef(false)
+
+  const totalChapters = allNodes.length > 0
+    ? Math.max(...allNodes.map(n => n.target_chapter))
+    : 1
+  const totalChaptersRef = useRef(totalChapters)
+  const allNodesRef = useRef(allNodes)
+  useEffect(() => { totalChaptersRef.current = totalChapters; allNodesRef.current = allNodes }, [totalChapters, allNodes])
 
   const load = useCallback(async () => {
     if (!novelId) { setArcs([]); setAllNodes([]); return }
@@ -89,11 +97,11 @@ export default function StoryArcGraph({ novelId }: Props) {
 
       setWindowCenter(Math.max(1, maxCh))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('storyarc.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [app, novelId])
+  }, [app, novelId, t])
 
   useEffect(() => { load() }, [load])
 
@@ -318,34 +326,45 @@ export default function StoryArcGraph({ novelId }: Props) {
     const container = containerRef.current
     if (!container || loading || arcs.length === 0) return
 
-    const graph = new Graph({
-      container,
-      data: graphData,
-      background: C.bg,
-      animation: false,
-      node: {
-        type: 'rect',
-        style: {
-          radius: NODE_H / 2,
-          lineWidth: 2,
-          labelPlacement: 'center' as const,
-          labelOffsetY: 0,
+    let graph: Graph | null = null
+    try {
+      graph = new Graph({
+        container,
+        data: graphData,
+        background: C.bg,
+        animation: false,
+        node: {
+          type: 'rect',
+          style: {
+            radius: NODE_H / 2,
+            lineWidth: 2,
+            labelPlacement: 'center' as const,
+            labelOffsetY: 0,
+          },
         },
-      },
-      edge: {
-        type: 'line',
-      },
-      behaviors: [
-        'drag-canvas',
-        'zoom-canvas',
-        'optimize-viewport-transform',
-      ],
-    })
-
-    graphRef.current = graph
-    graph.render().then(() => {
-      centerOnChapter(graph, container.clientWidth, container.clientHeight, windowCenter, windowFrom, arcs.length)
-    })
+        edge: {
+          type: 'line',
+        },
+        behaviors: [
+          'drag-canvas',
+          'zoom-canvas',
+          'optimize-viewport-transform',
+        ],
+      })
+      graphRef.current = graph
+      graph.render().then(() => {
+        centerOnChapter(graph!, container.clientWidth, container.clientHeight, windowCenter, windowFrom, arcs.length)
+      }).catch((err: unknown) => {
+        console.error('Graph render failed:', err)
+      })
+    } catch (err) {
+      console.error('Graph init/render failed:', err)
+      if (graph) {
+        try { graph.destroy() } catch { /* ignore */ }
+        if (graphRef.current === graph) graphRef.current = null
+      }
+      return
+    }
 
     graph.on('node:click', (event: any) => {
       const rawId = event.target?.id || ''
@@ -369,7 +388,7 @@ export default function StoryArcGraph({ novelId }: Props) {
       const wf = windowFromRef.current
       const wt = windowToRef.current
       const tc = totalChaptersRef.current
-      const vp = graph.getCanvasByViewport([container.clientWidth / 2, container.clientHeight / 2])
+      const vp = graph!.getCanvasByViewport([container.clientWidth / 2, container.clientHeight / 2])
       if (!vp) return
       const ch = Math.round((vp[0] - LEFT_MARGIN) / CH_W) + wf
       const margin = Math.max(3, Math.floor(WINDOW / 6))
@@ -384,8 +403,8 @@ export default function StoryArcGraph({ novelId }: Props) {
 
     // Update edge counts on zoom / after drag
     const updateEdgeCounts = () => {
-      const zoom = graph.getZoom()
-      const pos = graph.getPosition()
+      const zoom = graph!.getZoom()
+      const pos = graph!.getPosition()
       const cw = container.clientWidth
       const wf = windowFromRef.current
       const left = (-pos[0]) / zoom
@@ -402,22 +421,25 @@ export default function StoryArcGraph({ novelId }: Props) {
     graph.on('canvas:dragend', updateEdgeCounts)
     setTimeout(updateEdgeCounts, 200)
 
-    const ro = new ResizeObserver(() => graph.resize())
+    const ro = new ResizeObserver(() => graph!.resize())
     ro.observe(container)
 
     return () => {
       ro.disconnect()
-      graph.destroy()
+      graph!.destroy()
       graphRef.current = null
     }
-  }, [arcs.length, loading]) // only on mount / novel switch
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- graphData/windowCenter/windowFrom are handled by the second effect that updates graph data in place
+  }, [arcs, allNodes, C.bg, C.edge, loading])
 
   // Update graph data when window shifts
   useEffect(() => {
     const graph = graphRef.current
     if (!graph || arcs.length === 0) return
+    let cancelled = false
     graph.setData(graphData)
     graph.draw().then(() => {
+      if (cancelled) return
       if (autoExpandRef.current) {
         autoExpandRef.current = false
         return
@@ -425,16 +447,12 @@ export default function StoryArcGraph({ novelId }: Props) {
       const cw = containerRef.current?.clientWidth ?? 800
       const ch = containerRef.current?.clientHeight ?? 600
       centerOnChapter(graph, cw, ch, windowCenter, windowFrom, arcs.length)
+    }).catch((err: unknown) => {
+      if (!cancelled) console.error('Graph draw failed:', err)
     })
-  }, [graphData])
+    return () => { cancelled = true }
+  }, [graphData, arcs.length, windowCenter, windowFrom])
 
-  const totalChapters = allNodes.length > 0
-    ? Math.max(...allNodes.map(n => n.target_chapter))
-    : 1
-  const totalChaptersRef = useRef(totalChapters)
-  totalChaptersRef.current = totalChapters
-  const allNodesRef = useRef(allNodes)
-  allNodesRef.current = allNodes
 
   const canShiftLeft = windowCenter > WINDOW + 1
   const canShiftRight = windowTo < totalChapters
@@ -450,10 +468,10 @@ export default function StoryArcGraph({ novelId }: Props) {
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <GitBranch className="h-4 w-4 text-tag-purple-foreground" />
-            故事弧线
+            {t('storyarc.storyArcsTitle')}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {arcs.length} 条弧线 · {allNodes.length} 个节点 · 第 {windowFrom}-{windowTo} 章（共 {totalChapters} 章）
+            {t('storyarc.arcCount', { count: arcs.length })} · {t('storyarc.nodeCountTotal', { count: allNodes.length })} · {t('sidebar.chapterRange', { start: windowFrom, end: windowTo })}（{t('storyarc.totalChapters', { count: totalChapters })}）
           </div>
         </div>
         <div className="flex items-center gap-1.5 rounded-md border border-border/80 bg-card/82 p-1 shadow-sm backdrop-blur">
@@ -462,7 +480,7 @@ export default function StoryArcGraph({ novelId }: Props) {
             onClick={() => shift(-20)}
             disabled={!canShiftLeft}
             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30 disabled:cursor-default select-none"
-            title="前移 20 章"
+            title={t('storyarc.forward20')}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
           </button>
@@ -471,7 +489,7 @@ export default function StoryArcGraph({ novelId }: Props) {
             onClick={() => shift(20)}
             disabled={!canShiftRight}
             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30 disabled:cursor-default select-none"
-            title="后移 20 章"
+            title={t('storyarc.backward20')}
           >
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
@@ -480,7 +498,7 @@ export default function StoryArcGraph({ novelId }: Props) {
             type="button"
             onClick={() => graphRef.current?.fitView({ when: 'always' }, { duration: 360, easing: 'ease-in-out' })}
             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title="适配视图"
+            title={t('storyarc.fitView')}
           >
             <LocateFixed className="h-3.5 w-3.5" />
           </button>
@@ -488,7 +506,7 @@ export default function StoryArcGraph({ novelId }: Props) {
             type="button"
             onClick={load}
             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title="刷新"
+            title={t('storyarc.refresh')}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -498,36 +516,36 @@ export default function StoryArcGraph({ novelId }: Props) {
       {/* Legend */}
       <div className="absolute right-0 bottom-0 z-10 rounded-md border border-border bg-card/90 px-3 py-2.5 text-xs text-muted-foreground shadow-sm backdrop-blur space-y-2.5">
         <div>
-          <span className="text-muted-foreground text-[10px] uppercase tracking-wider">节点</span>
+          <span className="text-muted-foreground text-[10px] uppercase tracking-wider">{t('storyarc.legendNodes')}</span>
           <div className="flex items-center gap-3 mt-1.5">
             <span className="inline-flex items-center gap-1.5">
-              <span className="inline-block h-3.5 w-8 rounded-full bg-blue-400 border border-blue-500" />
-              已完成
+              <span className="inline-block h-3.5 w-8 rounded-full bg-tag-blue-foreground border border-tool-blue-border" />
+              {t('storyarc.completed')}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="inline-block h-3.5 w-8 rounded-full border-2 border-blue-400 bg-card" />
-              进行中
+              <span className="inline-block h-3.5 w-8 rounded-full border-2 border-tool-blue-border bg-card" />
+              {t('storyarc.inProgress')}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block h-3.5 w-8 rounded-full bg-muted border border-dashed border-border" />
-              已废弃
+              {t('storyarc.abandoned')}
             </span>
           </div>
         </div>
         <div>
-          <span className="text-muted-foreground text-[10px] uppercase tracking-wider">连线</span>
+          <span className="text-muted-foreground text-[10px] uppercase tracking-wider">{t('storyarc.legendEdges')}</span>
           <div className="flex items-center gap-3 mt-1.5">
             <span className="inline-flex items-center gap-1.5">
-              <span className="inline-block h-0.5 w-7 bg-blue-400 rounded" />
-              已发生
+              <span className="inline-block h-0.5 w-7 bg-tag-blue-foreground rounded" />
+              {t('storyarc.occurred')}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="inline-block h-0 w-7 border-t-2 border-dashed border-blue-400" />
-              未发生
+              <span className="inline-block h-0 w-7 border-t-2 border-dashed border-tool-blue-border" />
+              {t('storyarc.notOccurred')}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block h-0 w-7 border-t-2 border-dashed border-border" />
-              断裂
+              {t('storyarc.broken')}
             </span>
           </div>
         </div>
@@ -538,8 +556,8 @@ export default function StoryArcGraph({ novelId }: Props) {
         const desc = selectedNode.description?.trim() || ''
         const longDesc = desc.length > 100
         const ch = selectedNode.actual_chapter > 0
-          ? `实际第${selectedNode.actual_chapter}章`
-          : `目标第${selectedNode.target_chapter}章`
+          ? t('storyarc.actualChapter', { n: selectedNode.actual_chapter })
+          : t('storyarc.targetChapter2', { n: selectedNode.target_chapter })
         const arc = arcs.find(a => a.id === selectedNode.story_arc_id)
         return (
           <div className="absolute left-5 bottom-5 z-10 w-64 rounded-lg border border-border bg-card/94 p-4 shadow-lg backdrop-blur text-sm">
@@ -557,7 +575,7 @@ export default function StoryArcGraph({ novelId }: Props) {
             )}
             <div className="text-xs text-muted-foreground mb-2">
               <span className={selectedNode.status === 'completed' ? 'text-tag-green-foreground' : selectedNode.status === 'abandoned' ? 'text-muted-foreground line-through' : 'text-tag-blue-foreground'}>
-                {selectedNode.status === 'completed' ? '已完成' : selectedNode.status === 'abandoned' ? '已废弃' : '进行中'}
+                {selectedNode.status === 'completed' ? t('storyarc.completed') : selectedNode.status === 'abandoned' ? t('storyarc.abandoned') : t('storyarc.inProgress')}
               </span>
               <span className="mx-1.5">·</span>
               <span>{ch}</span>
@@ -572,12 +590,12 @@ export default function StoryArcGraph({ novelId }: Props) {
                     onClick={() => setExpanded(!expanded)}
                     className="text-xs text-tag-blue-foreground hover:text-tag-blue-foreground mt-0.5"
                   >
-                    {expanded ? '收起' : '展开'}
+                    {expanded ? t('character.collapse') : t('character.expand')}
                   </button>
                 )}
               </div>
             )}
-            {!desc && <p className="text-xs text-muted-foreground">暂无详细描述</p>}
+            {!desc && <p className="text-xs text-muted-foreground">{t('storyarc.noDetailDescription')}</p>}
           </div>
         )
       })()}
@@ -603,10 +621,10 @@ export default function StoryArcGraph({ novelId }: Props) {
               ${selectedArc.status === 'completed' ? 'bg-tag-blue text-tag-blue-foreground' : ''}
               ${selectedArc.status === 'abandoned' ? 'bg-secondary text-muted-foreground' : ''}
             `}>
-              {selectedArc.status === 'active' ? '活跃' :
-               selectedArc.status === 'paused' ? '暂停' :
-               selectedArc.status === 'completed' ? '已完成' :
-               selectedArc.status === 'abandoned' ? '已废弃' : selectedArc.status}
+              {selectedArc.status === 'active' ? t('storyarc.active') :
+               selectedArc.status === 'paused' ? t('storyarc.paused') :
+               selectedArc.status === 'completed' ? t('storyarc.completed') :
+               selectedArc.status === 'abandoned' ? t('storyarc.abandoned') : selectedArc.status}
             </span>
             <span className="text-xs text-muted-foreground">{'★'.repeat(selectedArc.importance)}</span>
           </div>
@@ -615,7 +633,7 @@ export default function StoryArcGraph({ novelId }: Props) {
           )}
           {selectedArc.status === 'paused' && selectedArc.reactivate_at && (
             <div className="mt-2 pt-2 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-0.5">恢复条件</p>
+              <p className="text-xs text-muted-foreground mb-0.5">{t('storyarc.resumeCondition')}</p>
               <p className="text-xs text-muted-foreground">{selectedArc.reactivate_at}</p>
             </div>
           )}
@@ -628,7 +646,7 @@ export default function StoryArcGraph({ novelId }: Props) {
           onClick={() => shift(-WINDOW)}
           className="absolute left-5 top-1/2 z-10 -translate-y-1/2 rounded-full border border-border bg-card/88 px-2 py-1.5 text-[10px] text-muted-foreground shadow-sm backdrop-blur hover:bg-card hover:text-foreground transition-colors"
         >
-          ← {edgeCounts.left} 个节点
+          ← {t('storyarc.nodeCount', { count: edgeCounts.left })}
         </button>
       )}
       {edgeCounts.right > 0 && (
@@ -636,7 +654,7 @@ export default function StoryArcGraph({ novelId }: Props) {
           onClick={() => shift(WINDOW)}
           className="absolute right-5 top-1/2 z-10 -translate-y-1/2 rounded-full border border-border bg-card/88 px-2 py-1.5 text-[10px] text-muted-foreground shadow-sm backdrop-blur hover:bg-card hover:text-foreground transition-colors"
         >
-          {edgeCounts.right} 个节点 →
+          {t('storyarc.nodeCount', { count: edgeCounts.right })} →
         </button>
       )}
 
@@ -644,14 +662,14 @@ export default function StoryArcGraph({ novelId }: Props) {
       {error ? (
         <div className="relative z-10 flex h-full items-center justify-center text-sm text-rose-500">{error}</div>
       ) : loading ? (
-        <div className="relative z-10 flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+        <div className="relative z-10 flex h-full items-center justify-center text-sm text-muted-foreground">{t('storyarc.loading')}</div>
       ) : arcs.length === 0 ? (
         <div className="relative z-10 flex h-full items-center justify-center">
           <div className="text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-tag-purple text-tag-purple-foreground shadow-sm">
               <GitBranch className="h-6 w-6" />
             </div>
-            <div className="mt-3 text-sm font-medium text-foreground">暂无叙事弧线</div>
+            <div className="mt-3 text-sm font-medium text-foreground">{t('storyarc.noNarrativeArcs2')}</div>
           </div>
         </div>
       ) : (

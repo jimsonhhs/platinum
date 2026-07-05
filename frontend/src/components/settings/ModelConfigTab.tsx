@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { llm } from '@/hooks/useApp'
 import BuiltinProviderPane from './BuiltinProviderPane'
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function ModelConfigTab({ onSaved }: Props) {
+  const { t } = useTranslation()
   const app = useApp()
   const [providers, setProviders] = useState<llm.ProviderView[]>([])
   const [subNav, setSubNav] = useState<SubNav>('builtin')
@@ -36,7 +38,7 @@ export default function ModelConfigTab({ onSaved }: Props) {
         savedKeysRef.current = keys
       }
     }).catch(() => {}).finally(() => setIsLoading(false))
-  }, [])
+  }, [app])
 
   const builtinProviders = providers.filter(p => p.source === 'builtin')
   const customProviders = providers.filter(p => p.source === 'custom')
@@ -82,7 +84,7 @@ export default function ModelConfigTab({ onSaved }: Props) {
   const handleTest = useCallback(async (providerKey: string): Promise<string | null> => {
     const provider = providers.find(p => p.key === providerKey)
     if (!provider || !provider.api_key) {
-      const msg = '未配置 API Key'
+      const msg = t('settings.apiKeyNotConfigured')
       setTestResults(prev => ({ ...prev, [providerKey]: { ok: false, msg, keySnapshot: '' } }))
       return msg
     }
@@ -94,7 +96,7 @@ export default function ModelConfigTab({ onSaved }: Props) {
       // www.example.com 之类，补 https://
       chatURL = 'https://' + chatURL
     } else {
-      const msg = 'URL 格式不正确，需要以 http:// 或 https:// 开头'
+      const msg = t('settings.invalidUrl')
       setTestResults(prev => ({ ...prev, [providerKey]: { ok: false, msg, keySnapshot: provider.api_key } }))
       return msg
     }
@@ -102,7 +104,7 @@ export default function ModelConfigTab({ onSaved }: Props) {
     const models = provider.builtin_models?.length ? provider.builtin_models : provider.custom_models
     const modelId = models?.[0]?.id
     if (!modelId) {
-      const msg = '请先添加至少一个模型'
+      const msg = t('settings.pleaseAddModel')
       setTestResults(prev => ({ ...prev, [providerKey]: { ok: false, msg, keySnapshot: provider.api_key } }))
       return msg
     }
@@ -124,13 +126,13 @@ export default function ModelConfigTab({ onSaved }: Props) {
     } finally {
       setTesting(prev => ({ ...prev, [providerKey]: false }))
     }
-  }, [providers, app])
+  }, [providers, app, t])
 
   const handleSave = useCallback(async () => {
     // 收集有 key 的 provider
     const withKey = providers.filter(p => p.api_key)
     if (withKey.length === 0) {
-      setSaveMsg('请先配置至少一个服务商的 API Key')
+      setSaveMsg(t('settings.pleaseConfigureApiKey'))
       setTimeout(() => setSaveMsg(''), 3000)
       return
     }
@@ -144,11 +146,11 @@ export default function ModelConfigTab({ onSaved }: Props) {
     })
 
     if (needTest.length > 0) {
-      setSaveMsg('正在测试连通性...')
+      setSaveMsg(t('settings.testingConnection'))
       for (const p of needTest) {
         const err = await handleTest(p.key)
         if (err) {
-          setSaveMsg(`${p.name} 连通性测试失败: ${err}`)
+          setSaveMsg(`${p.name} ${t('settings.connectionTestFailed')}: ${err}`)
           setTimeout(() => setSaveMsg(''), 5000)
           return
         }
@@ -164,15 +166,15 @@ export default function ModelConfigTab({ onSaved }: Props) {
         if (p.api_key) keys[p.key] = p.api_key
       }
       savedKeysRef.current = keys
-      setSaveMsg('配置已保存')
+      setSaveMsg(t('settings.configSaved'))
       onSaved?.()
       setTimeout(() => setSaveMsg(''), 2000)
     } catch (err) {
-      setSaveMsg(`保存失败: ${String(err)}`)
+      setSaveMsg(`${t('settings.saveFailed')}: ${String(err)}`)
     } finally {
       setIsSaving(false)
     }
-  }, [providers, app, testResults, handleTest])
+  }, [providers, app, testResults, handleTest, t, onSaved])
 
   if (isLoading) {
     return (
@@ -194,7 +196,7 @@ export default function ModelConfigTab({ onSaved }: Props) {
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          内置服务商
+          {t('settings.builtinProviders')}
         </button>
         <button
           onClick={() => setSubNav('custom')}
@@ -204,7 +206,7 @@ export default function ModelConfigTab({ onSaved }: Props) {
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          自定义服务商
+          {t('settings.customProviders')}
         </button>
       </div>
 
@@ -238,7 +240,7 @@ export default function ModelConfigTab({ onSaved }: Props) {
       {/* 底部保存栏 */}
       <div className="flex items-center justify-end gap-3 pt-4 border-t mt-4">
         {saveMsg && (
-          <span className={`text-xs ${saveMsg.includes('失败') || saveMsg.includes('测试') ? 'text-red-500' : 'text-emerald-600'}`}>
+          <span className={`text-xs ${saveMsg.includes('失败') || saveMsg.includes('测试') ? 'text-red-500' : 'text-success-foreground'}`}>
             {saveMsg}
           </span>
         )}
@@ -247,7 +249,7 @@ export default function ModelConfigTab({ onSaved }: Props) {
           disabled={isSaving}
           className="h-8 px-4 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
         >
-          {isSaving ? '保存中...' : '保存配置'}
+          {isSaving ? t('common.saving') : t('settings.saveConfig')}
         </button>
       </div>
     </div>

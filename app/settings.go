@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"novel/internal/config"
+	"novel/internal/git"
+	"novel/internal/novel"
 	"novel/internal/rag"
 )
 
@@ -41,12 +44,6 @@ func (a *App) SetReasoningEffort(effort string) error {
 	return config.SaveSettings(a.db, a.settings)
 }
 
-// SetChatPanelWidth 保存聊天面板宽度。
-func (a *App) SetChatPanelWidth(width int) error {
-	a.settings.ChatPanelWidth = width
-	return config.SaveSettings(a.db, a.settings)
-}
-
 // SetLastSession 保存上次活跃的会话 ID。
 func (a *App) SetLastSession(sessionID string) error {
 	a.settings.LastSessionID = sessionID
@@ -57,6 +54,34 @@ func (a *App) SetLastSession(sessionID string) error {
 func (a *App) SaveUserName(name string) error {
 	a.settings.UserName = name
 	return config.SaveSettings(a.db, a.settings)
+}
+
+// SaveGitConfig 保存 Git user.name 和 user.email，并同步到所有已有仓库。
+func (a *App) SaveGitConfig(name, email string) error {
+	a.settings.GitName = name
+	a.settings.GitEmail = email
+	if err := config.SaveSettings(a.db, a.settings); err != nil {
+		return err
+	}
+	result, err := a.novel.List(a.ctx, novel.ListNovelsOptions{})
+	if err != nil {
+		return fmt.Errorf("save git config: list novels: %w", err)
+	}
+	var errs []string
+	for _, n := range result.Items {
+		repo, repoErr := git.New(n.ID, name, email, a.logger)
+		if repoErr != nil {
+			errs = append(errs, fmt.Sprintf("小说 %d: %v", n.ID, repoErr))
+			continue
+		}
+		if err := repo.SetGitConfig(name, email); err != nil {
+			errs = append(errs, fmt.Sprintf("小说 %d: %v", n.ID, err))
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("部分小说配置同步失败:\n%s", strings.Join(errs, "\n"))
+	}
+	return nil
 }
 
 // SaveAvatar 保存用户头像到数据目录。

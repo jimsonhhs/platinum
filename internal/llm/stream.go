@@ -145,6 +145,9 @@ func (c *Client) buildPayload(
 	if len(tools) > 0 {
 		payload["tools"] = tools
 	}
+	if opts != nil && opts.ToolChoice != nil {
+		payload["tool_choice"] = opts.ToolChoice
+	}
 
 	// 从 ModelInfo 取模型默认值
 	var um *ModelInfo
@@ -278,7 +281,12 @@ func (c *Client) parseSSE(ch chan<- StreamEvent, body io.Reader) {
 			if tc == nil {
 				continue
 			}
-			idx := int(tc["index"].(float64))
+			idxFloat, ok := tc["index"].(float64)
+			if !ok || idxFloat < 0 {
+				c.logger.Warn("tool call delta missing valid index", "delta", tc)
+				continue
+			}
+			idx := int(idxFloat)
 
 			// 扩展累积缓冲区
 			for len(accumulated) <= idx {

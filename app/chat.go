@@ -73,7 +73,7 @@ func (a *App) Chat(input ChatInput) (*ChatResult, error) {
 	}
 
 	// 5. 打开 git 仓库，提交用户在对话间隙的手动编辑
-	repo, repoErr := git.New(input.NovelID)
+	repo, repoErr := git.New(input.NovelID, a.settings.GitName, a.settings.GitEmail, a.logger)
 	if repoErr != nil {
 		a.logger.Warn("auto-commit: 打开 git 仓库失败，跳过本轮自动提交", "err", repoErr)
 	} else {

@@ -128,11 +128,32 @@ func (r *Repo) Commit(msg string) (string, error)           // git commit，返�
 func (r *Repo) HasUncommitted() (bool, error)              // working tree 是否有未提交变更
 func (r *Repo) Revert(hashes []string) error               // git revert，逆序回退
 func (r *Repo) Log(path string, n int) ([]CommitInfo, error)
+func (r *Repo) LogDetailed(n int, afterHash string) ([]CommitInfo, error) // 带文件统计，降序返回，afterHash 非空时游标翻页
+func (r *Repo) CommitFileList(hash string) (*CommitInfo, []FileEntry, error) // commit 文件列表（不含内容），懒加载第一步
+func (r *Repo) ShowFile(hash, filePath string) (*FileDiff, error)            // 单个文件前后内容，懒加载第二步
 
 type CommitInfo struct {
-    Hash    string
-    Message string
-    Time    time.Time
+    Hash         string
+    ShortHash    string
+    Message      string
+    Time         time.Time
+    AuthorName   string
+    AuthorEmail  string
+    FilesChanged int
+    Insertions   int
+    Deletions    int
+}
+
+type FileDiff struct {
+    Path            string
+    ChangeType      string    // "added" | "modified" | "deleted"
+    OriginalContent string
+    ModifiedContent string
+}
+
+type FileEntry struct {
+    Path       string
+    ChangeType string    // "added" | "modified" | "deleted"
 }
 ```
 
@@ -167,6 +188,5 @@ Git 包不实现 search/replace 逻辑，不感知审批流。
 
 - 分支：单用户应用不需要
 - git push/pull/remote：纯本地
-- git log 复杂格式化：只返回 hash + message + time
 - 章节元数据管理：SQLite chapter 表负责
 - search/replace 逻辑：edit_chapter MCP 工具负责，Git 包只提供文件读写和 Diff

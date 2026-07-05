@@ -72,6 +72,12 @@ func NovelSkillsDir(novelID int64) string {
 	return filepath.Join(NovelDirPath(novelID), "skills")
 }
 
+// StyleSamplesDir 返回全局风格素材目录 ~/.goink/style_samples/。
+func StyleSamplesDir() string {
+	dir, _ := configDir()
+	return filepath.Join(dir, "style_samples")
+}
+
 // ModelsDir 返回 ONNX 模型目录路径。
 // 优先查安装包自带的 runtime/models/，找不到再 fallback 到用户数据目录。
 func ModelsDir() string {

@@ -20,7 +20,7 @@ export function useEditorTabs(novelId: number) {
     try {
       const raw = localStorage.getItem('goink_tabs_all')
       if (raw) allMetasRef.current = JSON.parse(raw)
-    } catch {}
+    } catch { /* ignored */ }
     const key = String(novelId)
     const saved = allMetasRef.current[key]
     if (saved?.length) {
@@ -32,6 +32,7 @@ export function useEditorTabs(novelId: number) {
       setActiveTabId(restored[0].id)
     }
     initRef.current = true
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- novelId changes are handled by the dedicated switch effect below
   }, [])
 
   // beforeunload 时保存到 localStorage
@@ -39,7 +40,7 @@ export function useEditorTabs(novelId: number) {
     function save() {
       try {
         localStorage.setItem('goink_tabs_all', JSON.stringify(allMetasRef.current))
-      } catch {}
+      } catch { /* ignored */ }
     }
     window.addEventListener('beforeunload', save)
     return () => window.removeEventListener('beforeunload', save)

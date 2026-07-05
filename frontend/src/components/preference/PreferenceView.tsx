@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Pencil, Plus, Settings, Trash2, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { novel } from '@/hooks/useApp'
 
@@ -19,6 +20,7 @@ const EMPTY_FORM: EditForm = { category: '', content: '' }
 
 export default function PreferenceView({ novelId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
 
   const [global, setGlobal] = useState<novel.PreferenceItem[]>([])
   const [novelPrefs, setNovelPrefs] = useState<novel.PreferenceItem[]>([])
@@ -37,11 +39,11 @@ export default function PreferenceView({ novelId }: Props) {
       setGlobal(result.global ?? [])
       setNovelPrefs(result.novel ?? [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('preference.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [app, novelId])
+  }, [app, novelId, t])
 
   useEffect(() => { load() }, [load])
 
@@ -66,14 +68,14 @@ export default function PreferenceView({ novelId }: Props) {
 
   async function handleSave() {
     if (!editMode) return
-    if (!form.content.trim()) { setError('请输入偏好内容'); return }
+    if (!form.content.trim()) { setError(t('preference.pleaseEnterContent')); return }
 
     setSaving(true)
     try {
       if (editMode.type === 'create') {
         await app.CreatePreference(novelId, {
           is_global: editMode.isGlobal,
-          category: form.category || '未分类',
+          category: form.category || t('preference.uncategorized'),
           content: form.content,
         })
       } else {
@@ -86,20 +88,20 @@ export default function PreferenceView({ novelId }: Props) {
       setForm(EMPTY_FORM)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '保存失败')
+      setError(err instanceof Error ? err.message : t('preference.saveFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('确定要删除这条偏好吗？此操作不可撤销。')) return
+    if (!confirm(t('preference.confirmDeletePreference'))) return
     setSaving(true)
     try {
       await app.DeletePreference(id)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除失败')
+      setError(err instanceof Error ? err.message : t('preference.deleteFailed'))
     } finally {
       setSaving(false)
     }
@@ -119,14 +121,14 @@ export default function PreferenceView({ novelId }: Props) {
               onClick={() => openCreate(isGlobal)}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-muted-foreground transition-colors"
             >
-              <Plus className="h-3 w-3" /> 添加
+              <Plus className="h-3 w-3" /> {t('preference.add')}
             </button>
           )}
         </div>
 
         {items.length === 0 && !isCreating ? (
           <p className="text-xs text-muted-foreground py-4">
-            {isGlobal ? '暂无全局偏好' : '暂无本书偏好'}
+            {isGlobal ? t('preference.noGlobalPreference') : t('preference.noBookPreference')}
           </p>
         ) : (
           <div className="space-y-2">
@@ -136,7 +138,7 @@ export default function PreferenceView({ novelId }: Props) {
               return isEditing ? (
                 <div key={item.id} className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-semibold text-foreground">编辑偏好</span>
+                    <span className="text-xs font-semibold text-foreground">{t('preference.editPreference')}</span>
                     <button onClick={closeForm} className="p-0.5 rounded text-muted-foreground hover:text-foreground">
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -148,15 +150,15 @@ export default function PreferenceView({ novelId }: Props) {
                       className="px-3 py-1 rounded text-xs text-destructive hover:bg-destructive/10 transition-colors"
                       disabled={saving}
                     >
-                      <Trash2 className="h-3 w-3 inline mr-1" />删除
+                      <Trash2 className="h-3 w-3 inline mr-1" />{t('preference.delete')}
                     </button>
-                    <button onClick={closeForm} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">取消</button>
+                    <button onClick={closeForm} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">{t('preference.cancel')}</button>
                     <button
                       onClick={handleSave}
                       disabled={saving || !form.content.trim()}
                       className="px-3 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
                     >
-                      {saving ? '保存中...' : '保存'}
+                      {saving ? t('preference.saving') : t('preference.save')}
                     </button>
                   </div>
                 </div>
@@ -167,21 +169,21 @@ export default function PreferenceView({ novelId }: Props) {
                 >
                   <div className="flex items-start gap-3 px-4 py-3">
                     <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-secondary text-muted-foreground">
-                      {item.category || '未分类'}
+                      {item.category || t('preference.uncategorized')}
                     </span>
                     <p className="flex-1 text-sm text-foreground leading-relaxed whitespace-pre-wrap">{item.content}</p>
                     <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => openEdit(item)}
                         className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                        title="编辑"
+                        title={t('preference.edit')}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(item.id)}
                         className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        title="删除"
+                        title={t('preference.delete')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -194,20 +196,20 @@ export default function PreferenceView({ novelId }: Props) {
             {isCreating && (
               <div className="rounded-lg border border-dashed border-border bg-card/60 p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-foreground">新建偏好</span>
+                  <span className="text-xs font-semibold text-foreground">{t('preference.newPreference')}</span>
                   <button onClick={closeForm} className="p-0.5 rounded text-muted-foreground hover:text-foreground">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
                 {renderFormFields()}
                 <div className="flex items-center gap-2 justify-end mt-3">
-                  <button onClick={closeForm} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">取消</button>
+                  <button onClick={closeForm} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">{t('common.cancel')}</button>
                   <button
                     onClick={handleSave}
                     disabled={saving || !form.content.trim()}
                     className="px-3 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    {saving ? '创建中...' : '创建'}
+                    {saving ? t('preference.creating') : t('preference.create')}
                   </button>
                 </div>
               </div>
@@ -222,20 +224,20 @@ export default function PreferenceView({ novelId }: Props) {
     return (
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">分类</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('preference.category')}</label>
           <input
             value={form.category}
             onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-            placeholder="风格、对话、世界观..."
+            placeholder={t('preference.categoryPlaceholder')}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">内容</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('preference.content')}</label>
           <textarea
             value={form.content}
             onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-            placeholder="偏好内容"
+            placeholder={t('preference.contentPlaceholder')}
             rows={3}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
           />
@@ -247,7 +249,7 @@ export default function PreferenceView({ novelId }: Props) {
   return (
     <main className="flex-1 min-w-0 overflow-y-auto overscroll-contain bg-background">
       {loading ? (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t('preference.loading')}</div>
       ) : error ? (
         <div className="flex h-full items-center justify-center text-sm text-destructive">{error}</div>
       ) : (
@@ -255,16 +257,16 @@ export default function PreferenceView({ novelId }: Props) {
           <div className="flex items-center gap-2">
             <Settings className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold text-foreground">
-              创作偏好
-              <span className="ml-2 text-xs font-normal text-muted-foreground">{global.length + novelPrefs.length} 条</span>
+              {t('preference.creativePreference')}
+              <span className="ml-2 text-xs font-normal text-muted-foreground">{global.length + novelPrefs.length} {t('preference.countUnit')}</span>
             </h2>
           </div>
 
-          {renderSection('全局偏好 · 所有小说生效', global, true)}
+          {renderSection(t('preference.globalPreference'), global, true)}
 
           <div className="border-t border-border" />
 
-          {renderSection('本书偏好 · 仅当前小说生效', novelPrefs, false)}
+          {renderSection(t('preference.bookPreference'), novelPrefs, false)}
         </div>
       )}
     </main>

@@ -30,7 +30,7 @@ type CreateXxxInput struct {
 不加 `omitempty` → Wails 生成 TypeScript `name: string`（required）
 加 `omitempty` → Wails 生成 `name?: string`（optional）
 
-**Update Input：所有字段加 omitempty**
+**Update Input：所有字段必须加 omitempty**
 
 ```go
 type UpdateXxxInput struct {
@@ -42,6 +42,8 @@ type UpdateXxxInput struct {
 ```
 
 所有字段 optional，PATCH 只传要改的字段。前端传完整对象也行（没改的字段原地覆盖，无影响）。
+
+**【强制约束】Update Input 的所有字段必须带 `omitempty`。** PatchAndSave 用 `json.Marshal/Unmarshal` 合并字段，依赖 `omitempty` 跳过零值。缺少 `omitempty` 会导致零值覆盖原有字段。CI 脚本 `scripts/check_omitempty` 会自动检查。不走 PatchAndSave 的 Input 可加 `//nolint:omitempty` 注释跳过。
 
 ### Update 方法用 Updates() 只返回 error
 
@@ -227,8 +229,8 @@ async function handleCreate() {
 
 实施新领域 CRUD 时逐项确认：
 
-- [ ] Go Input struct：Create 必填不加 omitempty，可选/Update 全加
-- [ ] Go Update 方法用 `Updates(struct)` 不要 `First+if+Save`
+- [ ] Go Input struct：Create 必填不加 omitempty，Update 全加（CI 检查）
+- [ ] Go Update 方法用 `storage.PatchAndSave` 触发 operation_log 回调
 - [ ] Go Create 方法加中文输入校验
 - [ ] Go Delete 方法考虑级联
 - [ ] `wails generate module` 重新生成绑定

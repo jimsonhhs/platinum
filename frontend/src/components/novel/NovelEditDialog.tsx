@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { novel } from '@/hooks/useApp'
-
-const GENRE_PRESETS = ['玄幻', '科幻', '都市', '历史', '悬疑', '武侠', '言情', '其他']
 
 interface Props {
   open: boolean
@@ -11,11 +10,23 @@ interface Props {
 }
 
 export default function NovelEditDialog({ open, novel, onClose, onSave }: Props) {
+  const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [genre, setGenre] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const GENRE_PRESETS = [
+    t('novel.genreFantasy'),
+    t('novel.genreSciFi'),
+    t('novel.genreUrban'),
+    t('novel.genreHistory'),
+    t('novel.genreMystery'),
+    t('novel.genreWuxia'),
+    t('novel.genreRomance'),
+    t('novel.genreOther'),
+  ]
 
   useEffect(() => {
     if (open) {
@@ -39,7 +50,7 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
     try {
       await onSave({ title: title.trim(), description: description.trim(), genre: genre.trim() })
     } catch (e: any) {
-      setError(e?.message ?? '保存失败，请重试')
+      setError(e?.message ?? t('novel.saveFailedRetry'))
     } finally {
       setSaving(false)
     }
@@ -64,7 +75,7 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
           ✕
         </button>
 
-        <h2 className="text-base font-semibold mb-5">{isEdit ? '编辑作品' : '新建作品'}</h2>
+        <h2 className="text-base font-semibold mb-5">{isEdit ? t('novel.editWork') : t('novel.newWork')}</h2>
 
         {error && (
           <p className="text-sm text-red-600 bg-danger-bg border border-danger-border rounded-md px-3 py-2 mb-4">{error}</p>
@@ -72,21 +83,21 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">书名 {!isEdit && <span className="text-red-500">*</span>}</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('novel.bookTitle')} {!isEdit && <span className="text-red-500">*</span>}</label>
             <input
               type="text" value={title} autoFocus
               onChange={e => setTitle(e.target.value)}
-              placeholder="输入书名"
+              placeholder={t('novel.enterBookTitle')}
               className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">分类</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('novel.genre')}</label>
             <input
               type="text" value={genre}
               onChange={e => setGenre(e.target.value)}
-              placeholder="如：玄幻、科幻、都市..."
+              placeholder={t('novel.genreExample')}
               list="genre-suggestions"
               className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -96,11 +107,11 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">简介</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('novel.summary')}</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="简单介绍一下这部作品（可选）"
+              placeholder={t('novel.summaryPlaceholder')}
               rows={3}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -112,14 +123,14 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
             onClick={onClose}
             className="h-9 px-4 rounded-md text-sm border hover:bg-muted transition-colors"
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={!canSave || saving}
             className="h-9 px-4 rounded-md text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {saving ? '保存中...' : '保存'}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>

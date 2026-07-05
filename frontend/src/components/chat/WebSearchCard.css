@@ -41,8 +41,8 @@
 }
 
 .web-card-badge-done {
-  color: #389e0d;
-  background: rgba(82, 196, 26, 0.1);
+  color: var(--tool-green-border);
+  background: var(--tool-green);
 }
 
 /* ── search queries ── */
@@ -75,7 +75,7 @@
   overflow-y: auto;
   border: 1px solid oklch(0.85 0.01 0);
   border-radius: var(--radius-sm);
-  background: white;
+  background: var(--card);
 }
 
 .web-card-source {

@@ -1,5 +1,6 @@
 // ContextRing — SVG 圆环显示 token 用量，照搬 Python ContextRing.tsx
 import { useState, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export interface UsageInfo {
   prompt_tokens: number
@@ -30,13 +31,6 @@ function formatTokens(n: number): string {
   return String(n)
 }
 
-const DETAIL_LABELS: Record<string, string> = {
-  system: '系统上下文',
-  user: '用户输入',
-  assistant: 'AI 输出',
-  tool: '工具结果',
-}
-
 interface Props {
   usage: UsageInfo | null
   onCompress?: () => void
@@ -45,7 +39,15 @@ interface Props {
 }
 
 export default function ContextRing({ usage, onCompress, isTurnRunning, isCompressing }: Props) {
+  const { t } = useTranslation()
   const [showPopover, setShowPopover] = useState(false)
+
+  const DETAIL_LABELS: Record<string, string> = {
+    system: t('chat.systemContext'),
+    user: t('chat.userInput'),
+    assistant: t('chat.aiOutput'),
+    tool: t('chat.toolResult'),
+  }
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleEnter = useCallback(() => {
@@ -93,9 +95,9 @@ export default function ContextRing({ usage, onCompress, isTurnRunning, isCompre
       {showPopover && (
         <div className="absolute bottom-full right-0 mb-2 z-50 flex flex-col gap-2.5 bg-background text-foreground rounded-xl p-3 min-w-[240px] shadow-lg border">
           <div className="flex gap-4 text-[13px] font-semibold">
-            <span>上下文占用: {ratio.toFixed(1)}%</span>
+            <span>{t('chat.contextUsage')}: {ratio.toFixed(1)}%</span>
             {hasUsage && usage.cache_hit_ratio > 0 && (
-              <span>缓存命中率: {usage.cache_hit_ratio.toFixed(1)}%</span>
+              <span>{t('chat.cacheHitRate')}: {usage.cache_hit_ratio.toFixed(1)}%</span>
             )}
           </div>
           <div className="h-1.5 rounded-sm bg-muted overflow-hidden">
@@ -105,8 +107,8 @@ export default function ContextRing({ usage, onCompress, isTurnRunning, isCompre
             />
           </div>
           <div className="text-xs text-muted-foreground">
-            已用: {hasUsage ? formatTokens(usage.total_tokens) : '0'}
-            {hasUsage && <>{' · '}总大小: {formatTokens(usage.context_window)}</>}
+            {t('chat.used')}: {hasUsage ? formatTokens(usage.total_tokens) : '0'}
+            {hasUsage && <>{' · '}{t('chat.totalSize')}: {formatTokens(usage.context_window)}</>}
           </div>
           {hasUsage && usage.detail && (
             <div className="flex flex-col gap-1.5 border-t pt-2">
@@ -130,12 +132,11 @@ export default function ContextRing({ usage, onCompress, isTurnRunning, isCompre
             <button
               className="w-full mt-1 py-1.5 rounded-lg text-xs font-medium border transition-colors
                 disabled:opacity-40 disabled:cursor-not-allowed
-                hover:bg-tag-amber hover:border-amber-300 hover:text-amber-700
-                dark:hover:bg-amber-950 dark:hover:border-amber-700 dark:hover:text-amber-300"
+                hover:bg-tag-amber hover:border-tag-amber-foreground/30 hover:text-tag-amber-foreground"
               disabled={isTurnRunning || isCompressing}
               onClick={(e) => { e.stopPropagation(); onCompress() }}
             >
-              {isCompressing ? '压缩中...' : '压缩上下文'}
+              {isCompressing ? t('chat.compressing') : t('chat.compressContext')}
             </button>
           )}
         </div>

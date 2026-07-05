@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { Info } from 'lucide-react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 export default function TemperatureInfo() {
+  const { t } = useTranslation()
   const [show, setShow] = useState(false)
   const iconRef = useRef<HTMLSpanElement>(null)
   const [pos, setPos] = useState({ top: 0, left: 0 })
@@ -26,7 +28,7 @@ export default function TemperatureInfo() {
           className="fixed z-[100] w-48 text-xs leading-relaxed bg-popover text-popover-foreground border rounded-md p-2 shadow-md -translate-x-1/2 -translate-y-full"
           style={{ top: pos.top, left: pos.left }}
         >
-          控制模型输出的随机性。值越高越有创意，越低越确定保守。范围 0 ~ 2。
+          {t('settings.temperatureDesc')}
         </span>,
         document.body
       )}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   open: boolean
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function NovelDeleteDialog({ open, novelTitle, onClose, onConfirm }: Props) {
+  const { t } = useTranslation()
   const [confirmText, setConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
@@ -31,7 +33,7 @@ export default function NovelDeleteDialog({ open, novelTitle, onClose, onConfirm
     try {
       await onConfirm()
     } catch (e: any) {
-      setError(e?.message ?? '删除失败，请重试')
+      setError(e?.message ?? t('novel.deleteFailedRetry'))
     } finally {
       setDeleting(false)
     }
@@ -53,23 +55,23 @@ export default function NovelDeleteDialog({ open, novelTitle, onClose, onConfirm
           ✕
         </button>
 
-        <h2 className="text-base font-semibold text-destructive mb-3">删除作品</h2>
+        <h2 className="text-base font-semibold text-destructive mb-3">{t('novel.deleteWork')}</h2>
 
         {error && (
           <p className="text-sm text-red-600 bg-danger-bg border border-danger-border rounded-md px-3 py-2 mb-3">{error}</p>
         )}
 
         <p className="text-sm text-muted-foreground mb-1">
-          删除后书籍文件和所有章节将<b className="text-foreground">永久丢失</b>，不可恢复。
+          {t('novel.deleteWarning', { permanentLoss: t('novel.permanentLoss') })}
         </p>
         <p className="text-sm text-muted-foreground mb-4">
-          请输入书名 <b className="text-foreground">{novelTitle}</b> 确认删除：
+          {t('novel.pleaseEnterTitle')} <b className="text-foreground">{novelTitle}</b> {t('novel.confirmDelete2')}：
         </p>
 
         <input
           type="text" value={confirmText} autoFocus
           onChange={e => setConfirmText(e.target.value)}
-          placeholder="输入书名确认"
+          placeholder={t('novel.enterTitleToConfirm')}
           className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mb-5"
         />
 
@@ -78,14 +80,14 @@ export default function NovelDeleteDialog({ open, novelTitle, onClose, onConfirm
             onClick={onClose}
             className="h-9 px-4 rounded-md text-sm border hover:bg-muted transition-colors"
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleDelete}
             disabled={!canDelete || deleting}
             className="h-9 px-4 rounded-md text-sm bg-destructive text-destructive-foreground hover:bg-destructive/85 transition-colors disabled:opacity-50"
           >
-            {deleting ? '删除中...' : '确认删除'}
+            {deleting ? t('common.deleting') : t('novel.confirmDelete2')}
           </button>
         </div>
       </div>

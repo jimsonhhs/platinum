@@ -190,7 +190,7 @@ export default function ChatInput({ disabled, isLoading, placeholder, slashItems
           <button
             disabled={disabled || !hasContent}
             onClick={handleSendClick}
-            className="w-[52px] h-[36px] min-w-[52px] flex items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/20 transition-all hover:-translate-y-px hover:shadow-lg hover:shadow-amber-500/30 disabled:bg-muted disabled:text-muted-foreground/40 disabled:shadow-none disabled:hover:translate-y-0 shrink-0"
+            className="w-[52px] h-[36px] min-w-[52px] flex items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 transition-all hover:-translate-y-px hover:shadow-lg hover:shadow-primary/30 disabled:bg-muted disabled:text-muted-foreground/40 disabled:shadow-none disabled:hover:translate-y-0 shrink-0"
           >
             <ArrowUp className="w-5 h-5" />
           </button>

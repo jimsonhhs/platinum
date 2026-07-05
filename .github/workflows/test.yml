@@ -7,14 +7,42 @@ on:
     branches: [master]
 
 jobs:
-  test:
+  lint-frontend:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install frontend deps
+        run: cd frontend && npm ci
+
+      - name: ESLint
+        run: cd frontend && npx eslint . --max-warnings 100
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: 1
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+
+      - name: Install sqlite3 headers (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/sqlite-amalgamation.zip" "https://www.sqlite.org/2023/sqlite-amalgamation-3440000.zip"
+          unzip -qjo "$RUNNER_TEMP/sqlite-amalgamation.zip" -d "$RUNNER_TEMP/sqlite"
+          echo "CGO_CFLAGS=${CGO_CFLAGS} -I${RUNNER_TEMP}/sqlite" >> $GITHUB_ENV
 
       - name: Run tests
         run: go test $(go list ./internal/... ./app/...) -count=1

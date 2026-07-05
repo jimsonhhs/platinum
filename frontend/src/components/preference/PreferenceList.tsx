@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, Settings } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { novel } from '@/hooks/useApp'
 
@@ -7,6 +8,7 @@ interface Props { novelId: number }
 
 export default function SidebarPreferenceList({ novelId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
 
   const [items, setItems] = useState<novel.PreferenceItem[]>([])
   const [search, setSearch] = useState('')
@@ -29,7 +31,7 @@ export default function SidebarPreferenceList({ novelId }: Props) {
     <>
       <div className="flex items-center justify-between px-3 py-2.5 border-b">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          创作偏好 ({items.length})
+          {t('preference.creativePreference')} ({items.length})
         </span>
       </div>
       <div className="px-2 py-1.5 border-b">
@@ -39,7 +41,7 @@ export default function SidebarPreferenceList({ novelId }: Props) {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="搜索偏好..."
+            placeholder={t('preference.searchPreference')}
             className="w-full h-7 rounded-md border bg-background pl-7 pr-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
@@ -47,7 +49,7 @@ export default function SidebarPreferenceList({ novelId }: Props) {
       <div className="flex-1 overflow-y-auto overscroll-contain">
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-xs text-muted-foreground">{search ? '无匹配偏好' : '暂无偏好'}</p>
+            <p className="text-xs text-muted-foreground">{search ? t('preference.noMatchingPreference') : t('preference.noPreference')}</p>
           </div>
         ) : (
           filtered.map(e => (
@@ -57,7 +59,7 @@ export default function SidebarPreferenceList({ novelId }: Props) {
               </span>
               <div className="flex-1 min-w-0">
                 <span className="text-xs truncate block text-foreground">{e.content.length > 30 ? e.content.slice(0, 30) + '…' : e.content}</span>
-                <span className="text-[10px] text-muted-foreground">{e.category || '未分类'}{e.is_global ? ' · 全局' : ' · 本书'}</span>
+                <span className="text-[10px] text-muted-foreground">{e.category || t('preference.uncategorized')}{e.is_global ? ` · ${t('preference.global')}` : ` · ${t('preference.book')}`}</span>
               </div>
             </div>
           ))

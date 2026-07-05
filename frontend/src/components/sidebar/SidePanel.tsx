@@ -1,3 +1,5 @@
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { novel, chapter } from '@/hooks/useApp'
 import NovelList from './NovelList'
 import ChapterList from './ChapterList'
@@ -9,7 +11,10 @@ import TimelineList from '@/components/timeline/TimelineList'
 import ArcList from '@/components/storyarc/ArcList'
 import ReaderList from '@/components/reader/ReaderList'
 import PreferenceList from '@/components/preference/PreferenceList'
+import StyleSampleList from '@/components/style/StyleSampleList'
 import type { SearchResult } from '@/components/search/SearchPanel'
+import GitHistoryList from '@/components/git/GitHistoryList'
+import type { git } from '@/lib/wailsjs/go/models'
 
 interface Props {
   activePanel: string
@@ -36,6 +41,10 @@ interface Props {
   searchQuery: string
   searchResults: SearchResult[]
   onSearchChange: (query: string, results: SearchResult[]) => void
+  onSelectGitFile: (file: git.FileDiff) => void
+  onSelectStyleSample: (id: string) => void
+  sidePanelWidth: number
+  onSidePanelResize: (w: number) => void
 }
 
 export default function SidePanel({
@@ -47,9 +56,41 @@ export default function SidePanel({
   activeSkillName, onSelectSkill, onEditSkill, onNewSkill,
   onSearchNavigateEntity, onSearchNavigateChapter,
   searchQuery, searchResults, onSearchChange,
+  onSelectGitFile,
+  onSelectStyleSample,
+  sidePanelWidth,
+  onSidePanelResize,
 }: Props) {
+  const { t } = useTranslation()
+  const [isDragging, setIsDragging] = useState(false)
+  const startXRef = useRef(0)
+  const startWidthRef = useRef(sidePanelWidth)
+
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+    startXRef.current = e.clientX
+    startWidthRef.current = sidePanelWidth
+  }, [sidePanelWidth])
+
+  useEffect(() => {
+    if (!isDragging) return
+    const onMove = (e: MouseEvent) => {
+      const delta = e.clientX - startXRef.current
+      onSidePanelResize(startWidthRef.current + delta)
+    }
+    const onUp = () => setIsDragging(false)
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+  }, [isDragging, onSidePanelResize])
+
   return (
-    <aside className="w-56 border-r bg-sidebar flex flex-col shrink-0 select-none cursor-default">
+    <aside className="shrink-0 flex flex-col bg-sidebar border-r relative select-none cursor-default" style={{ width: sidePanelWidth }}>
+      {isDragging && <div className="fixed inset-0 z-50 cursor-col-resize select-none" />}
       {activePanel === 'search' ? (
         <SearchPanel
           novelId={novelId}
@@ -100,11 +141,25 @@ export default function SidePanel({
         <ReaderList novelId={novelId} />
       ) : activePanel === 'preferences' ? (
         <PreferenceList novelId={novelId} />
+      ) : activePanel === 'git' ? (
+        <GitHistoryList
+          novelId={novelId}
+          onSelectFile={onSelectGitFile}
+        />
+      ) : activePanel === 'style-samples' ? (
+        <StyleSampleList
+          onSelectSample={onSelectStyleSample}
+        />
       ) : (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-xs text-muted-foreground">即将推出</p>
+          <p className="text-xs text-muted-foreground">{t('sidebar.comingSoon')}</p>
         </div>
       )}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors z-10 select-none"
+        style={{ marginRight: -2 }}
+        onMouseDown={handleResizeMouseDown}
+      />
     </aside>
   )
 }

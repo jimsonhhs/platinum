@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,8 +34,7 @@ type Agent struct {
 	logger        *slog.Logger
 	skillStore    *skill.Store
 	searchService atomic.Pointer[search.Service]
-	cancels       map[string]context.CancelFunc // sessionID → cancel
-	mu            sync.Mutex
+	cancelMgr     *CancelManager
 }
 
 // RunOptions 是单次 Run() 的参数。
@@ -58,7 +56,7 @@ type RunOptions struct {
 }
 
 // New 创建 Agent 实例。
-func New(llmClient *llm.Client, registry *mcp_tools.Registry, session *session.Store, db *gorm.DB, approver approval.Approver, logger *slog.Logger, skillStore *skill.Store) *Agent {
+func New(llmClient *llm.Client, registry *mcp_tools.Registry, session *session.Store, db *gorm.DB, approver approval.Approver, logger *slog.Logger, skillStore *skill.Store, cancelMgr *CancelManager) *Agent {
 	return &Agent{
 		llm:        llmClient,
 		registry:   registry,
@@ -67,7 +65,7 @@ func New(llmClient *llm.Client, registry *mcp_tools.Registry, session *session.S
 		approver:   approver,
 		logger:     logger,
 		skillStore: skillStore,
-		cancels:    make(map[string]context.CancelFunc),
+		cancelMgr:  cancelMgr,
 	}
 }
 
@@ -76,26 +74,17 @@ func (a *Agent) SetSearchService(s *search.Service) { a.searchService.Store(s) }
 
 // RegisterCancel 注册一个可取消的对话。
 func (a *Agent) RegisterCancel(sessionID string, cancel context.CancelFunc) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.cancels[sessionID] = cancel
+	a.cancelMgr.Register(CancelPrefixChat+sessionID, cancel)
 }
 
 // UnregisterCancel 对话结束后清理，只删不 cancel。
 func (a *Agent) UnregisterCancel(sessionID string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	delete(a.cancels, sessionID)
+	a.cancelMgr.Unregister(CancelPrefixChat + sessionID)
 }
 
 // Cancel 取消一个正在进行的对话。
 func (a *Agent) Cancel(sessionID string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if c, ok := a.cancels[sessionID]; ok {
-		c()
-		delete(a.cancels, sessionID)
-	}
+	a.cancelMgr.Cancel(CancelPrefixChat + sessionID)
 }
 
 // RunSubAgent 启动子 Agent 并返回最终报告文本。

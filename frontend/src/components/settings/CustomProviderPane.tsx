@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, X, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { llm } from '@/hooks/useApp'
 import TemperatureInfo from './TemperatureInfo'
 import ModelDiscoveryPanel from './ModelDiscoveryPanel'
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemove, onAddCustomModel, onRemoveCustomModel, onTest, testResults, testing }: Props) {
+  const { t } = useTranslation()
   const [selectedKey, setSelectedKey] = useState(providers[0]?.key || '')
   const [showNewForm, setShowNewForm] = useState(false)
   const [newName, setNewName] = useState('')
@@ -50,12 +52,12 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
   if (providers.length === 0 && !showNewForm) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
-        <p className="text-sm text-muted-foreground">暂无自定义服务商</p>
+        <p className="text-sm text-muted-foreground">{t('settings.noCustomProviders')}</p>
         <button
           onClick={() => setShowNewForm(true)}
           className="flex items-center gap-1 text-xs text-primary hover:underline"
         >
-          <Plus className="w-3 h-3" /> 添加自定义服务商
+          <Plus className="w-3 h-3" /> {t('settings.addCustomProvider')}
         </button>
       </div>
     )
@@ -65,7 +67,7 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
     <div className="flex flex-col gap-4">
       {/* 服务商选择 + 添加 */}
       <div className="flex items-center gap-3">
-        <label className="text-xs text-muted-foreground w-14 shrink-0">服务商</label>
+        <label className="text-xs text-muted-foreground w-14 shrink-0">{t('settings.provider')}</label>
         <select
           value={selectedKey}
           onChange={e => setSelectedKey(e.target.value)}
@@ -79,27 +81,27 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
           onClick={() => setShowNewForm(!showNewForm)}
           className="text-xs text-primary flex items-center gap-0.5 hover:underline shrink-0"
         >
-          <Plus className="w-3 h-3" /> 添加
+          <Plus className="w-3 h-3" /> {t('settings.add')}
         </button>
       </div>
 
       {/* 新建表单 */}
       {showNewForm && (
         <div className="border rounded-md p-3 space-y-3">
-          <div className="text-xs font-medium">新建自定义服务商</div>
+          <div className="text-xs font-medium">{t('settings.newCustomProvider')}</div>
 
           <div className="flex items-center gap-3">
-            <label className="text-xs text-muted-foreground w-16 shrink-0">名称</label>
+            <label className="text-xs text-muted-foreground w-16 shrink-0">{t('common.name')}</label>
             <input
               value={newName}
               onChange={e => setNewName(e.target.value)}
-              placeholder="服务商名称"
+              placeholder={t('settings.providerName')}
               className="flex-1 h-8 rounded-md border bg-background px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="text-xs text-muted-foreground w-16 shrink-0">Chat URL</label>
+            <label className="text-xs text-muted-foreground w-16 shrink-0">{t('settings.chatUrl')}</label>
             <input
               value={newChatURL}
               onChange={e => setNewChatURL(e.target.value)}
@@ -109,12 +111,12 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="text-xs text-muted-foreground w-16 shrink-0">API Key</label>
+            <label className="text-xs text-muted-foreground w-16 shrink-0">{t('settings.apiKey')}</label>
             <input
               type="password"
               value={newApiKey}
               onChange={e => setNewApiKey(e.target.value)}
-              placeholder="输入 API Key"
+              placeholder={t('settings.enterApiKey')}
               className="flex-1 h-8 rounded-md border bg-background px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
           </div>
@@ -122,10 +124,10 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
           <div className="flex items-center gap-2 pt-1">
             <div className="flex-1" />
             <button onClick={() => setShowNewForm(false)} className="h-8 px-3 rounded-md border text-xs text-muted-foreground">
-              取消
+              {t('common.cancel')}
             </button>
             <button onClick={handleAdd} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs">
-              添加
+              {t('settings.add')}
             </button>
           </div>
         </div>
@@ -135,7 +137,7 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
       {provider && !showNewForm && (
         <>
           <div className="flex items-center gap-3">
-            <label className="text-xs text-muted-foreground w-16 shrink-0">名称</label>
+            <label className="text-xs text-muted-foreground w-16 shrink-0">{t('common.name')}</label>
             <input
               value={provider.name}
               disabled
@@ -144,7 +146,7 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="text-xs text-muted-foreground w-16 shrink-0">Chat URL</label>
+            <label className="text-xs text-muted-foreground w-16 shrink-0">{t('settings.chatUrl')}</label>
             <input
               value={provider.chat_url}
               onChange={e => onUpdate(selectedKey, { chat_url: e.target.value })}
@@ -153,12 +155,12 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground w-16 shrink-0">API Key</label>
+            <label className="text-xs text-muted-foreground w-16 shrink-0">{t('settings.apiKey')}</label>
             <input
               type="password"
               value={provider.api_key}
               onChange={e => onUpdate(selectedKey, { api_key: e.target.value })}
-              placeholder="输入 API Key"
+              placeholder={t('settings.enterApiKey')}
               className="flex-1 h-8 rounded-md border bg-background px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
             <button
@@ -166,19 +168,19 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
               disabled={!provider.api_key || isTesting}
               className="h-8 px-2.5 rounded-md border text-xs shrink-0 hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '测试'}
+              {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : t('settings.test')}
             </button>
           </div>
 
           {/* 测试结果 */}
           {testResult && (
-            <div className={`text-xs pl-[4.5rem] ${testResult.ok ? 'text-emerald-600' : 'text-red-500'}`}>
-              {testResult.ok ? '✓ 连通成功' : `✗ ${testResult.msg || '连接失败'}`}
+            <div className={`text-xs pl-[4.5rem] ${testResult.ok ? 'text-success-foreground' : 'text-red-500'}`}>
+              {testResult.ok ? t('settings.connectionSuccess') : `✗ ${testResult.msg || t('settings.connectionFailed')}`}
             </div>
           )}
 
           <div className="flex items-center gap-3">
-            <label className="text-xs text-muted-foreground w-16 shrink-0 flex items-center gap-1">创意度<TemperatureInfo /></label>
+            <label className="text-xs text-muted-foreground w-16 shrink-0 flex items-center gap-1">{t('settings.creativity')}<TemperatureInfo /></label>
             <input
               type="range"
               min="0"
@@ -194,7 +196,7 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
           {/* 模型列表 */}
           {provider.custom_models && provider.custom_models.length > 0 && (
             <div>
-              <span className="text-xs text-muted-foreground mb-2 block">自定义模型</span>
+              <span className="text-xs text-muted-foreground mb-2 block">{t('settings.customModels')}</span>
               <div className="rounded-md border divide-y mb-2">
                 {provider.custom_models.map(m => (
                   <div key={m.id} className="flex items-center justify-between px-3 py-2">
@@ -203,10 +205,10 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
                       {(m.context_window > 0 || m.max_output_tokens > 0) && (
                         <span className="text-xs text-muted-foreground ml-2">
                           {m.context_window > 0 && (m.context_window >= 1_000_000 ? (m.context_window / 1_000_000).toFixed(0) + 'M' : (m.context_window / 1_000).toFixed(0) + 'K')}
-                          {m.max_output_tokens > 0 && <> · {(m.max_output_tokens / 1_000).toFixed(0)}K 输出</>}
-                          {m.supports_thinking ? <> · 思考</> : null}
-                          {m.reasoning_levels?.length ? <> · 等级: {m.reasoning_levels.join(',')}</> : null}
-                          {m.supports_vision ? <> · 视觉</> : null}
+                          {m.max_output_tokens > 0 && <> · {(m.max_output_tokens / 1_000).toFixed(0)}K {t('settings.output')}</>}
+                          {m.supports_thinking ? <> · {t('settings.thinking')}</> : null}
+                          {m.reasoning_levels?.length ? <> · {t('settings.level')}: {m.reasoning_levels.join(',')}</> : null}
+                          {m.supports_vision ? <> · {t('settings.vision')}</> : null}
                         </span>
                       )}
                     </div>
@@ -235,13 +237,13 @@ export default function CustomProviderPane({ providers, onAdd, onUpdate, onRemov
             <button
               onClick={() => {
                 const name = provider?.name || selectedKey
-                if (!window.confirm(`确定删除服务商 "${name}"？此操作无法撤销。`)) return
+                if (!window.confirm(`${t('settings.confirmDeleteProvider')} "${name}"？${t('common.irreversible')}`)) return
                 onRemove(selectedKey)
                 setSelectedKey(providers.filter(p => p.key !== selectedKey)[0]?.key || '')
               }}
               className="h-8 px-3 rounded-md border border-danger-border text-destructive text-xs hover:bg-danger-bg transition-colors"
             >
-              删除服务商
+              {t('settings.deleteProvider')}
             </button>
           </div>
         </>

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Plus, Sparkle, Pencil, Trash2 } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, Heart } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { skill } from '@/hooks/useApp'
-import ExtractStyleDialog from './ExtractStyleDialog'
+import SkillContributeDialog from './SkillContributeDialog'
 
 interface Props {
   novelId: number
@@ -23,13 +24,13 @@ function skillPath(name: string, source: string): string {
 
 export default function SkillList({ novelId, activeSkillName, onSelectSkill, onEditSkill, onNewSkill }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
   const [skills, setSkills] = useState<skill.SkillMeta[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
-  const [dialogOpen, setDialogOpen] = useState(false)
-
+  const [showContribute, setShowContribute] = useState(false)
   const load = useCallback(async () => {
     if (!novelId) { setSkills([]); return }
     setLoading(true)
@@ -56,7 +57,7 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
   const builtinSkills = filtered.filter(s => s.source === 'builtin')
 
   const handleDelete = async (s: skill.SkillMeta) => {
-    if (!confirm(`确定删除技能「${s.name}」？此操作不可撤销。`)) return
+    if (!confirm(t('skill.confirmDeleteSkill') + `「${s.name}」？` + t('skill.irreversible'))) return
     try {
       await app.DeleteSkill({ novel_id: novelId, name: s.name, source: s.source })
       await load()
@@ -69,20 +70,20 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
     <>
       <div className="flex items-center justify-between px-3 py-2.5 border-b gap-1">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          技能 ({skills.length})
+          {t('skill.skills')} ({skills.length})
         </span>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setDialogOpen(true)}
-            className="p-0.5 rounded hover:bg-muted/60 text-action-extract hover:text-action-extract/80 transition-colors"
-            title="提取写作风格"
+            onClick={() => setShowContribute(true)}
+            className="p-0.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-rose-500 transition-colors"
+            title={t('skill.contribute')}
           >
-            <Sparkle className="w-3.5 h-3.5" />
+            <Heart className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setCreating(true)}
             className="p-0.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-            title="新建技能"
+            title={t('skill.newSkill')}
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
@@ -110,7 +111,7 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
                 setCreating(false)
               }
             }}
-            placeholder="skill 名称..."
+            placeholder={t('skill.namePlaceholder')}
             autoFocus
             className="flex-1 px-2 py-0.5 text-xs bg-background border rounded outline-none focus:ring-1 focus:ring-ring"
           />
@@ -125,7 +126,7 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
             disabled={!newName.trim()}
             className="px-2 py-0.5 text-xs text-action-save hover:text-action-save/80 disabled:opacity-50"
           >
-            确定
+            {t('skill.confirm')}
           </button>
         </div>
       )}
@@ -136,21 +137,21 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="搜索..."
+            placeholder={t('skill.search')}
             className="w-full pl-7 pr-2 py-1 text-xs bg-muted/40 rounded border-0 outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
       </div>
       <div className="flex-1 overflow-y-auto overscroll-contain">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">加载中...</div>
+          <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">{t('skill.loading')}</div>
         ) : skills.length === 0 ? (
-          <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">暂无技能</div>
+          <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">{t('skill.noSkills')}</div>
         ) : (
           <>
             {novelSkills.length > 0 && (
               <SkillGroup
-                title="当前小说"
+                title={t('skill.currentNovel')}
                 skills={novelSkills}
                 activeSkillName={activeSkillName}
                 onSelect={onSelectSkill}
@@ -160,7 +161,7 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
             )}
             {userSkills.length > 0 && (
               <SkillGroup
-                title="用户级"
+                title={t('skill.userLevel')}
                 skills={userSkills}
                 activeSkillName={activeSkillName}
                 onSelect={onSelectSkill}
@@ -170,7 +171,7 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
             )}
             {builtinSkills.length > 0 && (
               <SkillGroup
-                title="内置"
+                title={t('skill.builtin')}
                 skills={builtinSkills}
                 activeSkillName={activeSkillName}
                 onSelect={onSelectSkill}
@@ -181,12 +182,7 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
           </>
         )}
       </div>
-      <ExtractStyleDialog
-        open={dialogOpen}
-        novelId={novelId}
-        onClose={() => setDialogOpen(false)}
-        onSaved={load}
-      />
+      <SkillContributeDialog open={showContribute} onClose={() => setShowContribute(false)} />
     </>
   )
 }
@@ -199,6 +195,7 @@ function SkillGroup({ title, skills, activeSkillName, onSelect, onEdit, onDelete
   onEdit: (path: string, title: string, readOnly: boolean) => void
   onDelete: (s: skill.SkillMeta) => void
 }) {
+  const { t } = useTranslation()
   const isBuiltin = skills[0]?.source === 'builtin'
   return (
     <div>
@@ -207,7 +204,7 @@ function SkillGroup({ title, skills, activeSkillName, onSelect, onEdit, onDelete
       </div>
       {skills.map(s => {
         const path = skillPath(s.name, s.source)
-        const display = `技能: ${s.name}`
+        const display = `${t('skill.skillLabel')}${s.name}`
         const readOnly = s.source === 'builtin'
         const active = activeSkillName === display
         return (
@@ -234,7 +231,7 @@ function SkillGroup({ title, skills, activeSkillName, onSelect, onEdit, onDelete
                     onEdit(path, display, readOnly)
                   }}
                   className="p-0.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-                  title="编辑技能"
+                  title={t('skill.editSkill')}
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
@@ -244,7 +241,7 @@ function SkillGroup({ title, skills, activeSkillName, onSelect, onEdit, onDelete
                     onDelete(s)
                   }}
                   className="p-0.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-destructive transition-colors"
-                  title="删除技能"
+                  title={t('skill.deleteSkill')}
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>

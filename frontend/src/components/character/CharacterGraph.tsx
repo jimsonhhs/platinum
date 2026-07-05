@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Graph, treeToGraphData } from '@antv/g6'
 import { LocateFixed, RefreshCw, UsersRound, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import { useGraphColors } from '@/components/graphColors'
 import type { character } from '@/hooks/useApp'
@@ -15,6 +16,7 @@ const NODE_COLOR = { fill: '#e0f2fe', stroke: '#38a8df', text: '#0c4a6e' }
 function nodeId(id: number) { return `character-${id}` }
 
 function safeJson<T>(json: string, fallback: T): T {
+  if (json == null) return fallback
   try { return JSON.parse(json) }
   catch { return fallback }
 }
@@ -82,6 +84,7 @@ function buildCharacterTree(characters: character.Character[], relations: charac
 
 export default function CharacterGraph({ novelId, focusId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
   const C = useGraphColors()
   const containerRef = useRef<HTMLDivElement>(null)
   const graphRef = useRef<Graph | null>(null)
@@ -105,11 +108,11 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
       setCharacters(charList ?? [])
       setRelations(relList ?? [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('character.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [app, novelId])
+  }, [app, novelId, t])
 
   useEffect(() => { load() }, [load])
 
@@ -125,7 +128,13 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
     const { treeData, nonTreeEdges } = buildCharacterTree(characters, relations)
     if (!treeData) return { nodes: [], edges: [] }
 
-    const baseGraph = treeToGraphData(treeData)
+    let baseGraph: any
+    try {
+      baseGraph = treeToGraphData(treeData)
+    } catch (err) {
+      console.error('treeToGraphData failed:', err)
+      return { nodes: [], edges: [] }
+    }
 
     const nodes = (baseGraph.nodes ?? []).map((n: any) => {
       const char = characters.find(c => nodeId(c.id) === n.id)
@@ -173,7 +182,7 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
         },
       }))
 
-    const nodeIds = new Set(nodes.map(n => n.id))
+    const nodeIds = new Set(nodes.map((n: any) => n.id))
     const allEdges = [...treeEdges, ...extraEdges].filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
 
     return { nodes, edges: allEdges }
@@ -183,48 +192,59 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
     const container = containerRef.current
     if (!container || loading || characters.length === 0) return
 
-    const graph = new Graph({
-      container,
-      data: graphData,
-      autoFit: 'view',
-      background: C.bg,
-      animation: false,
-      layout: {
-        type: 'dagre',
-        rankdir: 'LR',
-        nodesep: 50,
-        ranksep: 120,
-      },
-      node: {
-        type: 'rect',
-        style: {
-          size: [80, 34],
-          radius: 17,
-          lineWidth: 2,
-          cursor: 'pointer',
-          labelFontSize: 13,
-          labelFontWeight: 600,
-          labelPlacement: 'center' as const,
-          labelOffsetY: 0,
+    let graph: Graph | null = null
+    try {
+      graph = new Graph({
+        container,
+        data: graphData,
+        autoFit: 'view',
+        background: C.bg,
+        animation: false,
+        layout: {
+          type: 'dagre',
+          rankdir: 'LR',
+          nodesep: 50,
+          ranksep: 120,
         },
-      },
-      edge: {
-        type: 'polyline',
-        style: {
-          stroke: C.edge,
-          lineWidth: 2,
+        node: {
+          type: 'rect',
+          style: {
+            size: [80, 34],
+            radius: 17,
+            lineWidth: 2,
+            cursor: 'pointer',
+            labelFontSize: 13,
+            labelFontWeight: 600,
+            labelPlacement: 'center' as const,
+            labelOffsetY: 0,
+          },
         },
-      },
-      behaviors: [
-        'drag-canvas',
-        'zoom-canvas',
-        'drag-element',
-        'optimize-viewport-transform',
-      ],
-    })
-
-    graphRef.current = graph
-    graph.render()
+        edge: {
+          type: 'polyline',
+          style: {
+            stroke: C.edge,
+            lineWidth: 2,
+          },
+        },
+        behaviors: [
+          'drag-canvas',
+          'zoom-canvas',
+          'drag-element',
+          'optimize-viewport-transform',
+        ],
+      })
+      graphRef.current = graph
+      graph.render().catch((err: unknown) => {
+        console.error('Graph render failed:', err)
+      })
+    } catch (err) {
+      console.error('Graph init/render failed:', err)
+      if (graph) {
+        try { graph.destroy() } catch { /* ignore */ }
+        if (graphRef.current === graph) graphRef.current = null
+      }
+      return
+    }
 
     graph.on('node:click', (event: any) => {
       const rawId = event.target?.id || ''
@@ -235,15 +255,15 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
       }
     })
 
-    const ro = new ResizeObserver(() => graph.resize())
+    const ro = new ResizeObserver(() => graph!.resize())
     ro.observe(container)
 
     return () => {
       ro.disconnect()
-      graph.destroy()
+      graph!.destroy()
       if (graphRef.current === graph) graphRef.current = null
     }
-  }, [characters.length, graphData, loading])
+  }, [characters, C.bg, C.edge, graphData, loading])
 
   const treeEdgeCount = (graphData.edges ?? []).filter(e => e.type === 'polyline').length
   const extraEdgeCount = (graphData.edges ?? []).filter(e => e.type === 'line').length
@@ -254,10 +274,10 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <UsersRound className="h-4 w-4 text-tag-blue-foreground" />
-            角色关系图
+            {t('character.relationGraphTitle')}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {characters.length} 个角色 · {treeEdgeCount} 条主要关系 · {extraEdgeCount} 条其他关系
+            {t('character.characterCount', { count: characters.length })} · {t('character.mainRelationCount', { count: treeEdgeCount })} · {t('character.otherRelationCount', { count: extraEdgeCount })}
           </div>
         </div>
         <div className="flex items-center gap-1.5 rounded-md border border-border/80 bg-card/82 p-1 shadow-sm backdrop-blur">
@@ -265,7 +285,7 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
             type="button"
             onClick={() => graphRef.current?.fitView({ when: 'always' }, { duration: 360, easing: 'ease-in-out' })}
             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title="适配视图"
+            title={t('character.fitView')}
           >
             <LocateFixed className="h-3.5 w-3.5" />
           </button>
@@ -273,7 +293,7 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
             type="button"
             onClick={load}
             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title="刷新"
+            title={t('character.refresh')}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -302,7 +322,7 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
             </div>
 
             {!hasContent ? (
-              <p className="text-xs text-muted-foreground">暂无详细信息</p>
+              <p className="text-xs text-muted-foreground">{t('character.noDetailInfo')}</p>
             ) : (
               <div className="space-y-3">
                 {desc && (
@@ -315,14 +335,14 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
                         onClick={() => setExpanded(!expanded)}
                         className="text-xs text-tag-blue-foreground hover:text-tag-blue-foreground mt-0.5"
                       >
-                        {expanded ? '收起' : '展开'}
+                        {expanded ? t('character.collapse') : t('character.expand')}
                       </button>
                     )}
                   </div>
                 )}
                 {brief && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">简介</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t('character.intro')}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">{brief}</p>
                   </div>
                 )}
@@ -335,7 +355,7 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
                 )}
                 {abilities.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">能力</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t('character.abilities')}</p>
                     <div className="flex flex-wrap gap-1">
                       {abilities.map((a, i) => (
                         <span key={i} className="inline-block rounded bg-secondary px-2 py-0.5 text-xs text-muted-foreground">{a}</span>
@@ -350,21 +370,21 @@ export default function CharacterGraph({ novelId, focusId }: Props) {
       })()}
 
       <div className="absolute right-5 bottom-5 z-10 flex items-center gap-3 rounded-md border border-border bg-card/84 px-3 py-2 text-[11px] text-muted-foreground shadow-sm backdrop-blur">
-        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-7 rounded bg-blue-500" />主要</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-0 w-7 border-t border-dashed border-border" />其他</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-7 rounded bg-tag-blue-foreground" />{t('character.main')}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-0 w-7 border-t border-dashed border-border" />{t('character.other')}</span>
       </div>
 
       {error ? (
         <div className="relative z-10 flex h-full items-center justify-center text-sm text-rose-500">{error}</div>
       ) : loading ? (
-        <div className="relative z-10 flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+        <div className="relative z-10 flex h-full items-center justify-center text-sm text-muted-foreground">{t('character.loading')}</div>
       ) : characters.length === 0 ? (
         <div className="relative z-10 flex h-full items-center justify-center">
           <div className="text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-tag-blue text-tag-blue-foreground shadow-sm">
               <UsersRound className="h-6 w-6" />
             </div>
-            <div className="mt-3 text-sm font-medium text-foreground">暂无角色</div>
+            <div className="mt-3 text-sm font-medium text-foreground">{t('character.noCharacters')}</div>
           </div>
         </div>
       ) : (

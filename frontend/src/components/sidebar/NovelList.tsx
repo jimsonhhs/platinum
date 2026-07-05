@@ -1,4 +1,5 @@
 import { Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import BookCover from '@/components/sidebar/BookCover'
 import type { novel } from '@/hooks/useApp'
@@ -21,11 +22,12 @@ export default function NovelList({
   showCreate, setShowCreate, title, setTitle, description, setDescription,
   onCreateNovel,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <>
       <div className="flex items-center justify-between px-3 py-2.5 border-b">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          作品 ({novels.length})
+          {t('sidebar.novelsCount', { count: novels.length })}
         </span>
         <button
           onClick={() => setShowCreate(true)}
@@ -40,18 +42,18 @@ export default function NovelList({
           <input
             type="text" value={title} autoFocus
             onChange={e => setTitle(e.target.value)}
-            placeholder="书名"
+            placeholder={t('sidebar.bookTitle')}
             className="w-full h-8 rounded-md border bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <input
             type="text" value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="简介（可选）"
+            placeholder={t('sidebar.bookSummary')}
             className="w-full h-8 rounded-md border bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <div className="flex gap-2">
-            <Button size="sm" onClick={onCreateNovel}>创建</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setShowCreate(false); setTitle(''); setDescription('') }}>取消</Button>
+            <Button size="sm" onClick={onCreateNovel}>{t('sidebar.create')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setShowCreate(false); setTitle(''); setDescription('') }}>{t('sidebar.cancel')}</Button>
           </div>
         </div>
       )}

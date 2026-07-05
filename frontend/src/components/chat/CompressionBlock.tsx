@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import './CompressionBlock.css'
 
 interface Props {
@@ -6,6 +7,7 @@ interface Props {
 }
 
 export default function CompressionBlock({ phase }: Props) {
+  const { t } = useTranslation()
   const [seconds, setSeconds] = useState(0)
 
   useEffect(() => {
@@ -23,7 +25,7 @@ export default function CompressionBlock({ phase }: Props) {
     return (
       <div className="compression-block">
         <div className="compression-compressing">
-          <span className="compression-shimmer">正在压缩上下文（{elapsed}）</span>
+          <span className="compression-shimmer">{t('chat.compressingContext', { seconds: elapsed })}</span>
         </div>
       </div>
     )
@@ -33,7 +35,7 @@ export default function CompressionBlock({ phase }: Props) {
     <div className="compression-block">
       <div className="compression-done">
         <span className="compression-line" />
-        <span className="compression-label">已压缩上下文</span>
+        <span className="compression-label">{t('chat.compressedContext')}</span>
         <span className="compression-line" />
       </div>
     </div>

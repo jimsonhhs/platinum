@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	"novel/internal/character"
+	"novel/internal/storage"
 )
 
 // GetCharacters 返回指定小说的全部角色，供前端侧边栏列表和关系图节点渲染。
@@ -57,10 +58,8 @@ type UpdateCharacterInput struct {
 
 // UpdateCharacter 更新角色。只更新非零值字段。
 func (a *App) UpdateCharacter(novelID int64, charID int64, input UpdateCharacterInput) error {
-	if err := a.character.DB.WithContext(a.ctx).
-		Model(&character.Character{}).
-		Where("id = ? AND novel_id = ?", charID, novelID).
-		Updates(&input).Error; err != nil {
+	var ch character.Character
+	if err := storage.PatchAndSave(a.character.DB.WithContext(a.ctx), charID, novelID, &input, &ch); err != nil {
 		return fmt.Errorf("update character: %w", err)
 	}
 	return nil

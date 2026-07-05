@@ -17,6 +17,8 @@
   <img src="https://img.shields.io/badge/license-MIT-716B94?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="MIT" />
 </p>
 
+<p align="center"><strong><a href="README.md">中文版</a> | English Version</strong></p>
+
 ---
 
 <p align="center"><strong>Anyone who has tried to write a novel with a general-purpose AI knows the pain—by chapter five it forgets the protagonist's name. By chapter thirty you're manually flipping through earlier chapters hunting for that one foreshadowing line. After finishing a chapter you have to remind it yourself to "update character status" and "check arc progress." Goink doesn't have these problems. It's a desktop AI writing system with structured memory—character profiles, foreshadowing states, arc progress, location relationships, reader knowledge—the system remembers, and the Agent looks it up, edits it, and maintains it on its own.</strong></p>
@@ -87,6 +89,9 @@ Two-tier management: global preferences and per-novel preferences. By chapter th
 </p>
 
 ## Skill System: 3 Layers × 3 Modes
+
+> [!TIP]
+> **Contribute your own Skill!** Turn your writing methodology into a `.md` file and [submit a PR](skills/README_EN.md) to share it.
 
 Skills are Goink's creative methodology modules. Each Skill is defined by a single `.md` file with YAML frontmatter metadata and markdown body. **3 layers × 3 modes = 9 strategic dimensions** — precise control over what content, at what scope, with what activation model.
 
@@ -177,6 +182,8 @@ Download the installer for your platform from [Releases](https://github.com/sigp
 
 Requires an LLM API Key (built-in DeepSeek, GLM, MiMo templates; compatible with OpenAI format). Installer < 60MB. No Python, Node.js, database, or GPU required. Windows SmartScreen may show a warning (unsigned)—click "More info" → "Run anyway."
 
+> Poor network? Download from cloud drive: [https://wwayx.lanzouu.com/b0kp2iyoj](https://wwayx.lanzouu.com/b0kp2iyoj) Password: 1111
+
 ### Build From Source
 
 ```bash
@@ -204,3 +211,13 @@ make dev     # dev mode (hot reload)
 ## License
 
 MIT
+
+## Star History
+
+<a href="https://www.star-history.com/#repos=sigpanic%2Fgoink&type=Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sigpanic/goink&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sigpanic/goink&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sigpanic/goink&type=date&legend=top-left" />
+ </picture>
+</a>

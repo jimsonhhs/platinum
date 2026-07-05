@@ -1,4 +1,5 @@
 import { useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { Zap, Play, Star } from 'lucide-react'
 import type { app } from '@/hooks/useApp'
@@ -7,12 +8,6 @@ const MODE_ICON: Record<string, React.ReactNode> = {
   auto: <Zap className="w-3.5 h-3.5 text-tag-amber-foreground shrink-0" />,
   manual: <Play className="w-3.5 h-3.5 text-tag-blue-foreground shrink-0" />,
   always: <Star className="w-3.5 h-3.5 text-tag-green-foreground shrink-0" />,
-}
-
-const MODE_LABEL: Record<string, string> = {
-  auto: '智能',
-  manual: '指令',
-  always: '常驻',
 }
 
 const MODE_SELECTED_BG: Record<string, string> = {
@@ -36,7 +31,14 @@ const GAP = 8
 export default function SlashMenu({
   slashItems, filterText, selectedIndex, position, onSelect, onHover,
 }: Props) {
+  const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  const MODE_LABEL: Record<string, string> = {
+    auto: t('chat.smart'),
+    manual: t('chat.command'),
+    always: t('chat.permanent'),
+  }
 
   const q = filterText.toLowerCase()
 
@@ -95,7 +97,7 @@ export default function SlashMenu({
         className="fixed z-[9999] rounded-lg border bg-background shadow-lg px-3 py-2 text-xs text-muted-foreground"
         style={{ bottom: style.bottom, left: style.left, minWidth: style.width }}
       >
-        无匹配命令
+        {t('chat.noMatchingCommand')}
       </div>,
       document.body,
     )

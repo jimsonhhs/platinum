@@ -394,8 +394,5 @@ func retainMessages(messages []map[string]any) []map[string]any {
 
 // IsRunning 检查指定 session 是否有正在进行的 turn。
 func (a *Agent) IsRunning(sessionID string) bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	_, ok := a.cancels[sessionID]
-	return ok
+	return a.cancelMgr.IsRegistered(CancelPrefixChat + sessionID)
 }

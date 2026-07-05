@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, CheckCircle2, Loader2, Globe, ExternalLink, ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { BrowserOpenURL } from '@/lib/wailsjs/runtime/runtime'
 import type { llm } from '@/hooks/useApp'
 import TemperatureInfo from './TemperatureInfo'
@@ -17,24 +18,11 @@ interface Props {
 }
 
 export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomModel, onRemoveCustomModel, onTest, testResults, testing }: Props) {
+  const { t } = useTranslation()
   const [selectedKey, setSelectedKey] = useState(providers[0]?.key || '')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const provider = providers.find(p => p.key === selectedKey)
-  if (!provider) {
-    return <div className="text-sm text-muted-foreground p-4">暂无内置服务商</div>
-  }
-
-  const hasKey = !!provider.api_key
-  const isTesting = testing[selectedKey]
-  const testResult = testResults[selectedKey]
-
-  const allExistingIds = new Set([
-    ...(provider?.builtin_models || []).map(m => m.id),
-    ...(provider?.custom_models || []).map(m => m.id),
-  ])
 
   // 切换服务商时重置折叠和下拉状态
   useEffect(() => {
@@ -54,11 +42,25 @@ export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomMo
     return () => document.removeEventListener('mousedown', handle)
   }, [dropdownOpen])
 
+  const provider = providers.find(p => p.key === selectedKey)
+  if (!provider) {
+    return <div className="text-sm text-muted-foreground p-4">{t('settings.noBuiltinProviders')}</div>
+  }
+
+  const hasKey = !!provider.api_key
+  const isTesting = testing[selectedKey]
+  const testResult = testResults[selectedKey]
+
+  const allExistingIds = new Set([
+    ...(provider?.builtin_models || []).map(m => m.id),
+    ...(provider?.custom_models || []).map(m => m.id),
+  ])
+
   return (
     <div className="flex flex-col gap-4">
       {/* 服务商选择 + 状态 */}
       <div className="flex items-center gap-3">
-        <label className="text-xs text-muted-foreground w-14 shrink-0">服务商</label>
+        <label className="text-xs text-muted-foreground w-14 shrink-0">{t('settings.provider')}</label>
         <div className="relative flex-1" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -83,19 +85,19 @@ export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomMo
             </div>
           )}
         </div>
-        <span className={`flex items-center gap-1 text-xs shrink-0 ${hasKey ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-          {hasKey ? <><CheckCircle2 className="w-3.5 h-3.5" /> 已配置</> : '未配置'}
+        <span className={`flex items-center gap-1 text-xs shrink-0 ${hasKey ? 'text-success-foreground' : 'text-muted-foreground'}`}>
+          {hasKey ? <><CheckCircle2 className="w-3.5 h-3.5" /> {t('settings.configured')}</> : t('settings.notConfigured')}
         </span>
       </div>
 
       {/* API Key + 测试 */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-muted-foreground w-14 shrink-0">API Key</label>
+        <label className="text-xs text-muted-foreground w-14 shrink-0">{t('settings.apiKey')}</label>
         <input
           type="password"
           value={provider.api_key}
           onChange={e => onUpdate(selectedKey, { api_key: e.target.value })}
-          placeholder="输入 API Key"
+          placeholder={t('settings.enterApiKey')}
           className="flex-1 h-8 rounded-md border bg-background px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
         <button
@@ -103,13 +105,13 @@ export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomMo
           disabled={!provider.api_key || isTesting}
           className="h-8 px-2.5 rounded-md border text-xs shrink-0 hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '测试'}
+          {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : t('settings.test')}
         </button>
       </div>
 
       {/* Chat URL */}
       <div className="flex items-center gap-3">
-        <label className="text-xs text-muted-foreground w-14 shrink-0">Chat URL</label>
+        <label className="text-xs text-muted-foreground w-14 shrink-0">{t('settings.chatUrl')}</label>
         <input
           value={provider.chat_url}
           onChange={e => onUpdate(selectedKey, { chat_url: e.target.value })}
@@ -119,15 +121,15 @@ export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomMo
 
       {/* 测试结果 */}
       {testResult && (
-        <div className={`text-xs pl-[4.5rem] ${testResult.ok ? 'text-emerald-600' : 'text-red-500'}`}>
-          {testResult.ok ? '✓ 连通成功' : `✗ ${testResult.msg || '连接失败'}`}
+        <div className={`text-xs pl-[4.5rem] ${testResult.ok ? 'text-success-foreground' : 'text-red-500'}`}>
+          {testResult.ok ? t('settings.connectionSuccess') : `✗ ${testResult.msg || t('settings.connectionFailed')}`}
         </div>
       )}
 
       {/* 注册链接 */}
       {provider.platform_url && (
         <div className="flex items-center gap-3">
-          <label className="text-xs text-muted-foreground w-14 shrink-0">注册</label>
+          <label className="text-xs text-muted-foreground w-14 shrink-0">{t('settings.register')}</label>
           <button
             onClick={() => BrowserOpenURL(provider.platform_url!)}
             className="flex items-center gap-1.5 h-8 px-2.5 rounded-md border text-xs hover:bg-muted/50 transition-colors max-w-full"
@@ -147,7 +149,7 @@ export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomMo
             className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:bg-muted/30 transition-colors"
           >
             <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${helpOpen ? 'rotate-180' : ''}`} />
-            注册指引
+            {t('settings.registerGuide')}
           </button>
           <div
             className={`grid transition-all duration-300 ease-out ${
@@ -165,7 +167,7 @@ export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomMo
 
       {/* Temperature */}
       <div className="flex items-center gap-3">
-        <label className="text-xs text-muted-foreground w-14 shrink-0 flex items-center gap-1">创意度<TemperatureInfo /></label>
+        <label className="text-xs text-muted-foreground w-14 shrink-0 flex items-center gap-1">{t('settings.creativity')}<TemperatureInfo /></label>
         <input
           type="range"
           min="0"
@@ -181,14 +183,14 @@ export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomMo
       {/* 内置模型 */}
       {provider.builtin_models && provider.builtin_models.length > 0 && (
         <div>
-          <div className="text-xs text-muted-foreground mb-2">内置模型</div>
+          <div className="text-xs text-muted-foreground mb-2">{t('settings.builtinModels')}</div>
           <div className="rounded-md border divide-y">
             {provider.builtin_models.map(m => (
               <div key={m.id} className="flex items-center justify-between px-3 py-2 bg-muted/30">
                 <span className="text-sm">{m.name}</span>
                 <span className="text-xs text-muted-foreground">
-                  {m.context_window >= 1_000_000 ? (m.context_window / 1_000_000).toFixed(0) + 'M' : (m.context_window / 1_000).toFixed(0) + 'K'} 上下文
-                  {m.max_output_tokens > 0 && <> · {(m.max_output_tokens / 1_000).toFixed(0)}K 输出</>}
+                  {m.context_window >= 1_000_000 ? (m.context_window / 1_000_000).toFixed(0) + 'M' : (m.context_window / 1_000).toFixed(0) + 'K'} {t('settings.context')}
+                  {m.max_output_tokens > 0 && <> · {(m.max_output_tokens / 1_000).toFixed(0)}K {t('settings.output')}</>}
                 </span>
               </div>
             ))}
@@ -199,7 +201,7 @@ export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomMo
       {/* 自定义模型 */}
       {provider.custom_models && provider.custom_models.length > 0 && (
         <div>
-          <span className="text-xs text-muted-foreground mb-2 block">自定义模型</span>
+          <span className="text-xs text-muted-foreground mb-2 block">{t('settings.customModels')}</span>
           <div className="rounded-md border divide-y">
             {provider.custom_models.map(m => (
               <div key={m.id} className="flex items-center justify-between px-3 py-2">
@@ -208,10 +210,10 @@ export default function BuiltinProviderPane({ providers, onUpdate, onAddCustomMo
                   {(m.context_window > 0 || m.max_output_tokens > 0) && (
                     <span className="text-xs text-muted-foreground ml-2">
                       {m.context_window > 0 && (m.context_window >= 1_000_000 ? (m.context_window / 1_000_000).toFixed(0) + 'M' : (m.context_window / 1_000).toFixed(0) + 'K')}
-                      {m.max_output_tokens > 0 && <> · {(m.max_output_tokens / 1_000).toFixed(0)}K 输出</>}
-                      {m.supports_thinking ? <> · 思考</> : null}
-                      {m.reasoning_levels?.length ? <> · 等级: {m.reasoning_levels.join(',')}</> : null}
-                      {m.supports_vision ? <> · 视觉</> : null}
+                          {m.max_output_tokens > 0 && <> · {(m.max_output_tokens / 1_000).toFixed(0)}K {t('settings.output')}</>}
+                          {m.supports_thinking ? <> · {t('settings.thinking')}</> : null}
+                          {m.reasoning_levels?.length ? <> · {t('settings.level')}: {m.reasoning_levels.join(',')}</> : null}
+                          {m.supports_vision ? <> · {t('settings.vision')}</> : null}
                     </span>
                   )}
                 </div>

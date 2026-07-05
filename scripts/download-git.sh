@@ -12,11 +12,7 @@ download_mingit() {
     rm -rf "$RUNTIME_DIR/git"/*
     echo "下载 MinGit ${GIT_VERSION}..."
 
-    if ! curl -fsSL --retry 3 --connect-timeout 30 -o /tmp/mingit.zip "$url"; then
-        local mirror="https://ghproxy.net/${url}"
-        echo "GitHub 直连失败，尝试镜像..."
-        curl -fsSL --retry 3 --connect-timeout 30 -o /tmp/mingit.zip "$mirror"
-    fi
+    curl -fsSL --retry 3 --connect-timeout 30 -o /tmp/mingit.zip "$url"
 
     # 校验下载的不是 HTML 错误页
     if file /tmp/mingit.zip | grep -qi "html"; then

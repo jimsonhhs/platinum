@@ -1,4 +1,5 @@
-import { isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { isValidElement, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -37,6 +38,7 @@ function getNodeText(children: ReactNode): string {
 }
 
 function CodeBlock({ className, children }: CodeBlockProps) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const lang = className?.replace(/^language-/, '') || ''
   const code = getNodeText(children).replace(/\n$/, '')
@@ -63,9 +65,9 @@ function CodeBlock({ className, children }: CodeBlockProps) {
           type="button"
           onClick={handleCopy}
           className="markdown-code-copy"
-          aria-label="复制代码"
+          aria-label={t('markdown.copyCode')}
         >
-          {copied ? '已复制' : '复制'}
+          {copied ? t('markdown.copied') : t('markdown.copy')}
         </button>
       </div>
       <pre className="markdown-code-pre">
@@ -95,13 +97,15 @@ function loadMermaid() {
 }
 
 function MermaidBlock({ code }: { code: string }) {
+  const { t } = useTranslation()
   const [svg, setSvg] = useState('')
   const [error, setError] = useState(false)
   const [scale, setScale] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
   const isPanning = useRef(false)
   const panStart = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
-  const idRef = useRef(`m-${Math.random().toString(36).slice(2, 9)}`)
+  const uid = useId()
+  const idRef = useRef(`m-${uid.replace(/:/g, '')}`)
 
   // 防抖渲染：流式输出时 code 频繁变化，延迟等稳定后再渲染。不清空旧 SVG，避免源码/图表来回切换导致页面抖动。
   useEffect(() => {
@@ -180,9 +184,9 @@ function MermaidBlock({ code }: { code: string }) {
         <span className="markdown-code-lang">mermaid{error ? ' error' : ''}</span>
         {svg && (
           <div className="mermaid-zoom-controls">
-            <button onClick={zoomOut} disabled={scale <= 0.25} className="mermaid-zoom-btn" title="缩小">−</button>
+            <button onClick={zoomOut} disabled={scale <= 0.25} className="mermaid-zoom-btn" title={t('markdown.zoomOut')}>−</button>
             <button onClick={zoomReset} className="mermaid-zoom-label">{Math.round(scale * 100)}%</button>
-            <button onClick={zoomIn} disabled={scale >= 3} className="mermaid-zoom-btn" title="放大">+</button>
+            <button onClick={zoomIn} disabled={scale >= 3} className="mermaid-zoom-btn" title={t('markdown.zoomIn')}>+</button>
           </div>
         )}
       </div>

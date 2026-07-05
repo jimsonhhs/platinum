@@ -164,7 +164,7 @@ jobs:
           cp windows/* dist/ 2>/dev/null || true
           cp linux/* dist/ 2>/dev/null || true
           cp macos/* dist/ 2>/dev/null || true
-          cd dist && sha256sum *.{exe,AppImage,dmg} > sha256sums.txt
+          cd dist && shopt -s nullglob && sha256sum *.{exe,AppImage,dmg} > sha256sums.txt
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

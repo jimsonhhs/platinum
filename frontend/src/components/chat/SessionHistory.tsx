@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MessageSquare, Loader2, History } from 'lucide-react'
 import type { app } from '@/hooks/useApp'
 import { useApp } from '@/hooks/useApp'
@@ -10,21 +11,23 @@ interface Props {
   onSelectSession: (sessionId: string) => void
 }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const min = Math.floor(diff / 60000)
-  if (min < 1) return '刚刚'
-  if (min < 60) return `${min} 分钟前`
-  const hour = Math.floor(min / 60)
-  if (hour < 24) return `${hour} 小时前`
-  const day = Math.floor(hour / 24)
-  if (day < 30) return `${day} 天前`
-  return `${Math.floor(day / 30)} 个月前`
-}
-
 export default function SessionHistory({ open, novelId, onClose, onSelectSession }: Props) {
+  const { t } = useTranslation()
   const app = useApp()
   const [mounted, setMounted] = useState(false)
+  const [now] = useState(() => Date.now())
+
+  function timeAgo(iso: string): string {
+    const diff = now - new Date(iso).getTime()
+    const min = Math.floor(diff / 60000)
+    if (min < 1) return t('chat.justNow')
+    if (min < 60) return t('chat.minutesAgo', { count: min })
+    const hour = Math.floor(min / 60)
+    if (hour < 24) return t('chat.hoursAgo', { count: hour })
+    const day = Math.floor(hour / 24)
+    if (day < 30) return t('chat.daysAgo', { count: day })
+    return t('chat.monthsAgo', { count: Math.floor(day / 30) })
+  }
   const [visible, setVisible] = useState(false)
   const [sessions, setSessions] = useState<app.SessionMeta[]>([])
   const [total, setTotal] = useState(0)
@@ -32,11 +35,33 @@ export default function SessionHistory({ open, novelId, onClose, onSelectSession
   const [isLoading, setIsLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [search, setSearch] = useState('')
+  const [submittedSearch, setSubmittedSearch] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
   const loadingRef = useRef(false)
   const searchRef = useRef('')
 
   const loadPageRef = useRef<(p: number) => void>(null as any)
+
+  useEffect(() => {
+    loadPageRef.current = async (p: number) => {
+      if (loadingRef.current) return
+      loadingRef.current = true
+      setIsLoading(true)
+      try {
+        const result = await app.GetSessions({ novel_id: novelId, page: p, size: 20, search: searchRef.current })
+        if (result?.items) {
+          setSessions(prev => p === 1 ? result.items : [...prev, ...result.items])
+          setTotal(result.total)
+          setHasMore(result.page < result.total_pages)
+        }
+      } catch {
+        // ignore
+      } finally {
+        setIsLoading(false)
+        loadingRef.current = false
+      }
+    }
+  }, [app, novelId])
 
   useEffect(() => {
     if (open) {
@@ -54,6 +79,7 @@ export default function SessionHistory({ open, novelId, onClose, onSelectSession
     const timer = setTimeout(() => {
       if (searchRef.current !== search) {
         searchRef.current = search
+        setSubmittedSearch(search)
         setSessions([])
         setPage(1)
         setHasMore(true)
@@ -63,28 +89,10 @@ export default function SessionHistory({ open, novelId, onClose, onSelectSession
     return () => clearTimeout(timer)
   }, [search])
 
-  loadPageRef.current = async (p: number) => {
-    if (loadingRef.current) return
-    loadingRef.current = true
-    setIsLoading(true)
-    try {
-      const result = await app.GetSessions({ novel_id: novelId, page: p, size: 20, search: searchRef.current })
-      if (result?.items) {
-        setSessions(prev => p === 1 ? result.items : [...prev, ...result.items])
-        setTotal(result.total)
-        setHasMore(result.page < result.total_pages)
-      }
-    } catch {
-      // ignore
-    } finally {
-      setIsLoading(false)
-      loadingRef.current = false
-    }
-  }
-
   useEffect(() => {
     if (!open) return
     setSearch('')
+    setSubmittedSearch('')
     searchRef.current = ''
     setSessions([])
     setPage(1)
@@ -113,10 +121,10 @@ export default function SessionHistory({ open, novelId, onClose, onSelectSession
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-medium">历史会话</span>
+            <span className="text-xs font-medium">{t('chat.historySessions')}</span>
           </div>
           {total > 0 && (
-            <span className="text-[10px] text-muted-foreground">共 {total} 个</span>
+            <span className="text-[10px] text-muted-foreground">{t('chat.totalSessions', { count: total })}</span>
           )}
         </div>
       </div>
@@ -125,7 +133,7 @@ export default function SessionHistory({ open, novelId, onClose, onSelectSession
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="搜索会话..."
+          placeholder={t('chat.searchSessions')}
           className="w-full h-7 rounded-md border bg-muted/30 px-2.5 text-xs"
         />
       </div>
@@ -140,9 +148,9 @@ export default function SessionHistory({ open, novelId, onClose, onSelectSession
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           </div>
-        ) : sessions.length === 0 && searchRef.current ? (
+        ) : sessions.length === 0 && submittedSearch ? (
           <div className="flex items-center justify-center h-full">
-            <span className="text-xs text-muted-foreground">无匹配会话</span>
+            <span className="text-xs text-muted-foreground">{t('chat.noMatchingSessions')}</span>
           </div>
         ) : (
           <div className="space-y-0.5">
@@ -154,7 +162,7 @@ export default function SessionHistory({ open, novelId, onClose, onSelectSession
               >
                 <MessageSquare className="w-4 h-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs truncate">{s.title || '新对话'}</div>
+                  <div className="text-xs truncate">{s.title || t('chat.newChat')}</div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">{timeAgo(s.updated_at)}</div>
                 </div>
               </button>
@@ -165,7 +173,7 @@ export default function SessionHistory({ open, novelId, onClose, onSelectSession
               </div>
             )}
             {!hasMore && sessions.length > 0 && (
-              <div className="text-center text-[10px] text-muted-foreground py-2">已显示全部会话</div>
+              <div className="text-center text-[10px] text-muted-foreground py-2">{t('chat.allSessionsShown')}</div>
             )}
           </div>
         )}

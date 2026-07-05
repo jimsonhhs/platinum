@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Loader2, CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
 import type { TurnSegment } from './types'
 import ThinkingBlock from './ThinkingBlock'
@@ -13,15 +15,18 @@ interface Props {
   status: 'streaming' | 'done' | 'failed'
 }
 
-const agentMeta: Record<string, { label: string; emoji: string }> = {
-  memory: { label: '记忆分析师', emoji: '📝' },
-  review: { label: '审核编辑', emoji: '🔍' },
+function getAgentMeta(t: TFunction): Record<string, { label: string; emoji: string }> {
+  return {
+    memory: { label: t('chat.memoryAnalyst'), emoji: '📝' },
+    review: { label: t('chat.reviewEditor'), emoji: '🔍' },
+  }
 }
 
 export default memo(function SubagentCard({ agentType, segments, status }: Props) {
+  const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(status !== 'streaming')
   const autoExpanded = useRef(false)
-  const meta = agentMeta[agentType]
+  const meta = getAgentMeta(t)[agentType]
   const isStreaming = status === 'streaming'
   const isDone = status === 'done'
   const isFailed = status === 'failed'
@@ -42,8 +47,8 @@ export default memo(function SubagentCard({ agentType, segments, status }: Props
       autoExpanded.current = false
     }
     if (prev === 'streaming' && isDone) {
-      const t = setTimeout(() => setCollapsed(true), 1000)
-      return () => clearTimeout(t)
+      const timer = setTimeout(() => setCollapsed(true), 1000)
+      return () => clearTimeout(timer)
     }
   }, [status, isStreaming, isDone])
 
@@ -62,17 +67,17 @@ export default memo(function SubagentCard({ agentType, segments, status }: Props
 
         {isStreaming && (
           <span className="subagent-badge subagent-badge-running">
-            <Loader2 size={10} className="animate-spin" /> 执行中
+            <Loader2 size={10} className="animate-spin" /> {t('chat.executing')}
           </span>
         )}
         {isDone && (
           <span className="subagent-badge subagent-badge-done">
-            <CheckCircle2 size={10} /> 完成
+            <CheckCircle2 size={10} /> {t('chat.done')}
           </span>
         )}
         {isFailed && (
           <span className="subagent-badge subagent-badge-failed">
-            <XCircle size={10} /> 失败
+            <XCircle size={10} /> {t('chat.failed')}
           </span>
         )}
       </button>
@@ -86,11 +91,11 @@ export default memo(function SubagentCard({ agentType, segments, status }: Props
           <div className="px-3 pb-3 space-y-2 pt-2">
             {segments.length === 0 && isStreaming && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                <Loader2 size={12} className="animate-spin" /> 正在分析…
+                <Loader2 size={12} className="animate-spin" /> {t('chat.analyzing')}
               </div>
             )}
             {segments.length === 0 && !isStreaming && (
-              <div className="text-xs text-muted-foreground py-2">暂无内容</div>
+              <div className="text-xs text-muted-foreground py-2">{t('chat.noContent')}</div>
             )}
 
             {segments.map(seg => {

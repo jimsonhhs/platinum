@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MessageSquare, Loader2, History, Plus } from 'lucide-react'
 import { EventsOn } from '@/lib/wailsjs/runtime/runtime'
 import { useApp } from '@/hooks/useApp'
@@ -27,11 +28,9 @@ interface Props {
     path: string; title: string; diff: string; original: string; modified: string
     changeType: string; reason: string; toolId: string
   }) => void
+  chatPanelWidth: number
+  onChatPanelResize: (w: number) => void
 }
-
-const MIN_WIDTH = 280
-const MAX_WIDTH = 600
-const DEFAULT_WIDTH = 360
 const EVENT_REORDER_TIMEOUT = 120
 
 interface EventQueue {
@@ -45,12 +44,12 @@ interface ChatStartedEvent {
   turn_id: number
 }
 
-export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFileEdit }: Props) {
+export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFileEdit, chatPanelWidth, onChatPanelResize }: Props) {
+  const { t } = useTranslation()
   const app = useApp()
-  const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [isDragging, setIsDragging] = useState(false)
   const startXRef = useRef(0)
-  const startWidthRef = useRef(DEFAULT_WIDTH)
+  const startWidthRef = useRef(chatPanelWidth)
   const [turns, setTurns] = useState<Turn[]>([])
   const [sessionId, setSessionId] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -117,12 +116,6 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
         setApprovalMode(mode)
       }
 
-      // 恢复面板宽度
-      const w = settings?.chat_panel_width
-      if (w && w >= MIN_WIDTH && w <= MAX_WIDTH) {
-        setWidth(w)
-      }
-
       // 暂存上次会话 ID，等 novelId 加载后恢复
       if (settings?.last_session_id) {
         lastSessionIdRef.current = settings.last_session_id
@@ -131,7 +124,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
       console.error('Load models/settings failed', err)
       setInitLoadError(true)
     })
-  }, [initLoadRetry])
+  }, [app, initLoadRetry])
 
   // 加载会话列表
   useEffect(() => {
@@ -160,7 +153,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
         app.SetLastSession('').catch(() => {})
       })
     }
-  }, [novelId])
+  }, [app, novelId])
 
   // 加载历史消息
   useEffect(() => {
@@ -176,33 +169,29 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
       console.error('Load messages failed', err)
       setHistoryLoadError(true)
     }).finally(() => setIsLoadingHistory(false))
-  }, [activeSessionId, novelId, historyLoadRetry])
+  }, [app, activeSessionId, novelId, historyLoadRetry])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     setIsDragging(true)
     startXRef.current = e.clientX
-    startWidthRef.current = width
-  }, [width])
+    startWidthRef.current = chatPanelWidth
+  }, [chatPanelWidth])
 
   useEffect(() => {
     if (!isDragging) return
     const handleMouseMove = (e: MouseEvent) => {
       const delta = e.clientX - startXRef.current
-      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidthRef.current - delta))
-      setWidth(newWidth)
+      onChatPanelResize(startWidthRef.current - delta)
     }
-    const handleMouseUp = () => {
-      setIsDragging(false)
-      app.SetChatPanelWidth(Math.round(width)).catch(() => {})
-    }
+    const handleMouseUp = () => setIsDragging(false)
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isDragging, width, app])
+  }, [isDragging, onChatPanelResize])
 
   // 清理事件监听器
   useEffect(() => {
@@ -285,7 +274,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
       case AgentEventType.Error: {
         setTurns(prev => prev.map(turn =>
           turn.turnId === turnId
-            ? { ...turn, status: 'failed' as const, errorMessage: event.error || '对话出错，请重试' }
+            ? { ...turn, status: 'failed' as const, errorMessage: event.error || t('chat.chatError') }
             : turn
         ))
         return
@@ -299,19 +288,21 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
               s.type === 'subagent' && s.taskId === event.sub_task_id
             )
             if (subIdx < 0) {
-              turn.segments.push({
-                ...emptySegment(`subagent_${event.sub_task_id}`),
-                type: 'subagent',
-                status: 'streaming',
-                agentType: 'review' as const,
-                taskId: event.sub_task_id,
-                segments: [{
-                  ...emptySegment(`comp_${++counterRef.current}`),
-                  type: 'compression',
-                  compressionPhase: phase,
+              return {
+                ...turn,
+                segments: [...turn.segments, {
+                  ...emptySegment(`subagent_${event.sub_task_id}`),
+                  type: 'subagent',
+                  status: 'streaming',
+                  agentType: 'review' as const,
+                  taskId: event.sub_task_id,
+                  segments: [{
+                    ...emptySegment(`comp_${++counterRef.current}`),
+                    type: 'compression',
+                    compressionPhase: phase,
+                  }],
                 }],
-              })
-              return turn
+              }
             }
             const subSeg = { ...turn.segments[subIdx] }
             if (!subSeg.segments) subSeg.segments = []
@@ -362,9 +353,10 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
         let subIdx = turn.segments.findIndex(s =>
           s.type === 'subagent' && s.taskId === event.sub_task_id
         )
+        let updatedSegments = turn.segments
         if (subIdx < 0) {
           // run_subagent 的 ToolCall 事件还没 apply，子 Agent 事件先到了——就地创建
-          turn.segments.push({
+          const newSeg = {
             ...emptySegment(`subagent_${event.sub_task_id}`),
             type: 'subagent' as const,
             status: 'streaming' as const,
@@ -373,10 +365,11 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
             segments: [],
             finalText: '',
             toolStatus: 'executing' as const,
-          })
-          subIdx = turn.segments.length - 1
+          }
+          updatedSegments = [...turn.segments, newSeg]
+          subIdx = updatedSegments.length - 1
         }
-        const subSeg = { ...turn.segments[subIdx] }
+        const subSeg = { ...updatedSegments[subIdx] }
         if (!subSeg.segments) subSeg.segments = []
         const subSegs = [...subSeg.segments]
         const subSegId = `subseg_${++counterRef.current}`
@@ -444,7 +437,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
         }
 
         subSeg.segments = subSegs
-        const newSegs = [...turn.segments]
+        const newSegs = [...updatedSegments]
         newSegs[subIdx] = subSeg
         return { ...turn, segments: newSegs }
       }
@@ -591,12 +584,12 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
             let title = `diff: ${path}`
             if (path.startsWith('chapters/')) {
               const num = path.replace('chapters/', '').replace('.md', '')
-              title = `diff: 第${parseInt(num)}章`
+              title = `diff: ${t('chat.diffChapter', { n: parseInt(num) })}`
             } else if (path === 'goink.md') {
-              title = 'diff: 故事状态'
+              title = `diff: ${t('chat.diffStoryStatus')}`
             } else if (path.startsWith('outlines/')) {
               const num = path.replace('outlines/', '').replace('.md', '')
-              title = `diff: 第${parseInt(num)}章大纲`
+              title = `diff: ${t('chat.diffChapterOutline', { n: parseInt(num) })}`
             }
             onApprovalFileEditRef.current?.({
               path,
@@ -617,7 +610,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
           return turn
       }
     }))
-  }, [])
+  }, [t])
 
   const flushEventQueue = useCallback((turnId: number, force = false) => {
     const queue = eventQueuesRef.current.get(turnId)
@@ -748,7 +741,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
         }
         return t
       }))
-    } catch (err: any) {
+    } catch {
       // 压缩失败，移除 compressing turn
       setTurns(prev => prev.filter(t => t.id !== compTurnId))
     } finally {
@@ -861,13 +854,13 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
 
 
   const inputPlaceholder = !hasNovel
-    ? '请先选择作品'
+    ? t('chat.selectNovelFirst')
     : !selectedKey
-      ? '请先配置模型'
-      : '输入消息，按 / 调用技能...'
+      ? t('chat.configureModelFirst')
+      : t('chat.inputPlaceholder')
 
   return (
-    <aside className="shrink-0 flex flex-col bg-sidebar border-l relative overflow-hidden" style={{ width }}>
+    <aside className="shrink-0 flex flex-col bg-sidebar border-l relative overflow-hidden" style={{ width: chatPanelWidth }}>
       <div
         className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors z-10 select-none"
         style={{ marginLeft: -2 }}
@@ -875,31 +868,31 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
       />
 
       <div className="px-4 py-2.5 border-b shrink-0 flex items-center justify-between select-none">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">AI 对话</span>
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('chat.aiChat')}</span>
         <div className="flex items-center gap-2">
           <button
             onClick={handleOpenHistory}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            <History className="w-3.5 h-3.5" /> 历史
+            <History className="w-3.5 h-3.5" /> {t('chat.history')}
           </button>
           <button
             onClick={handleNewChat}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" /> 新对话
+            <Plus className="w-3.5 h-3.5" /> {t('chat.newChat')}
           </button>
         </div>
       </div>
 
       {initLoadError && (
         <div className="px-4 py-2 bg-danger-bg border-b border-danger-border text-xs text-red-600 flex items-center justify-between shrink-0">
-          <span>加载设置失败，模型列表和偏好可能不准确</span>
+          <span>{t('chat.loadSettingsFailed')}</span>
           <button
             onClick={() => setInitLoadRetry(n => n + 1)}
             className="underline hover:text-destructive cursor-pointer"
           >
-            重试
+            {t('chat.retry')}
           </button>
         </div>
       )}
@@ -918,7 +911,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <MessageSquare className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">选择作品开始对话</p>
+              <p className="text-sm text-muted-foreground">{t('chat.selectNovel')}</p>
             </div>
           </div>
         ) : showRecent ? (
@@ -938,12 +931,12 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
             {historyLoadError ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <p className="text-sm text-red-500 mb-2">加载消息失败</p>
+                  <p className="text-sm text-red-500 mb-2">{t('chat.loadMessagesFailed')}</p>
                   <button
                     onClick={() => setHistoryLoadRetry(n => n + 1)}
                     className="text-xs text-primary underline cursor-pointer"
                   >
-                    重试
+                    {t('chat.retry')}
                   </button>
                 </div>
               </div>
@@ -951,7 +944,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <MessageSquare className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">输入消息开始对话</p>
+                  <p className="text-sm text-muted-foreground">{t('chat.startConversation')}</p>
                 </div>
               </div>
             ) : (
@@ -1045,14 +1038,14 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
                     {turn.status === 'interrupted' && (
                       <div className="flex justify-center">
                         <div className="bg-danger-bg border border-danger-border rounded-lg px-3 py-2 text-xs text-red-500 max-w-[80%]">
-                          对话被中断
+                          {t('chat.chatInterrupted')}
                         </div>
                       </div>
                     )}
                     {turn.status === 'stopped' && (
                       <div className="flex justify-center">
                         <div className="bg-muted/50 border rounded-lg px-3 py-2 text-xs text-muted-foreground max-w-[80%]">
-                          对话已停止
+                          {t('chat.chatStopped')}
                         </div>
                       </div>
                     )}

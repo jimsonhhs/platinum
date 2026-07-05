@@ -80,10 +80,8 @@ type UpdateStoryArcInput struct {
 
 // UpdateStoryArc 更新叙事弧线。只更新非零值字段。
 func (a *App) UpdateStoryArc(novelID int64, arcID int64, input UpdateStoryArcInput) error {
-	if err := a.storyarc.DB.WithContext(a.ctx).
-		Model(&storyarc.StoryArc{}).
-		Where("id = ? AND novel_id = ?", arcID, novelID).
-		Updates(&input).Error; err != nil {
+	var arc storyarc.StoryArc
+	if err := storage.PatchAndSave(a.storyarc.DB.WithContext(a.ctx), arcID, novelID, &input, &arc); err != nil {
 		return fmt.Errorf("update story arc: %w", err)
 	}
 	return nil
@@ -145,10 +143,8 @@ type UpdateArcNodeInput struct {
 
 // UpdateArcNode 更新弧线节点。只更新非零值字段。
 func (a *App) UpdateArcNode(novelID int64, nodeID int64, input UpdateArcNodeInput) error {
-	if err := a.storyarc.DB.WithContext(a.ctx).
-		Model(&storyarc.ArcNode{}).
-		Where("id = ? AND novel_id = ?", nodeID, novelID).
-		Updates(&input).Error; err != nil {
+	var node storyarc.ArcNode
+	if err := storage.PatchAndSave(a.storyarc.DB.WithContext(a.ctx), nodeID, novelID, &input, &node); err != nil {
 		return fmt.Errorf("update arc node: %w", err)
 	}
 	return nil

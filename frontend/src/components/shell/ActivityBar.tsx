@@ -1,24 +1,27 @@
 import type { LucideIcon } from 'lucide-react'
-import { Library, List, Search, Settings, Users, MapPin, GitBranch, History, Eye, Wrench } from 'lucide-react'
+import { Library, List, Search, Settings, Users, MapPin, GitBranch, History, GitGraph, Eye, Wrench, Sparkles } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface Activity {
   id: string
   icon: LucideIcon
-  label: string
+  labelKey: string
   disabled?: boolean
 }
 
 const activities: Activity[] = [
-  { id: 'search', icon: Search, label: '搜索' },
-  { id: 'novels', icon: Library, label: '书架' },
-  { id: 'chapters', icon: List, label: '章节' },
-  { id: 'preferences', icon: Settings, label: '偏好' },
-  { id: 'characters', icon: Users, label: '角色' },
-  { id: 'locations', icon: MapPin, label: '地点' },
-  { id: 'storyarcs', icon: GitBranch, label: '弧线' },
-  { id: 'timeline', icon: History, label: '时间线' },
-  { id: 'reader', icon: Eye, label: '读者视角' },
-  { id: 'skills', icon: Wrench, label: '技能' },
+  { id: 'search', icon: Search, labelKey: 'shell.search' },
+  { id: 'novels', icon: Library, labelKey: 'shell.bookshelf' },
+  { id: 'chapters', icon: List, labelKey: 'shell.chapters' },
+  { id: 'preferences', icon: Settings, labelKey: 'shell.preference' },
+  { id: 'characters', icon: Users, labelKey: 'shell.characters' },
+  { id: 'locations', icon: MapPin, labelKey: 'shell.locations' },
+  { id: 'storyarcs', icon: GitBranch, labelKey: 'shell.arcs' },
+  { id: 'timeline', icon: History, labelKey: 'shell.timeline' },
+  { id: 'git', icon: GitGraph, labelKey: 'shell.gitHistory' },
+  { id: 'reader', icon: Eye, labelKey: 'shell.readerView' },
+  { id: 'skills', icon: Wrench, labelKey: 'shell.skills' },
+  { id: 'style-samples', icon: Sparkles, labelKey: 'shell.extract' },
 ]
 
 interface Props {
@@ -27,6 +30,8 @@ interface Props {
 }
 
 export default function ActivityBar({ activeId, onSelect }: Props) {
+  const { t } = useTranslation()
+
   return (
     <nav className="w-12 flex flex-col items-center py-3 gap-1.5 border-r bg-sidebar select-none cursor-default">
       {activities.map((a, i) => {
@@ -38,7 +43,7 @@ export default function ActivityBar({ activeId, onSelect }: Props) {
             <button
               disabled={a.disabled}
               onClick={() => onSelect(a.id)}
-              title={`${a.label}${a.disabled ? '（即将推出）' : ''}`}
+              title={`${t(a.labelKey)}${a.disabled ? t('shell.comingSoon') : ''}`}
               className={`relative w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
                 ${a.disabled

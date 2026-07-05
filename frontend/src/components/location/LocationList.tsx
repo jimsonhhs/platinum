@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ChevronRight, MapPin, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { location } from '@/hooks/useApp'
 
@@ -33,6 +34,7 @@ function buildTree(locations: location.Location[]): TreeNode[] {
 
 export default function LocationList({ novelId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
 
   const [locations, setLocations] = useState<location.Location[]>([])
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
@@ -46,7 +48,7 @@ export default function LocationList({ novelId }: Props) {
   useEffect(() => { load() }, [load])
 
   async function handleDelete(locId: number) {
-    if (!confirm('确定要删除该地点吗？子地点将变为根节点，关联的空间关系也会被删除。')) return
+    if (!confirm(t('location.confirmDeleteWithChildren'))) return
     try {
       await app.DeleteLocation(novelId, locId)
       await load()
@@ -96,7 +98,7 @@ export default function LocationList({ novelId }: Props) {
           <button
             onClick={(e) => { e.stopPropagation(); handleDelete(loc.id) }}
             className="shrink-0 p-0.5 rounded text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-            title="删除"
+            title={t('location.delete')}
           >
             <Trash2 className="h-3 w-3" />
           </button>
@@ -114,14 +116,14 @@ export default function LocationList({ novelId }: Props) {
     <>
       <div className="flex items-center justify-between px-3 py-2.5 border-b">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          地点 ({locations.length})
+          {t('location.location')} ({locations.length})
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto overscroll-contain">
         {tree.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-xs text-muted-foreground">暂无地点</p>
+            <p className="text-xs text-muted-foreground">{t('location.noLocations')}</p>
           </div>
         ) : (
           tree.map(node => renderNode(node, 0))

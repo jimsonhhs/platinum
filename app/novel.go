@@ -57,7 +57,7 @@ func (a *App) CreateNovel(input CreateNovelInput) (*novel.Novel, error) {
 		return nil, fmt.Errorf("failed to create novel: %w", err)
 	}
 
-	if _, err := git.New(n.ID); err != nil {
+	if _, err := git.New(n.ID, a.settings.GitName, a.settings.GitEmail, a.logger); err != nil {
 		a.novel.DB.WithContext(a.ctx).Delete(&n) // 回滚孤儿 DB 记录
 		return nil, fmt.Errorf("failed to init novel repo: %w", err)
 	}
@@ -253,7 +253,7 @@ func (a *App) DeletePreference(id int64) error {
 
 // SaveCover 保存小说封面并提交到 Git 仓库。
 func (a *App) SaveCover(novelID int64, data []byte) error {
-	repo, err := git.New(novelID)
+	repo, err := git.New(novelID, a.settings.GitName, a.settings.GitEmail, a.logger)
 	if err != nil {
 		return fmt.Errorf("save cover: %w", err)
 	}
@@ -332,7 +332,7 @@ func (a *App) ExportNovel(novelID int64, format string) error {
 
 // DeleteCover 删除小说封面并提交到 Git 仓库。
 func (a *App) DeleteCover(novelID int64) error {
-	repo, err := git.New(novelID)
+	repo, err := git.New(novelID, a.settings.GitName, a.settings.GitEmail, a.logger)
 	if err != nil {
 		return fmt.Errorf("delete cover: %w", err)
 	}

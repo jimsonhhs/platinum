@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Graph, treeToGraphData } from '@antv/g6'
 import { LocateFixed, Map as MapIcon, RefreshCw, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import { useGraphColors } from '@/components/graphColors'
 import type { location } from '@/hooks/useApp'
@@ -15,6 +16,7 @@ const NODE_COLOR = { fill: '#dbeafe', stroke: '#3b82f6', text: '#1d4ed8' }
 function nodeId(id: number) { return `location-${id}` }
 
 function safeJson<T>(json: string, fallback: T): T {
+  if (json == null) return fallback
   try { return JSON.parse(json) }
   catch { return fallback }
 }
@@ -35,6 +37,7 @@ function buildTreeData(locs: location.Location[]) {
 
 export default function LocationGraph({ novelId, focusId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
   const C = useGraphColors()
   const containerRef = useRef<HTMLDivElement>(null)
   const graphRef = useRef<Graph | null>(null)
@@ -58,11 +61,11 @@ export default function LocationGraph({ novelId, focusId }: Props) {
       setLocations(locList ?? [])
       setRelations(relList ?? [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('location.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [app, novelId])
+  }, [app, novelId, t])
 
   useEffect(() => { load() }, [load])
 
@@ -76,7 +79,13 @@ export default function LocationGraph({ novelId, focusId }: Props) {
   const graphData = useMemo(() => {
     const locIds = new Set(locations.map(l => l.id))
     const treeData = buildTreeData(locations)
-    const baseGraph = treeToGraphData(treeData)
+    let baseGraph: any
+    try {
+      baseGraph = treeToGraphData(treeData)
+    } catch (err) {
+      console.error('treeToGraphData failed:', err)
+      return { nodes: [], edges: [] }
+    }
 
     const nodes = (baseGraph.nodes ?? []).map((n: any) => {
       const loc = locations.find(l => nodeId(l.id) === n.id)
@@ -99,16 +108,18 @@ export default function LocationGraph({ novelId, focusId }: Props) {
       }
     })
 
-    const containEdges = (baseGraph.edges ?? []).map((e: any) => ({
-      ...e,
-      type: 'polyline',
-      style: {
-        stroke: C.edge,
-        lineWidth: 2,
-        endArrow: true,
-        endArrowSize: 10,
-      },
-    }))
+    const containEdges = (baseGraph.edges ?? [])
+      .filter((e: any) => e.source !== '__root__' && e.target !== '__root__')
+      .map((e: any) => ({
+        ...e,
+        type: 'polyline',
+        style: {
+          stroke: C.edge,
+          lineWidth: 2,
+          endArrow: true,
+          endArrowSize: 10,
+        },
+      }))
 
     const containPairs = new Set(
       locations.filter(l => l.parent_location_id).map(l => `${l.parent_location_id}-${l.id}`)
@@ -141,45 +152,56 @@ export default function LocationGraph({ novelId, focusId }: Props) {
     const container = containerRef.current
     if (!container || loading || locations.length === 0) return
 
-    const graph = new Graph({
-      container,
-      data: graphData,
-      autoFit: 'view',
-      background: C.bg,
-      animation: false,
-      node: {
-        type: 'rect',
-        style: {
-          radius: 17,
-          lineWidth: 2,
-          cursor: 'pointer',
-          labelPlacement: 'center' as const,
-          labelOffsetY: 0,
+    let graph: Graph | null = null
+    try {
+      graph = new Graph({
+        container,
+        data: graphData,
+        autoFit: 'view',
+        background: C.bg,
+        animation: false,
+        node: {
+          type: 'rect',
+          style: {
+            radius: 17,
+            lineWidth: 2,
+            cursor: 'pointer',
+            labelPlacement: 'center' as const,
+            labelOffsetY: 0,
+          },
         },
-      },
-      edge: {
-        type: 'polyline',
-        style: {
-          stroke: C.edge,
-          lineWidth: 2,
+        edge: {
+          type: 'polyline',
+          style: {
+            stroke: C.edge,
+            lineWidth: 2,
+          },
         },
-      },
-      layout: {
-        type: 'dagre',
-        rankdir: 'LR',
-        nodesep: 50,
-        ranksep: 120,
-      },
-      behaviors: [
-        'drag-canvas',
-        'zoom-canvas',
-        'drag-element',
-        'optimize-viewport-transform',
-      ],
-    })
-
-    graphRef.current = graph
-    graph.render()
+        layout: {
+          type: 'dagre',
+          rankdir: 'LR',
+          nodesep: 50,
+          ranksep: 120,
+        },
+        behaviors: [
+          'drag-canvas',
+          'zoom-canvas',
+          'drag-element',
+          'optimize-viewport-transform',
+        ],
+      })
+      graphRef.current = graph
+      graph.render().catch((err: unknown) => {
+        console.error('Graph render failed:', err)
+      })
+    } catch (err) {
+      console.error('Graph init/render failed:', err)
+      if (graph) {
+        try { graph.destroy() } catch { /* ignore */ }
+        if (graphRef.current === graph) graphRef.current = null
+      }
+      return
+    }
 
     graph.on('node:click', (event: any) => {
       const rawId = event.target?.id || ''
@@ -190,15 +212,15 @@ export default function LocationGraph({ novelId, focusId }: Props) {
       }
     })
 
-    const ro = new ResizeObserver(() => graph.resize())
+    const ro = new ResizeObserver(() => graph!.resize())
     ro.observe(container)
 
     return () => {
       ro.disconnect()
-      graph.destroy()
+      graph!.destroy()
       if (graphRef.current === graph) graphRef.current = null
     }
-  }, [locations.length, graphData, loading])
+  }, [locations, C.bg, C.edge, graphData, loading])
 
   const containCount = locations.filter(l => l.parent_location_id).length
 
@@ -207,11 +229,11 @@ export default function LocationGraph({ novelId, focusId }: Props) {
       <div className="absolute left-5 right-5 top-4 z-10 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <MapIcon className="h-4 w-4 text-teal-500" />
-            地点关系图
+            <MapIcon className="h-4 w-4 text-tag-teal-foreground" />
+            {t('location.relationGraphTitle')}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {locations.length} 个地点 · {containCount} 条包含关系 · {relations.length} 条空间关系
+            {t('location.locationCount', { count: locations.length })} · {t('location.containRelationCount', { count: containCount })} · {t('location.spatialRelationCount', { count: relations.length })}
           </div>
         </div>
         <div className="flex items-center gap-1.5 rounded-md border border-border/80 bg-card/82 p-1 shadow-sm backdrop-blur">
@@ -219,7 +241,7 @@ export default function LocationGraph({ novelId, focusId }: Props) {
             type="button"
             onClick={() => graphRef.current?.fitView({ when: 'always' }, { duration: 360, easing: 'ease-in-out' })}
             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title="适配视图"
+            title={t('location.fitView')}
           >
             <LocateFixed className="h-3.5 w-3.5" />
           </button>
@@ -227,7 +249,7 @@ export default function LocationGraph({ novelId, focusId }: Props) {
             type="button"
             onClick={load}
             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title="刷新"
+            title={t('location.refresh')}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -235,8 +257,8 @@ export default function LocationGraph({ novelId, focusId }: Props) {
       </div>
 
       <div className="absolute right-5 bottom-5 z-10 flex items-center gap-3 rounded-md border border-border bg-card/84 px-3 py-2 text-[11px] text-muted-foreground shadow-sm backdrop-blur">
-        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-7 rounded bg-blue-500" />包含</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-0 w-7 border-t border-dashed border-border" />空间</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-7 rounded bg-tag-blue-foreground" />{t('location.contain')}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-0 w-7 border-t border-dashed border-border" />{t('location.spatial')}</span>
       </div>
 
       {selectedLocation && (() => {
@@ -264,7 +286,7 @@ export default function LocationGraph({ novelId, focusId }: Props) {
             )}
 
             {!hasContent ? (
-              <p className="text-xs text-muted-foreground">暂无详细信息</p>
+              <p className="text-xs text-muted-foreground">{t('location.noDetailInfo')}</p>
             ) : (
               <div className="space-y-3">
                 {desc && (
@@ -277,7 +299,7 @@ export default function LocationGraph({ novelId, focusId }: Props) {
                         onClick={() => setExpanded(!expanded)}
                         className="text-xs text-tag-blue-foreground hover:text-tag-blue-foreground mt-0.5"
                       >
-                        {expanded ? '收起' : '展开'}
+                        {expanded ? t('location.collapse') : t('location.expand')}
                       </button>
                     )}
                   </div>
@@ -312,14 +334,14 @@ export default function LocationGraph({ novelId, focusId }: Props) {
       {error ? (
         <div className="relative z-10 flex h-full items-center justify-center text-sm text-rose-500">{error}</div>
       ) : loading ? (
-        <div className="relative z-10 flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+        <div className="relative z-10 flex h-full items-center justify-center text-sm text-muted-foreground">{t('location.loading')}</div>
       ) : locations.length === 0 ? (
         <div className="relative z-10 flex h-full items-center justify-center">
           <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-teal-50 text-teal-500 shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-tag-teal text-tag-teal-foreground shadow-sm">
               <MapIcon className="h-6 w-6" />
             </div>
-            <div className="mt-3 text-sm font-medium text-foreground">暂无地点</div>
+            <div className="mt-3 text-sm font-medium text-foreground">{t('location.noLocations')}</div>
           </div>
         </div>
       ) : (

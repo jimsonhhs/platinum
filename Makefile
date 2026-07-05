@@ -1,8 +1,9 @@
-.PHONY: dev build frontend-dev frontend-build clean deps package
+.PHONY: dev build frontend-dev frontend-build clean deps package lint
 
 APP_NAME  := goink
 VERSION   ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_DIR := build
+LDFLAGS   := -X internal/version.Version=$(VERSION)
 
 # 启动 Wails 开发模式（Go 后端 + Vite HMR 前端）
 dev:
@@ -27,7 +28,7 @@ frontend:
 
 # 生产构建（需先 deps）
 build: deps frontend
-	wails build -tags webkit2_41 -o $(APP_NAME)
+	wails build -tags webkit2_41 -o $(APP_NAME) -ldflags "$(LDFLAGS)"
 
 # 纯前端开发（浏览器模式，后端不可用）
 frontend-dev:
@@ -36,6 +37,10 @@ frontend-dev:
 # 纯前端构建
 frontend-build:
 	cd frontend && npm run build
+
+# 前端 ESLint 检查（阻断 error，允许现有 warn）
+lint:
+	cd frontend && npx eslint .
 
 # 打包（按当前平台）
 package:
@@ -60,4 +65,9 @@ package-macos: build
 
 # 清理构建产物
 clean:
+ifeq ($(OS),Windows_NT)
+	powershell -Command "Remove-Item -Recurse -Force frontend/dist, frontend/node_modules, $(BUILD_DIR)/runtime, $(BUILD_DIR)/dist, $(BUILD_DIR)/bin -ErrorAction SilentlyContinue"
+	powershell -Command "Remove-Item -Force goink.exe -ErrorAction SilentlyContinue"
+else
 	rm -rf frontend/dist frontend/node_modules $(BUILD_DIR)/runtime $(BUILD_DIR)/dist $(BUILD_DIR)/bin $(APP_NAME)
+endif

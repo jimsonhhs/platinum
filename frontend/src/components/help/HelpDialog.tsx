@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { BookOpen, Wrench, Bot, Wand2, Cpu, Zap, ShieldCheck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { BookOpen, Wrench, Bot, Wand2, Cpu, Zap, ShieldCheck, Heart } from 'lucide-react'
+import SkillContributeDialog from '@/components/skill/SkillContributeDialog'
 
 type Tab = 'quickstart' | 'tools' | 'subagents' | 'skills' | 'llm' | 'context' | 'approval'
 
@@ -8,7 +10,7 @@ interface Props {
   onClose: () => void
 }
 
-// ── 工具参考（硬编码用户描述） ──────────────────────────
+// ── 工具参考（i18n key） ──────────────────────────
 
 interface ToolEntry {
   name: string
@@ -17,86 +19,87 @@ interface ToolEntry {
 
 const toolGroups: { label: string; tools: ToolEntry[] }[] = [
   {
-    label: '小说管理',
+    label: 'help.toolGroupNovel',
     tools: [
-      { name: 'get_chapter_list', desc: '浏览小说的章节列表，按章节号排序，支持翻页。' },
-      { name: 'read', desc: '读取小说相关文件的内容，包括章节正文、大纲、故事状态和技能文件。' },
-      { name: 'get_characters', desc: '查看小说中所有角色的列表，支持按名称搜索。' },
-      { name: 'create_character', desc: '在小说中创建新角色，设定姓名、外貌、性格等属性。' },
-      { name: 'update_character', desc: '修改已有角色的信息，如更新状态、补充背景故事。' },
-      { name: 'get_locations', desc: '查看小说中所有地点的列表，支持列表、详情和关系网络三种模式。' },
-      { name: 'create_location', desc: '在小说中创建新地点，填写名称、描述、类型等信息。' },
-      { name: 'update_location', desc: '修改已有地点的信息。' },
-      { name: 'delete_record', desc: '删除指定记录（角色、地点、时间线条目等），删除前自动检查关联数据。' },
+      { name: 'get_chapter_list', desc: 'help.toolRef_get_chapter_list' },
+      { name: 'read', desc: 'help.toolRef_read' },
+      { name: 'get_characters', desc: 'help.toolRef_get_characters' },
+      { name: 'create_character', desc: 'help.toolRef_create_character' },
+      { name: 'update_character', desc: 'help.toolRef_update_character' },
+      { name: 'get_locations', desc: 'help.toolRef_get_locations' },
+      { name: 'create_location', desc: 'help.toolRef_create_location' },
+      { name: 'update_location', desc: 'help.toolRef_update_location' },
+      { name: 'delete_record', desc: 'help.toolRef_delete_record' },
     ],
   },
   {
-    label: '记忆检索',
+    label: 'help.toolGroupMemory',
     tools: [
-      { name: 'get_preferences', desc: '查看当前的创作偏好设置，包括写作风格、叙事规则等。' },
-      { name: 'get_character_relations', desc: '查看角色之间的关系图谱，了解角色间的互动和联系。' },
-      { name: 'get_timeline', desc: '查看小说的时间线，包括伏笔、事件条目和章节计划。' },
-      { name: 'get_story_arcs', desc: '查看故事弧线的整体结构，了解各情节线的进展状态。' },
-      { name: 'get_reader_perspective', desc: '查看读者认知状态，追踪读者在不同阶段知道什么、疑惑什么。' },
-      { name: 'search_story_memory', desc: '使用语义搜索在小说内容中查找相关信息，支持自然语言描述查询。' },
+      { name: 'get_preferences', desc: 'help.toolRef_get_preferences' },
+      { name: 'get_character_relations', desc: 'help.toolRef_get_character_relations' },
+      { name: 'get_timeline', desc: 'help.toolRef_get_timeline' },
+      { name: 'get_story_arcs', desc: 'help.toolRef_get_story_arcs' },
+      { name: 'get_reader_perspective', desc: 'help.toolRef_get_reader_perspective' },
+      { name: 'search_story_memory', desc: 'help.toolRef_search_story_memory' },
     ],
   },
   {
-    label: '写作辅助',
+    label: 'help.toolGroupWriting',
     tools: [
-      { name: 'create_preference', desc: '添加新的创作偏好或写作规则。' },
-      { name: 'update_preference', desc: '修改已有的创作偏好。' },
-      { name: 'update_character_relationship', desc: '编辑或更新角色之间的关系（朋友、敌人、恋人之类）。' },
-      { name: 'create_location_relation', desc: '创建地点之间的空间关系（相邻、包含等）。' },
-      { name: 'update_location_relation', desc: '修改已有的地点关系。' },
-      { name: 'create_timeline_entry', desc: '创建新的伏笔或时间线条目，用于规划情节发展。' },
-      { name: 'update_timeline_entry', desc: '修改已有的伏笔或时间线条目。' },
-      { name: 'update_chapter_plan', desc: '更新章节的三层计划槽位（next / near / far），规划后续写作方向。' },
-      { name: 'create_story_arc', desc: '创建新的故事弧线，用于追踪一条完整的情节线。' },
-      { name: 'update_story_arc', desc: '修改故事弧线的信息和状态。' },
-      { name: 'create_arc_node', desc: '向故事弧线中添加节点，标记关键剧情转折点。' },
-      { name: 'update_arc_node', desc: '修改故事弧线中某个节点的信息。' },
-      { name: 'create_reader_perspective_entry', desc: '创建新的读者认知条目，定义读者在特定时刻的所知所感。' },
-      { name: 'update_reader_perspective_entry', desc: '修改已有的读者认知条目。' },
-      { name: 'edit', desc: '编辑小说文件（章节、大纲、故事状态、技能），支持全文替换、查找替换和行范围替换三种模式。' },
-      { name: 'run_subagent', desc: '启动专项子代理执行复杂任务（记忆检索或章节审稿），子代理独立运行后返回报告。' },
-      { name: 'web_search', desc: '联网搜索真实信息，获取实时数据、新闻或参考资料用于写作。' },
-      { name: 'web_fetch', desc: '抓取指定网页的正文内容，返回清洗后的纯净文本供参考。' },
+      { name: 'create_preference', desc: 'help.toolRef_create_preference' },
+      { name: 'update_preference', desc: 'help.toolRef_update_preference' },
+      { name: 'update_character_relationship', desc: 'help.toolRef_update_character_relationship' },
+      { name: 'create_location_relation', desc: 'help.toolRef_create_location_relation' },
+      { name: 'update_location_relation', desc: 'help.toolRef_update_location_relation' },
+      { name: 'create_timeline_entry', desc: 'help.toolRef_create_timeline_entry' },
+      { name: 'update_timeline_entry', desc: 'help.toolRef_update_timeline_entry' },
+      { name: 'update_chapter_plan', desc: 'help.toolRef_update_chapter_plan' },
+      { name: 'create_story_arc', desc: 'help.toolRef_create_story_arc' },
+      { name: 'update_story_arc', desc: 'help.toolRef_update_story_arc' },
+      { name: 'create_arc_node', desc: 'help.toolRef_create_arc_node' },
+      { name: 'update_arc_node', desc: 'help.toolRef_update_arc_node' },
+      { name: 'create_reader_perspective_entry', desc: 'help.toolRef_create_reader_perspective_entry' },
+      { name: 'update_reader_perspective_entry', desc: 'help.toolRef_update_reader_perspective_entry' },
+      { name: 'edit', desc: 'help.toolRef_edit' },
+      { name: 'run_subagent', desc: 'help.toolRef_run_subagent' },
+      { name: 'web_search', desc: 'help.toolRef_web_search' },
+      { name: 'web_fetch', desc: 'help.toolRef_web_fetch' },
     ],
   },
 ]
 
-// ── 子代理介绍 ──────────────────────────────────────────
+// ── 子代理介绍（i18n key） ──────────────────────────────────
 
 const subAgentCards = [
   {
     type: 'memory',
-    name: '记忆检索分析员',
-    desc: '只读子代理，能在大量故事数据中并行搜索，将分散的角色、地点、时间线、伏笔等信息整合为连贯的报告。适合需要回溯大量设定、查找隐藏约束或跨章节信息关联的场景。',
-    example: '例如：让 AI "查一下第三至五章中所有与某某角色相关的伏笔是否都已回收"。',
+    name: 'help.subAgentMemory',
+    desc: 'help.subagent_memoryDesc',
+    example: 'help.subagent_memoryExample',
   },
   {
     type: 'review',
-    name: '章节审稿人',
-    desc: '只读子代理，对指定章节进行多维度质量审查，逐项检查角色一致性、情节逻辑、伏笔管理、读者认知和故事弧线推进，输出结构化的审稿报告。',
-    example: '例如：让 AI "审一下第八章，看看主角的性格表现是否与前几章一致"。',
+    name: 'help.subAgentReview',
+    desc: 'help.subagent_reviewDesc',
+    example: 'help.subagent_reviewExample',
   },
 ]
 
 // ── Tab 定义 ─────────────────────────────────────────────
 
-const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'quickstart', label: '快速入门', icon: <BookOpen className="w-4 h-4" /> },
-  { id: 'tools', label: '工具参考', icon: <Wrench className="w-4 h-4" /> },
-  { id: 'subagents', label: '子代理', icon: <Bot className="w-4 h-4" /> },
-  { id: 'skills', label: '技能系统', icon: <Wand2 className="w-4 h-4" /> },
-  { id: 'llm', label: '模型配置', icon: <Cpu className="w-4 h-4" /> },
-  { id: 'context', label: '上下文与缓存', icon: <Zap className="w-4 h-4" /> },
-  { id: 'approval', label: '审批模式', icon: <ShieldCheck className="w-4 h-4" /> },
-]
-
 export default function HelpDialog({ open, onClose }: Props) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<Tab>('quickstart')
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'quickstart', label: t('help.quickStart'), icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'tools', label: t('help.toolReference'), icon: <Wrench className="w-4 h-4" /> },
+    { id: 'subagents', label: t('help.subagents'), icon: <Bot className="w-4 h-4" /> },
+    { id: 'skills', label: t('help.skillSystem'), icon: <Wand2 className="w-4 h-4" /> },
+    { id: 'llm', label: t('help.modelConfig'), icon: <Cpu className="w-4 h-4" /> },
+    { id: 'context', label: t('help.contextAndCache'), icon: <Zap className="w-4 h-4" /> },
+    { id: 'approval', label: t('help.approvalMode'), icon: <ShieldCheck className="w-4 h-4" /> },
+  ]
 
   if (!open) return null
 
@@ -107,7 +110,7 @@ export default function HelpDialog({ open, onClose }: Props) {
       <div className="relative bg-background rounded-xl shadow-2xl border flex w-[960px] h-[680px] max-w-[95vw] max-h-[90vh]">
         {/* 左侧导航 */}
         <nav className="w-[160px] border-r py-4 px-2 flex flex-col gap-1 shrink-0">
-          <div className="text-sm font-medium px-3 pb-3 text-foreground">帮助</div>
+          <div className="text-sm font-medium px-3 pb-3 text-foreground">{t('help.help')}</div>
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -152,56 +155,54 @@ export default function HelpDialog({ open, onClose }: Props) {
 // ── 快速入门 ─────────────────────────────────────────────
 
 function QuickStartTab() {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 max-w-none">
       <section>
-        <h2 className="text-lg font-semibold mb-2">欢迎使用 Goink</h2>
+        <h2 className="text-lg font-semibold mb-2">{t('help.quickStart_welcomeTitle')}</h2>
         <p className="text-muted-foreground leading-relaxed">
-          Goink 是一款桌面端 AI 小说写作助手。它不只是聊天机器人——它理解你的小说世界，
-          能管理角色、地点、时间线、故事弧线等创作要素，并通过 AI 对话辅助你写作、审稿和构思。
+          {t('help.quickStart_welcomeDesc')}
         </p>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">界面概览</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.quickStart_uiOverview')}</h3>
         <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
           <div>
-            <span className="text-foreground font-medium">左侧活动栏</span>
-            —— 切换不同功能面板：搜索、小说、章节、偏好、角色、地点、故事弧线、时间线、读者视角、技能。
-            点击图标即可进入对应面板。
+            <span className="text-foreground font-medium">{t('help.quickStart_leftBar')}</span>
+            —— {t('help.quickStart_leftBarDesc')}
           </div>
           <div>
-            <span className="text-foreground font-medium">中间内容区</span>
-            —— 显示当前面板的主要内容，如章节列表、角色关系图、地点网络图等。
+            <span className="text-foreground font-medium">{t('help.quickStart_centerContent')}</span>
+            —— {t('help.quickStart_centerContentDesc')}
           </div>
           <div>
-            <span className="text-foreground font-medium">右侧聊天面板</span>
-            —— 与 AI 对话的核心区域。你可以在这里让 AI 帮你写作、查资料、审稿、管理创作要素。
-            AI 会自动调用合适的工具来完成你的需求。
+            <span className="text-foreground font-medium">{t('help.quickStart_rightChat')}</span>
+            —— {t('help.quickStart_rightChatDesc')}
           </div>
           <div>
-            <span className="text-foreground font-medium">底部状态栏</span>
-            —— 显示当前操作状态和文件编辑信息。
+            <span className="text-foreground font-medium">{t('help.quickStart_bottomStatus')}</span>
+            —— {t('help.quickStart_bottomStatusDesc')}
           </div>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">基本工作流</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.quickStart_workflow')}</h3>
         <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-          <p>1. <span className="text-foreground font-medium">创建小说</span> —— 在小说面板中创建你的第一部小说。</p>
-          <p>2. <span className="text-foreground font-medium">告诉 AI 你想写什么</span> —— 在右侧聊天面板中描述你的想法，AI 会根据需要自动创建角色、地点、章节等内容。</p>
-          <p>3. <span className="text-foreground font-medium">享受与 AI 协作的时刻</span> —— AI 帮你写作、审稿、管理伏笔和故事弧线，你在左侧面板中随时查看和调整一切。</p>
+          <p>1. <span className="text-foreground font-medium">{t('help.quickStart_step1')}</span> —— {t('help.quickStart_step1Desc')}</p>
+          <p>2. <span className="text-foreground font-medium">{t('help.quickStart_step2')}</span> —— {t('help.quickStart_step2Desc')}</p>
+          <p>3. <span className="text-foreground font-medium">{t('help.quickStart_step3')}</span> —— {t('help.quickStart_step3Desc')}</p>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">核心概念</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.quickStart_coreConcepts')}</h3>
         <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-          <p><span className="text-foreground font-medium">工具（Tools）</span> —— AI 可以调用的一系列操作能力，如读取章节、创建角色、搜索记忆等。你可以在「工具参考」标签页查看完整列表。</p>
-          <p><span className="text-foreground font-medium">子代理（Sub-agents）</span> —— 专门执行特定任务的独立 AI，如记忆检索和章节审稿。它们拥有独立的上下文窗口，不会干扰主对话。</p>
-          <p><span className="text-foreground font-medium">技能（Skills）</span> —— 预定义的写作技法和流程模板，AI 可以根据需要调用。你也可以创建自己的技能。</p>
-          <p><span className="text-foreground font-medium">审批模式</span> —— 聊天面板底部可切换自动/手动审批。手动模式下 AI 的编辑和删除操作需要你确认后才会执行。</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptTools')}</span> —— {t('help.quickStart_conceptToolsDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptSubagents')}</span> —— {t('help.quickStart_conceptSubagentsDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptSkills')}</span> —— {t('help.quickStart_conceptSkillsDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptApproval')}</span> —— {t('help.quickStart_conceptApprovalDesc')}</p>
         </div>
       </section>
     </div>
@@ -211,19 +212,20 @@ function QuickStartTab() {
 // ── 工具参考 ─────────────────────────────────────────────
 
 function ToolsTab() {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        以下是 AI 可调用的全部工具，按功能领域分组。当你在聊天中向 AI 提出需求时，AI 会自动选择合适的工具来完成任务。
+        {t('help.toolRef_intro')}
       </p>
       {toolGroups.map(group => (
         <section key={group.label}>
-          <h3 className="text-base font-semibold mb-3">{group.label}</h3>
+          <h3 className="text-base font-semibold mb-3">{t(group.label)}</h3>
           <div className="space-y-2">
             {group.tools.map(tool => (
               <div key={tool.name} className="rounded-lg border bg-card px-4 py-3">
                 <code className="text-sm font-medium text-primary">{tool.name}</code>
-                <p className="text-sm text-muted-foreground mt-1">{tool.desc}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t(tool.desc)}</p>
               </div>
             ))}
           </div>
@@ -236,30 +238,29 @@ function ToolsTab() {
 // ── 子代理 ───────────────────────────────────────────────
 
 function SubAgentsTab() {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 max-w-none">
       <section>
-        <h2 className="text-lg font-semibold mb-2">什么是子代理</h2>
+        <h2 className="text-lg font-semibold mb-2">{t('help.subagent_whatIsTitle')}</h2>
         <p className="text-muted-foreground leading-relaxed">
-          子代理是拥有独立上下文窗口和专属工具集的 AI 分身。它们专注于执行特定类型的复杂任务，
-          运行结束后将结果报告返回给主对话。主对话上下文不会被子代理的中间过程撑满，
-          因此子代理特别适合需要大量检索和多轮分析的任务。
+          {t('help.subagent_whatIsDesc')}
         </p>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-3">可用子代理类型</h3>
+        <h3 className="text-base font-medium mb-3">{t('help.subagent_availableTypes')}</h3>
         <div className="space-y-4">
           {subAgentCards.map(sa => (
             <div key={sa.type} className="rounded-lg border bg-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Bot className="w-4 h-4 text-primary" />
-                <h4 className="font-semibold">{sa.name}</h4>
+                <h4 className="font-semibold">{t(sa.name)}</h4>
                 <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{sa.type}</code>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-2">{sa.desc}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-2">{t(sa.desc)}</p>
               <div className="text-sm text-muted-foreground bg-muted/50 rounded px-3 py-2">
-                {sa.example}
+                {t(sa.example)}
               </div>
             </div>
           ))}
@@ -267,11 +268,9 @@ function SubAgentsTab() {
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">如何使用</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.subagent_howToUse')}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          在聊天中直接告诉 AI 你的需求即可，AI 会自动判断是否需要启动子代理。
-          例如：「帮我检查第四章有没有与前面设定的矛盾之处」「帮我整理所有关于王婆婆的伏笔」。
-          你也可以明确要求 AI 用特定子代理来处理任务。
+          {t('help.subagent_howToUseDesc')}
         </p>
       </section>
     </div>
@@ -281,53 +280,63 @@ function SubAgentsTab() {
 // ── 技能系统 ─────────────────────────────────────────────
 
 function SkillsTab() {
+  const { t } = useTranslation()
+  const [showContribute, setShowContribute] = useState(false)
   return (
     <div className="space-y-6 max-w-none">
       <section>
-        <h2 className="text-lg font-semibold mb-2">什么是技能</h2>
+        <h2 className="text-lg font-semibold mb-2">{t('help.skill_whatIsTitle')}</h2>
         <p className="text-muted-foreground leading-relaxed">
-          技能（Skill）是预定义的写作技法或工作流程模板。每个技能包含一段专门的提示词，
-          当 AI 调用某个技能时，这段提示词会临时加入对话上下文，引导 AI 按照特定的方法论来完成任务。
+          {t('help.skill_whatIsDesc')}
         </p>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">技能的三层结构</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.skill_threeLayers')}</h3>
         <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-          <p><span className="text-foreground font-medium">内置技能</span> —— 应用自带的基础写作技能，如头脑风暴、角色设计、对话潜台词、节奏控制等，所有小说通用。</p>
-          <p><span className="text-foreground font-medium">用户级技能</span> —— 你在用户目录下创建的技能，适用于你的所有小说。命名相同时会覆盖同名的内置技能。</p>
-          <p><span className="text-foreground font-medium">小说级技能</span> —— 仅在当前小说中生效的技能，优先级最高。适合为特定项目定制的专属技法。</p>
+          <p><span className="text-foreground font-medium">{t('help.skill_builtin')}</span> —— {t('help.skill_builtinDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.skill_userLevel')}</span> —— {t('help.skill_userLevelDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.skill_novelLevel')}</span> —— {t('help.skill_novelLevelDesc')}</p>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">如何使用技能</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.skill_howToUse')}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          在聊天中直接描述你的需求，AI 会自动判断是否需要调用技能。
-          你也可以明确让 AI 使用某个技能，例如「用头脑风暴技能帮我想几个开场方式」。
-          当前可用的技能列表可以在左侧活动栏的「技能」面板中查看。
+          {t('help.skill_howToUseDesc')}
         </p>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">如何创建自定义技能</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.skill_howToCreate')}</h3>
         <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
-          <p>技能是 Markdown 格式的文件，包含 YAML 头部和正文。创建一个技能只需要：</p>
+          <p>{t('help.skill_howToCreateIntro')}</p>
           <div className="bg-muted/50 rounded-lg p-4 font-mono text-xs leading-relaxed">
             <p className="text-foreground/60">---</p>
-            <p>name: <span className="text-foreground">我的写作技法</span></p>
-            <p>description: <span className="text-foreground">简要描述这个技能的用途，以及何时适合调用</span></p>
-            <p>category: <span className="text-foreground">写作技法</span></p>
+            <p>name: <span className="text-foreground">{t('help.skill_mdName')}</span></p>
+            <p>description: <span className="text-foreground">{t('help.skill_mdDescription')}</span></p>
+            <p>category: <span className="text-foreground">{t('help.skill_mdCategory')}</span></p>
             <p className="text-foreground/60">---</p>
-            <p className="mt-2 text-foreground/60"># 正文（给 AI 的提示词）</p>
-            <p className="mt-1 text-foreground/80">这里是详细的指导内容，告诉 AI 在执行这个技能时应该遵循什么步骤、采用什么风格、注意什么要点……</p>
+            <p className="mt-2 text-foreground/60">{t('help.skill_mdBodyTitle')}</p>
+            <p className="mt-1 text-foreground/80">{t('help.skill_mdBodyContent')}</p>
           </div>
           <p className="mt-3">
-            创建好后，将文件放入用户技能目录（在左侧「技能」面板中可以看到路径），或通过 AI 的 edit 工具直接创建。
-            技能面板会自动检测新文件并加载。
+            {t('help.skill_howToCreateAfter')}
           </p>
         </div>
       </section>
+
+      <section className="pt-2 border-t">
+        <button
+          onClick={() => setShowContribute(true)}
+          className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors cursor-pointer"
+        >
+          <Heart className="w-4 h-4" />
+          {t('skill.contribute')}
+        </button>
+      </section>
+
+      <SkillContributeDialog open={showContribute} onClose={() => setShowContribute(false)} />
     </div>
   )
 }
@@ -335,87 +344,82 @@ function SkillsTab() {
 // ── 模型配置 ─────────────────────────────────────────────
 
 function LLMConfigTab() {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 max-w-none">
       <section>
-        <h2 className="text-lg font-semibold mb-2">为什么需要配置模型</h2>
+        <h2 className="text-lg font-semibold mb-2">{t('help.model_whyConfigTitle')}</h2>
         <p className="text-muted-foreground leading-relaxed">
-          Goink 本身不提供 AI 模型，你需要接入第三方大模型服务才能使用 AI 功能。
-          配置过程就是告诉 Goink：用哪个服务商的哪个模型、API Key 是什么。
-          配置入口在 <span className="text-foreground font-medium">设置 → 模型配置</span>。
+          {t('help.model_whyConfigDesc')}
         </p>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">两种服务商类型</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.model_providerTypes')}</h3>
         <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
           <div className="rounded-lg border bg-card px-4 py-3">
-            <h4 className="text-foreground font-medium mb-1">内置服务商</h4>
+            <h4 className="text-foreground font-medium mb-1">{t('help.model_builtinProvider')}</h4>
             <p>
-              应用预置了 5 个主流服务商：<span className="text-foreground">DeepSeek</span>、<span className="text-foreground">GLM（智谱）</span>、<span className="text-foreground">MiniMax</span>、<span className="text-foreground">MiMo（小米）</span>、<span className="text-foreground">Kimi（月之暗面）</span>。
-              每个内置服务商自带官方模型列表，你只需要填入 API Key 即可使用。API Key 需要在对应服务商的官网注册获取。
+              {t('help.model_builtinProviderDesc')}
             </p>
           </div>
           <div className="rounded-lg border bg-card px-4 py-3">
-            <h4 className="text-foreground font-medium mb-1">自定义服务商</h4>
+            <h4 className="text-foreground font-medium mb-1">{t('help.model_customProvider')}</h4>
             <p>
-              如果你的模型服务兼容 OpenAI API 格式（例如本地部署的 Ollama、vLLM，或其他第三方代理），
-              可以添加自定义服务商。你需要提供名称、Chat API 地址和 API Key，然后手动添加或自动发现模型。
+              {t('help.model_customProviderDesc')}
             </p>
           </div>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">模型管理</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.model_management')}</h3>
         <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-          <p>每个服务商可以配置多个模型，有两种方式添加：</p>
+          <p>{t('help.model_managementIntro')}</p>
           <div className="space-y-2">
-            <p><span className="text-foreground font-medium">自动发现</span> —— 点击「自动发现」按钮，Goink 会调用服务商的 /models 接口，列出所有可用模型。勾选需要的模型导入即可。并非所有服务商都支持此功能。</p>
-            <p><span className="text-foreground font-medium">手动添加</span> —— 点击「+ 添加」按钮，手动填写模型 ID、名称、上下文窗口大小、最大输出长度等信息。</p>
+            <p><span className="text-foreground font-medium">{t('help.model_autoDiscover')}</span> —— {t('help.model_autoDiscoverDesc')}</p>
+            <p><span className="text-foreground font-medium">{t('help.model_manualAdd')}</span> —— {t('help.model_manualAddDesc')}</p>
           </div>
-          <p className="mt-3">模型参数说明：</p>
+          <p className="mt-3">{t('help.model_paramsIntro')}</p>
           <div className="space-y-1">
-            <p><span className="text-foreground">上下文窗口</span> —— 模型一次能处理的最大 token 数，决定 AI 能「记住」多长的对话和资料。</p>
-            <p><span className="text-foreground">最大输出</span> —— 模型单次回复的最大 token 数。</p>
-            <p><span className="text-foreground">支持深度思考</span> —— 开启后模型会在回复前进行内部推理，适合复杂创作任务。部分模型还支持选择推理程度（low / high / max）。</p>
-            <p><span className="text-foreground">支持视觉</span> —— 开启后模型可以理解和分析图片。</p>
+            <p><span className="text-foreground">{t('help.model_paramContext')}</span> —— {t('help.model_paramContextDesc')}</p>
+            <p><span className="text-foreground">{t('help.model_paramMaxOutput')}</span> —— {t('help.model_paramMaxOutputDesc')}</p>
+            <p><span className="text-foreground">{t('help.model_paramThinking')}</span> —— {t('help.model_paramThinkingDesc')}</p>
+            <p><span className="text-foreground">{t('help.model_paramVision')}</span> —— {t('help.model_paramVisionDesc')}</p>
           </div>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">创意度（Temperature）</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.model_temperature')}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          控制模型输出的随机性和创造性。范围 0 ~ 2，值越高输出越有创意和不可预测，
-          值越低输出越确定和保守。写作创作场景通常建议 0.7 ~ 1.0，需要严格遵循设定时可适当降低。
-          注意：Kimi 服务商的 temperature 由模型内部固定，配置值不生效。
+          {t('help.model_temperatureDesc')}
         </p>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">测试与保存</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.model_testAndSave')}</h3>
         <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-          <p>1. 填写 API Key 和模型后，点击「测试」按钮验证连接是否正常。测试会发送一个最小请求，不会消耗额度。</p>
-          <p>2. 测试通过后点击「保存配置」，所有配置（含 API Key）会被加密存储到本地磁盘。</p>
-          <p>3. 保存后即可在聊天面板顶部的模型选择器中看到已配置的模型，选择即可使用。</p>
+          <p>{t('help.model_testStep1')}</p>
+          <p>{t('help.model_testStep2')}</p>
+          <p>{t('help.model_testStep3')}</p>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">常见问题</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.model_faq')}</h3>
         <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
           <div>
-            <p className="text-foreground font-medium">测试连接失败？</p>
-            <p>检查 API Key 是否正确、网络是否可达。如果服务商不支持自动发现，请尝试手动添加模型。</p>
+            <p className="text-foreground font-medium">{t('help.model_faqTestFail')}</p>
+            <p>{t('help.model_faqTestFailDesc')}</p>
           </div>
           <div>
-            <p className="text-foreground font-medium">API Key 安全吗？</p>
-            <p>API Key 以 AES-256 加密存储在本地磁盘（<code className="text-xs bg-muted px-1 rounded">~/Goink/llm_config.enc</code>）。注意这只防磁盘文件扫描，不防设备被物理破解。</p>
+            <p className="text-foreground font-medium">{t('help.model_faqApiKeySafe')}</p>
+            <p>{t('help.model_faqApiKeySafeDesc')}</p>
           </div>
           <div>
-            <p className="text-foreground font-medium">可以配置多个服务商吗？</p>
-            <p>可以。所有填了 API Key 的服务商都会保存。在聊天时通过模型选择器切换即可。</p>
+            <p className="text-foreground font-medium">{t('help.model_faqMultipleProviders')}</p>
+            <p>{t('help.model_faqMultipleProvidersDesc')}</p>
           </div>
         </div>
       </section>
@@ -426,95 +430,82 @@ function LLMConfigTab() {
 // ── 上下文与缓存 ─────────────────────────────────────────
 
 function ContextCacheTab() {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 max-w-none">
       <section>
-        <h2 className="text-lg font-semibold mb-2">什么是上下文和缓存</h2>
+        <h2 className="text-lg font-semibold mb-2">{t('help.context_whatIsTitle')}</h2>
         <p className="text-muted-foreground leading-relaxed">
-          每次与 AI 对话时，Goink 会把对话历史、系统提示词（System1/2/3）打包成「上下文」发送给模型。
-          主流大模型服务商会缓存对话前缀——如果连续多轮对话的前缀不变，模型可以直接复用之前的计算结果（KV 缓存），
-          跳过重复处理，从而降低费用和延迟。这就是「缓存命中」。
+          {t('help.context_whatIsDesc')}
         </p>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">缓存命中率</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.context_cacheHitRate')}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          聊天面板底部的状态环会显示<span className="text-foreground font-medium">缓存命中率</span>。
-          高命中率（接近 100%）意味着大部分上下文被缓存，费用更低、响应更快。
-          低命中率意味着模型需要重新计算大量内容，费用会上升。
+          {t('help.context_cacheHitRateDesc')}
         </p>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">什么会导致缓存命中率下降</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.context_dropReasons')}</h3>
         <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
           <div className="rounded-lg border bg-card px-4 py-3">
-            <h4 className="text-foreground font-medium mb-1">切换模型</h4>
+            <h4 className="text-foreground font-medium mb-1">{t('help.context_switchModel')}</h4>
             <p>
-              在对话中途切换到不同服务商的模型，缓存会从头开始计算。因为缓存是服务商侧的，
-              换到新服务商意味着全新的缓存周期，命中率会暂时降至 0%。
-              即使是同一服务商的不同模型，某些服务商也可能清空缓存。
+              {t('help.context_switchModelDesc')}
             </p>
           </div>
           <div className="rounded-lg border bg-card px-4 py-3">
-            <h4 className="text-foreground font-medium mb-1">上下文压缩</h4>
+            <h4 className="text-foreground font-medium mb-1">{t('help.context_contextCompress')}</h4>
             <p>
-              压缩会重建对话前缀（生成新摘要、重建 System1/2/3），开始新的缓存周期。
-              虽然短期内命中率下降，但能控制 token 消耗，是必要的取舍。
+              {t('help.context_contextCompressDesc')}
             </p>
           </div>
           <div className="rounded-lg border bg-card px-4 py-3">
-            <h4 className="text-foreground font-medium mb-1">新建会话</h4>
+            <h4 className="text-foreground font-medium mb-1">{t('help.context_newSession')}</h4>
             <p>
-              新会话从零开始构建上下文，没有任何缓存可以复用，命中率为 0% 是正常现象。
-              随着对话轮次增加，命中率会逐渐上升。
+              {t('help.context_newSessionDesc')}
             </p>
           </div>
           <div className="rounded-lg border bg-card px-4 py-3">
-            <h4 className="text-foreground font-medium mb-1">缓存时效</h4>
+            <h4 className="text-foreground font-medium mb-1">{t('help.context_cacheTTL')}</h4>
             <p>
-              服务商的缓存不是永久的——如果一段时间不使用该会话，服务商可能会清空缓存。
-              下次回来继续对话时，命中率会重新开始计算。这也是建议完成阶段性工作后
-              及时压缩的原因之一（见下方实用建议）。
+              {t('help.context_cacheTTLDesc')}
             </p>
           </div>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">上下文压缩</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.context_compressTitle')}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-          随着对话进行，历史消息越积越多，最终会触及模型的上下文窗口上限（每个模型有不同的窗口大小）。
-          压缩机制会保留最近的消息，将旧消息交给 AI 生成一份摘要，然后用摘要替代旧消息，释放空间。
+          {t('help.context_compressIntro')}
         </p>
 
         <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
           <div className="rounded-lg border bg-card px-4 py-3">
-            <h4 className="text-foreground font-medium mb-1">自动压缩</h4>
+            <h4 className="text-foreground font-medium mb-1">{t('help.context_autoCompress')}</h4>
             <p>
-              当 token 使用量达到模型上下文窗口的 <span className="text-foreground">80%</span> 时自动触发。
-              无需手动操作，系统会在下一轮对话前自动完成压缩。你会看到「正在压缩上下文」的提示。
+              {t('help.context_autoCompressDesc')}
             </p>
           </div>
           <div className="rounded-lg border bg-card px-4 py-3">
-            <h4 className="text-foreground font-medium mb-1">手动压缩</h4>
+            <h4 className="text-foreground font-medium mb-1">{t('help.context_manualCompress')}</h4>
             <p>
-              聊天面板底部状态环上有一个压缩按钮。当你完成一个阶段的工作、
-              或者上下文过于冗长时，可以手动触发压缩，让 AI 在精简后的摘要基础上继续。
-              手动压缩会立即生效。
+              {t('help.context_manualCompressDesc')}
             </p>
           </div>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">实用建议</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.context_tips')}</h3>
         <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-          <p>• <span className="text-foreground font-medium">避免在对话中途频繁切换模型</span>。如果确实需要换模型，考虑开启新会话，让缓存从新服务商开始累积。</p>
-          <p>• <span className="text-foreground font-medium">完成阶段性工作后，及时压缩或新开会话</span>。当你写完一章、完成一轮审稿等节点，可以手动压缩或新建会话，避免上下文越来越臃肿。</p>
-          <p>• <span className="text-foreground font-medium">如果要暂离一段时间，走之前手动压缩</span>。服务商的缓存有时效性，隔段时间回来缓存可能已清空。如果当前 token 已经很多，与其回来面对高 token + 零缓存的局面，不如离开前压缩好，回来直接在新摘要基础上继续。</p>
-          <p>• <span className="text-foreground font-medium">长对话定期压缩是正常的</span>，短暂的命中率下降换来的是更低的 token 消耗和更快的响应。</p>
+          <p>• <span className="text-foreground font-medium">{t('help.context_tip1Label')}</span>。{t('help.context_tip1Desc')}</p>
+          <p>• <span className="text-foreground font-medium">{t('help.context_tip2Label')}</span>。{t('help.context_tip2Desc')}</p>
+          <p>• <span className="text-foreground font-medium">{t('help.context_tip3Label')}</span>。{t('help.context_tip3Desc')}</p>
+          <p>• <span className="text-foreground font-medium">{t('help.context_tip4Label')}</span>，{t('help.context_tip4Desc')}</p>
         </div>
       </section>
     </div>
@@ -524,50 +515,46 @@ function ContextCacheTab() {
 // ── 审批模式 ─────────────────────────────────────────────
 
 function ApprovalTab() {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 max-w-none">
       <section>
-        <h2 className="text-lg font-semibold mb-2">两种创作姿态，自由切换</h2>
+        <h2 className="text-lg font-semibold mb-2">{t('help.approval_title')}</h2>
         <p className="text-muted-foreground leading-relaxed">
-          Goink 同时支持「AI 自主创作」和「精细化协同审批」两种模式。你不需要二选一，
-          随时在聊天面板底部切换，适应不同阶段的创作需求。
+          {t('help.approval_intro')}
         </p>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-3">自动模式</h3>
+        <h3 className="text-base font-medium mb-3">{t('help.approval_autoMode')}</h3>
         <div className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground leading-relaxed">
           <p>
-            AI 直接执行所有操作——创建角色、编辑章节、删除记录……一切自动完成，你只需要看着。
-            适合快速推进、灵感爆发的场景，或者你更习惯「事后检查」而非「事前审批」的工作节奏。
+            {t('help.approval_autoModeDesc')}
           </p>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-3">手动审批模式</h3>
+        <h3 className="text-base font-medium mb-3">{t('help.approval_manualMode')}</h3>
         <div className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground leading-relaxed space-y-3">
           <p>
-            AI 提出的每一个写操作——编辑章节、删除记录等——
-            都会先暂停，以审批卡片的形式嵌入聊天流中，等待你的决定。
+            {t('help.approval_manualModeIntro')}
           </p>
           <div className="space-y-2">
-            <p><span className="text-foreground font-medium">批准</span> —— 确认执行，AI 继续工作。</p>
-            <p><span className="text-foreground font-medium">拒绝</span> —— 不执行此次操作，AI 按你的反馈调整方向。</p>
-            <p><span className="text-foreground font-medium">修改后批准</span> —— 在 AI 的编辑基础上手动调整内容，再确认执行。这个能力对于章节写作尤其关键——AI 出初稿，你精修后直接提交。</p>
+            <p><span className="text-foreground font-medium">{t('help.approval_approve')}</span> —— {t('help.approval_approveDesc')}</p>
+            <p><span className="text-foreground font-medium">{t('help.approval_reject')}</span> —— {t('help.approval_rejectDesc')}</p>
+            <p><span className="text-foreground font-medium">{t('help.approval_modifyApprove')}</span> —— {t('help.approval_modifyApproveDesc')}</p>
           </div>
           <p className="text-muted-foreground/80">
-            适合对设定一致性要求高、不希望 AI 擅自改动的场景，如关键章节写作、角色设定修改、删除操作等。
-            这种模式下，你始终掌握最终决定权。
+            {t('help.approval_manualModeNote')}
           </p>
         </div>
       </section>
 
       <section>
-        <h3 className="text-base font-medium mb-2">如何切换</h3>
+        <h3 className="text-base font-medium mb-2">{t('help.approval_howToSwitch')}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          聊天面板底部工具栏中有一个<span className="text-foreground font-medium">「自动」</span>按钮。
-          点击可在手动审批和自动模式之间切换，切换立即生效——对话进行中也可以随时改变模式。
+          {t('help.approval_howToSwitchDesc')}
         </p>
       </section>
     </div>

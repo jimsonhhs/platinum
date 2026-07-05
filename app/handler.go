@@ -25,6 +25,7 @@ import (
 	"novel/internal/search"
 	"novel/internal/session"
 	"novel/internal/skill"
+	"novel/internal/style"
 	"novel/internal/storage"
 	"novel/internal/storyarc"
 	"novel/internal/timeline"
@@ -44,6 +45,7 @@ type App struct {
 
 	llmClient     *llm.Client
 	agent         *agent.Agent
+	cancelMgr     *agent.CancelManager
 	registry      *mcp_tools.Registry
 	approvals     *approval.Service
 	vectorStore   *rag.VectorStore
@@ -54,6 +56,7 @@ type App struct {
 	character  *character.Store
 	session    *session.Store
 	skill      *skill.Store
+	style      *style.Service
 	timeline   *timeline.Store
 	storyarc   *storyarc.Store
 	location   *location.Store
@@ -200,7 +203,16 @@ func (a *App) initWithConfig(cfg *config.AppConfig) {
 	a.approvals = approval.NewService(a.logger, a.settings.ApprovalMode)
 
 	// 10. 创建 Agent 实例（全局复用）
-	a.agent = agent.New(a.llmClient, a.registry, a.session, a.db, a.approvals, a.logger, a.skill)
+	a.cancelMgr = agent.NewCancelManager()
+	a.agent = agent.New(a.llmClient, a.registry, a.session, a.db, a.approvals, a.logger, a.skill, a.cancelMgr)
+
+	// 10.5 初始化 style service（全局风格素材）
+	styleSvc, err := style.NewService(a.logger, config.StyleSamplesDir())
+	if err != nil {
+		a.logger.Error("初始化 style service 失败", "err", err)
+	} else {
+		a.style = styleSvc
+	}
 
 	// 11. 异步初始化向量存储和搜索服务（不阻塞 UI）
 	go func() {

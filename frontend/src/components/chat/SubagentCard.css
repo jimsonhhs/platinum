@@ -8,20 +8,20 @@
 
 /* ── Memory: amber ── */
 .subagent-memory {
-  border-left: 3px solid #d4880f;
+  border-left: 3px solid var(--tag-amber-foreground);
 }
 
 /* ── Review: teal ── */
 .subagent-review {
-  border-left: 3px solid #008874;
+  border-left: 3px solid var(--tag-teal-foreground);
 }
 
 /* ── Streaming glow ── */
 .subagent-streaming.subagent-memory {
-  box-shadow: 0 0 0 1px rgba(212, 136, 15, 0.14);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--tag-amber-foreground) 14%, transparent);
 }
 .subagent-streaming.subagent-review {
-  box-shadow: 0 0 0 1px rgba(0, 136, 116, 0.14);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--tag-teal-foreground) 14%, transparent);
 }
 
 /* ── Header ── */
@@ -38,7 +38,7 @@
   transition: background 150ms ease;
 }
 .subagent-header:hover {
-  background: rgba(0, 0, 0, 0.03);
+  background: color-mix(in oklab, var(--foreground) 3%, transparent);
 }
 
 .subagent-icon {
@@ -50,8 +50,8 @@
   font-weight: 600;
   font-size: 0.8rem;
 }
-.subagent-memory .subagent-label { color: #8d6a00; }
-.subagent-review  .subagent-label { color: #006b5c; }
+.subagent-memory .subagent-label { color: var(--tag-amber-foreground); }
+.subagent-review  .subagent-label { color: var(--tag-teal-foreground); }
 
 /* ── Badges ── */
 .subagent-badge {
@@ -65,20 +65,20 @@
 }
 
 .subagent-memory .subagent-badge-running {
-  color: #8d6a00;
-  background: rgba(212, 136, 15, 0.1);
+  color: var(--tag-amber-foreground);
+  background: var(--tag-amber);
 }
 .subagent-review .subagent-badge-running {
-  color: #006b5c;
-  background: rgba(0, 136, 116, 0.1);
+  color: var(--tag-teal-foreground);
+  background: var(--tag-teal);
 }
 
 .subagent-badge-done {
-  color: #389e0d;
-  background: rgba(82, 196, 26, 0.1);
+  color: var(--tool-green-border);
+  background: var(--tool-green);
 }
 
 .subagent-badge-failed {
-  color: #cf1322;
-  background: rgba(255, 77, 79, 0.08);
+  color: var(--tool-red-border);
+  background: var(--tool-red);
 }

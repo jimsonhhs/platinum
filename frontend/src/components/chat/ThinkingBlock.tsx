@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import './ThinkingBlock.css'
 
 interface Props {
@@ -6,6 +7,7 @@ interface Props {
 }
 
 export default function ThinkingBlock({ content, isStreaming }: Props) {
+  const { t } = useTranslation()
   if (!content) return null
 
   return (
@@ -13,9 +15,9 @@ export default function ThinkingBlock({ content, isStreaming }: Props) {
       <summary className="thinking-summary">
         <span className="thinking-chevron">▶</span>
         {isStreaming ? (
-          <span className="thinking-shimmer">正在思考</span>
+          <span className="thinking-shimmer">{t('chat.thinking')}</span>
         ) : (
-          <span>思考过程</span>
+          <span>{t('chat.thinkingProcess')}</span>
         )}
       </summary>
       <div className="thinking-content">

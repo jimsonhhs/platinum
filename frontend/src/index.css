@@ -61,6 +61,8 @@
   --tag-amber-foreground: oklch(0.55 0.18 80);
   --tag-rose: oklch(0.97 0.02 10);
   --tag-rose-foreground: oklch(0.5 0.2 15);
+  --tag-teal: oklch(0.97 0.02 175);
+  --tag-teal-foreground: oklch(0.45 0.15 175);
   --tag-purple: oklch(0.97 0.02 280);
   --tag-purple-foreground: oklch(0.5 0.2 280);
   --tool-blue: oklch(0.97 0.01 250);
@@ -79,6 +81,16 @@
   --action-extract-foreground: oklch(0.985 0 0);
   --action-save: oklch(0.48 0.14 155);
   --action-save-foreground: oklch(0.985 0 0);
+  --success: oklch(0.97 0.03 155);
+  --success-foreground: oklch(0.52 0.18 145);
+  --success-border: oklch(0.88 0.06 155);
+  --status-warning: oklch(0.75 0.15 80);
+  --status-ok: oklch(0.7 0.18 155);
+  --contribution-0: oklch(0.96 0.005 0);
+  --contribution-1: oklch(0.85 0.12 155);
+  --contribution-2: oklch(0.7 0.18 155);
+  --contribution-3: oklch(0.58 0.2 155);
+  --contribution-4: oklch(0.45 0.2 155);
 }
 
 /* ── 深色主题 ────────────────────────────────────────────── */
@@ -124,6 +136,8 @@
   --tag-amber-foreground: oklch(0.78 0.16 80);
   --tag-rose: oklch(0.5 0.18 15 / 0.15);
   --tag-rose-foreground: oklch(0.7 0.15 15);
+  --tag-teal: oklch(0.55 0.12 175 / 0.15);
+  --tag-teal-foreground: oklch(0.72 0.1 175);
   --tag-purple: oklch(0.55 0.18 280 / 0.15);
   --tag-purple-foreground: oklch(0.72 0.15 280);
   --tool-blue: oklch(0.58 0.15 255 / 0.1);
@@ -142,6 +156,16 @@
   --action-extract-foreground: oklch(0.95 0.02 90);
   --action-save: oklch(0.34 0.09 155);
   --action-save-foreground: oklch(0.95 0.02 150);
+  --success: oklch(0.58 0.16 145 / 0.15);
+  --success-foreground: oklch(0.72 0.15 145);
+  --success-border: oklch(0.5 0.1 145 / 0.25);
+  --status-warning: oklch(0.78 0.14 80);
+  --status-ok: oklch(0.65 0.15 155);
+  --contribution-0: oklch(0.28 0.01 155);
+  --contribution-1: oklch(0.32 0.1 155);
+  --contribution-2: oklch(0.42 0.15 155);
+  --contribution-3: oklch(0.52 0.18 155);
+  --contribution-4: oklch(0.65 0.22 155);
 }
 
 * {
@@ -186,6 +210,8 @@ body {
   --color-tag-amber-foreground: var(--tag-amber-foreground);
   --color-tag-rose: var(--tag-rose);
   --color-tag-rose-foreground: var(--tag-rose-foreground);
+  --color-tag-teal: var(--tag-teal);
+  --color-tag-teal-foreground: var(--tag-teal-foreground);
   --color-tag-purple: var(--tag-purple);
   --color-tag-purple-foreground: var(--tag-purple-foreground);
   --color-ring: var(--ring);
@@ -195,6 +221,16 @@ body {
   --color-action-extract-foreground: var(--action-extract-foreground);
   --color-action-save: var(--action-save);
   --color-action-save-foreground: var(--action-save-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-border: var(--success-border);
+  --color-status-warning: var(--status-warning);
+  --color-status-ok: var(--status-ok);
+  --color-contribution-0: var(--contribution-0);
+  --color-contribution-1: var(--contribution-1);
+  --color-contribution-2: var(--contribution-2);
+  --color-contribution-3: var(--contribution-3);
+  --color-contribution-4: var(--contribution-4);
   --color-danger-bg: var(--danger-bg);
   --color-danger-border: var(--danger-border);
   --color-input: var(--input);

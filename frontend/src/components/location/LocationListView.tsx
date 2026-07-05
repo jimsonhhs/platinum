@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronRight, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { location } from '@/hooks/useApp'
 import LocationGraph from '@/components/location/LocationGraph'
@@ -31,6 +32,7 @@ function safeJson<T>(json: string, fallback: T): T {
 
 export default function LocationListView({ novelId, focusId }: Props) {
   const app = useApp()
+  const { t } = useTranslation()
 
   const [locations, setLocations] = useState<location.Location[]>([])
   const [loading, setLoading] = useState(false)
@@ -48,11 +50,11 @@ export default function LocationListView({ novelId, focusId }: Props) {
       const list = await app.GetLocations(novelId)
       setLocations(list ?? [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('location.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [app, novelId])
+  }, [app, novelId, t])
 
   useEffect(() => { load() }, [load])
 
@@ -62,14 +64,35 @@ export default function LocationListView({ novelId, focusId }: Props) {
     return m
   }, [locations])
 
-  const locationTypeTag = (t: string) => {
-    switch (t) {
-      case '森林': case '洞穴': case '山脉': case '沼泽': return 'bg-tag-green text-tag-green-foreground'
-      case '城市': case '城镇': case '村庄': case '市场': return 'bg-tag-amber text-tag-amber-foreground'
-      case '王宫': case '城堡': case '神殿': case ' dungeon': return 'bg-tag-purple text-tag-purple-foreground'
-      case '海洋': case '河流': case '湖泊': return 'bg-tag-blue text-tag-blue-foreground'
-      default: return 'bg-secondary text-muted-foreground'
+  const locationTypeTag = (typeName: string) => {
+    // Build typeToTag from i18n keywords + fixed English keywords
+    const cnKeywords: Record<string, string[]> = {
+      nature: t('location.typeKeywords.nature', { returnObjects: true }) as unknown as string[],
+      settlement: t('location.typeKeywords.settlement', { returnObjects: true }) as unknown as string[],
+      palace: t('location.typeKeywords.palace', { returnObjects: true }) as unknown as string[],
+      water: t('location.typeKeywords.water', { returnObjects: true }) as unknown as string[],
     }
+    const enKeywords: Record<string, string[]> = {
+      nature: ['Forest', 'Cave', 'Mountain', 'Swamp', 'forest', 'cave', 'mountain', 'swamp'],
+      settlement: ['City', 'Town', 'Village', 'Market', 'city', 'town', 'village', 'market'],
+      palace: ['Palace', 'Castle', 'Temple', 'Dungeon', 'palace', 'castle', 'temple', 'dungeon'],
+      water: ['Ocean', 'River', 'Lake', 'ocean', 'river', 'lake'],
+    }
+    const typeToTag: Record<string, string> = {}
+    for (const [tag, words] of Object.entries(cnKeywords)) {
+      if (Array.isArray(words)) words.forEach(w => { typeToTag[w] = tag })
+    }
+    for (const [tag, words] of Object.entries(enKeywords)) {
+      words.forEach(w => { typeToTag[w] = tag })
+    }
+    const tagColorMap: Record<string, string> = {
+      nature: 'bg-tag-green text-tag-green-foreground',
+      settlement: 'bg-tag-amber text-tag-amber-foreground',
+      palace: 'bg-tag-purple text-tag-purple-foreground',
+      water: 'bg-tag-blue text-tag-blue-foreground',
+    }
+    const tag = typeToTag[typeName]
+    return tag ? tagColorMap[tag] : 'bg-secondary text-muted-foreground'
   }
 
   // ── CRUD handlers ─────────────────────────────────────
@@ -104,14 +127,14 @@ export default function LocationListView({ novelId, focusId }: Props) {
   }
 
   async function handleCreate() {
-    if (!form.name.trim()) { setError('请输入地点名称'); return }
+    if (!form.name.trim()) { setError(t('location.pleaseEnterName')); return }
     setSaving(true)
     try {
       await app.CreateLocation(novelId, buildPayload())
       setEditMode(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建失败')
+      setError(err instanceof Error ? err.message : t('location.createFailed'))
     } finally {
       setSaving(false)
     }
@@ -119,27 +142,27 @@ export default function LocationListView({ novelId, focusId }: Props) {
 
   async function handleUpdate() {
     if (!editMode || editMode.type !== 'edit') return
-    if (!form.name.trim()) { setError('请输入地点名称'); return }
+    if (!form.name.trim()) { setError(t('location.pleaseEnterName')); return }
     setSaving(true)
     try {
       await app.UpdateLocation(novelId, editMode.item.id, buildPayload())
       setEditMode(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新失败')
+      setError(err instanceof Error ? err.message : t('location.updateFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(locId: number) {
-    if (!confirm('确定要删除该地点吗？子地点的父级将被清空，关联的空间关系也会被删除。此操作不可撤销。')) return
+    if (!confirm(t('location.confirmDeleteIrreversible'))) return
     setSaving(true)
     try {
       await app.DeleteLocation(novelId, locId)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除失败')
+      setError(err instanceof Error ? err.message : t('location.deleteFailed'))
     } finally {
       setSaving(false)
     }
@@ -151,28 +174,28 @@ export default function LocationListView({ novelId, focusId }: Props) {
     return (
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">名称</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('location.name')}</label>
           <input
             type="text"
             value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="地点名称"
+            placeholder={t('location.locationName')}
           />
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">类型</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('location.type')}</label>
             <input
               type="text"
               value={form.location_type}
               onChange={e => setForm(f => ({ ...f, location_type: e.target.value }))}
               className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="如：森林、城市、洞穴"
+              placeholder={t('location.typeExample')}
             />
           </div>
           <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">父地点</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('location.parentLocation')}</label>
             <select
               value={form.parent_location_id ?? ''}
               onChange={e => {
@@ -181,7 +204,7 @@ export default function LocationListView({ novelId, focusId }: Props) {
               }}
               className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="">无（根节点）</option>
+              <option value="">{t('location.noParent')}</option>
               {locations.filter(l => editMode?.type !== 'edit' || l.id !== editMode.item.id).map(l => (
                 <option key={l.id} value={l.id}>{l.name}</option>
               ))}
@@ -189,21 +212,21 @@ export default function LocationListView({ novelId, focusId }: Props) {
           </div>
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">描述</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('location.description')}</label>
           <textarea
             value={form.description}
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             rows={2}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-            placeholder="环境氛围、特色等自然语言描述"
+            placeholder={t('location.locationDesc')}
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">标签</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('location.tags')}</label>
           <TagInput
             tags={form.tags}
             onChange={tags => setForm(f => ({ ...f, tags }))}
-            placeholder="输入后回车添加，如：危险、神秘、主角出生地"
+            placeholder={t('location.tagPlaceholder')}
           />
         </div>
       </div>
@@ -215,12 +238,12 @@ export default function LocationListView({ novelId, focusId }: Props) {
       <div className="flex items-center gap-2 justify-end mt-3">
         {onDelete && (
           <button onClick={onDelete} disabled={saving} className="px-3 py-1 rounded text-xs text-destructive hover:bg-destructive/10 transition-colors">
-            <Trash2 className="h-3 w-3 inline mr-1" />删除
+            <Trash2 className="h-3 w-3 inline mr-1" />{t('location.delete')}
           </button>
         )}
-        <button onClick={() => setEditMode(null)} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">取消</button>
+        <button onClick={() => setEditMode(null)} className="px-3 py-1 rounded text-xs text-muted-foreground hover:text-foreground transition-colors">{t('common.cancel')}</button>
         <button onClick={onSubmit} disabled={saving} className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
-          {saving ? '保存中...' : '保存'}
+          {saving ? t('common.saving') : t('common.save')}
         </button>
       </div>
     )
@@ -238,7 +261,7 @@ export default function LocationListView({ novelId, focusId }: Props) {
               : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
           }`}
         >
-          列表
+          {t('location.list')}
         </button>
         <button
           onClick={() => setViewTab('graph')}
@@ -248,14 +271,14 @@ export default function LocationListView({ novelId, focusId }: Props) {
               : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
           }`}
         >
-          关系图
+          {t('location.relationGraph')}
         </button>
       </div>
 
       {viewTab === 'graph' ? (
         <LocationGraph novelId={novelId} focusId={focusId} />
       ) : loading ? (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t('location.loading')}</div>
       ) : error ? (
         <div className="flex h-full items-center justify-center text-sm text-destructive">{error}</div>
       ) : (
@@ -266,14 +289,14 @@ export default function LocationListView({ novelId, focusId }: Props) {
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-tag-green-foreground" />
                 <h2 className="text-sm font-semibold text-foreground">
-                  地点
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">{locations.length} 处</span>
+                  {t('location.location')}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">{locations.length} {t('location.place')}</span>
                 </h2>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={load} className="text-xs text-muted-foreground hover:text-foreground transition-colors">刷新</button>
+                <button onClick={load} className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t('location.refresh')}</button>
                 <button onClick={() => openCreate()} className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
-                  <Plus className="h-3 w-3" />新建地点
+                  <Plus className="h-3 w-3" />{t('location.newLocation')}
                 </button>
               </div>
             </div>
@@ -282,7 +305,7 @@ export default function LocationListView({ novelId, focusId }: Props) {
             {editMode?.type === 'create' && (
               <div className="rounded-lg border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-foreground">新建地点</span>
+                  <span className="text-xs font-semibold text-foreground">{t('location.newLocation')}</span>
                   <button onClick={() => setEditMode(null)} className="p-0.5 rounded text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
                 </div>
                 {renderForm()}
@@ -296,8 +319,8 @@ export default function LocationListView({ novelId, focusId }: Props) {
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-tag-green">
                   <MapPin className="h-5 w-5 text-tag-green-foreground" />
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">暂无地点</p>
-                <button onClick={() => openCreate()} className="mt-2 text-xs text-primary hover:underline">创建第一个地点</button>
+                <p className="mt-2 text-sm text-muted-foreground">{t('location.noLocations')}</p>
+                <button onClick={() => openCreate()} className="mt-2 text-xs text-primary hover:underline">{t('location.createFirstLocation')}</button>
               </div>
             ) : (
               <div className="space-y-2">
@@ -311,7 +334,7 @@ export default function LocationListView({ novelId, focusId }: Props) {
                     return (
                       <div key={loc.id} className="rounded-lg border border-border bg-card p-4">
                         <div className="flex items-center justify-between mb-3">
-                          <span className="text-xs font-semibold text-foreground">编辑：{loc.name}</span>
+                          <span className="text-xs font-semibold text-foreground">{t('location.editing')}{loc.name}</span>
                           <button onClick={() => setEditMode(null)} className="p-0.5 rounded text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
                         </div>
                         {renderForm()}
@@ -350,14 +373,14 @@ export default function LocationListView({ novelId, focusId }: Props) {
                         </div>
                         {/* Hover actions */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                          <button onClick={() => openEdit(loc)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="编辑">
+                          <button onClick={() => openEdit(loc)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title={t('common.edit')}>
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
-                          <button onClick={() => handleDelete(loc.id)} className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="删除">
+                          <button onClick={() => handleDelete(loc.id)} className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title={t('location.delete')}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                           {loc.parent_location_id && (
-                            <button onClick={() => openCreate(loc.id)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="添加子地点">
+                            <button onClick={() => openCreate(loc.id)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title={t('location.addSubLocation')}>
                               <Plus className="h-3 w-3" />
                             </button>
                           )}
