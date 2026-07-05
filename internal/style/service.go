@@ -168,8 +168,8 @@ func (s *Service) load(id string) (*Sample, error) {
 // ComputeStats 对多段素材文本进行确定性统计。
 func (s *Service) ComputeStats(samples []Sample) Stats {
 	var combined strings.Builder
-	for _, s := range samples {
-		combined.WriteString(s.Content)
+	for _, sample := range samples {
+		combined.WriteString(sample.Content)
 		combined.WriteString("\n")
 	}
 	content := combined.String()
@@ -185,8 +185,8 @@ func (s *Service) ComputeStats(samples []Sample) Stats {
 	short, mid, long := 0, 0, 0
 	totalLen := 0
 	lens := make([]int, len(sentences))
-	for i, s := range sentences {
-		l := len([]rune(s))
+	for i, sent := range sentences {
+		l := len([]rune(sent))
 		lens[i] = l
 		totalLen += l
 		if l < 15 {

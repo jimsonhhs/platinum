@@ -15,7 +15,14 @@ export default function SessionHistory({ open, novelId, onClose, onSelectSession
   const { t } = useTranslation()
   const app = useApp()
   const [mounted, setMounted] = useState(false)
-  const [now] = useState(() => Date.now())
+  const [now, setNow] = useState(() => Date.now())
+
+  // 面板打开时每分钟刷新时间，保证 timeAgo 相对时间准确
+  useEffect(() => {
+    if (!open) return
+    const timer = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(timer)
+  }, [open])
 
   function timeAgo(iso: string): string {
     const diff = now - new Date(iso).getTime()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"novel/internal/agent"
 	"novel/internal/style"
 )
 
@@ -158,12 +159,13 @@ func (a *App) ExtractStyle(input ExtractStyleInput) (*style.ExtractResult, error
 	}
 
 	// 取消逻辑由 app 层管理
+	key := agent.CancelPrefixStyle + input.TaskID
 	ctx, cancel := context.WithCancel(a.ctx)
-	a.cancelMgr.Cancel(input.TaskID)
-	a.cancelMgr.Register(input.TaskID, cancel)
+	a.cancelMgr.Cancel(key)
+	a.cancelMgr.Register(key, cancel)
 	defer func() {
 		if ctx.Err() == nil {
-			a.cancelMgr.Unregister(input.TaskID)
+			a.cancelMgr.Unregister(key)
 		}
 	}()
 
@@ -173,5 +175,5 @@ func (a *App) ExtractStyle(input ExtractStyleInput) (*style.ExtractResult, error
 
 // CancelExtract 取消指定 taskID 的风格提取任务。
 func (a *App) CancelExtract(taskID string) {
-	a.cancelMgr.Cancel(taskID)
+	a.cancelMgr.Cancel(agent.CancelPrefixStyle + taskID)
 }

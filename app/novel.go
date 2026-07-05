@@ -58,15 +58,18 @@ func (a *App) CreateNovel(input CreateNovelInput) (*novel.Novel, error) {
 	}
 
 	if _, err := git.New(n.ID, a.settings.GitName, a.settings.GitEmail, a.logger); err != nil {
+		a.logger.Error("创建小说失败: git 初始化失败", "novelID", n.ID, "title", n.Title, "error", err)
 		a.novel.DB.WithContext(a.ctx).Delete(&n) // 回滚孤儿 DB 记录
 		return nil, fmt.Errorf("failed to init novel repo: %w", err)
 	}
 
 	// 为新小说创建 goink.md 空文件
 	if err := git.WriteFile(n.ID, git.GoinkPath(), ""); err != nil {
+		a.logger.Error("创建小说失败: goink.md 写入失败", "novelID", n.ID, "error", err)
 		return nil, fmt.Errorf("failed to create goink.md: %w", err)
 	}
 
+	a.logger.Info("小说创建成功", "novelID", n.ID, "title", n.Title)
 	return &n, nil
 }
 

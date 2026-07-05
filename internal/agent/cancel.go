@@ -8,7 +8,7 @@ import (
 // 不同领域的取消键前缀，防止 key 冲突。
 const (
 	CancelPrefixChat    = "chat:"
-	CancelPrefixExtract = "extract:"
+	CancelPrefixStyle   = "style:"
 	CancelPrefixPattern = "pattern:"
 )
 

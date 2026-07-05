@@ -56,7 +56,7 @@ export default memo(function WebFetchCard({ result, displayText }: Props) {
             onClick={() => setContentOpen(!contentOpen)}
           >
             {contentOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            {t('chat.pageContent', { count: wordCount.toLocaleString() })}
+            {t('chat.pageContent', { count: wordCount })}
           </button>
           {contentOpen && (
             <div className="fetch-card-content-body">
