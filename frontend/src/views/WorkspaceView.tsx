@@ -276,25 +276,25 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
         setActivePanel('chapters')
         await app.SetActiveNovel({ novel_id: n.id })
       }
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); throw err }
   }
 
   async function handleUpdateNovel(input: { title: string; description: string; genre: string }) {
+    if (!editingNovel) return
     try {
-      if (!editingNovel) return
       await app.UpdateNovel(editingNovel.id, input)
       setEditingNovel(null)
       await loadNovels()
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); throw err }
   }
 
   async function handleDeleteNovel() {
+    if (!deletingNovel) return
     try {
-      if (!deletingNovel) return
       await app.DeleteNovel(deletingNovel.id)
       setDeletingNovel(null)
       await loadNovels()
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); throw err }
   }
 
   async function handleExportNovel(format: 'epub' | 'markdown' | 'txt') {
