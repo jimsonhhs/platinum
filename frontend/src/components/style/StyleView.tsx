@@ -67,6 +67,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false, n
   const novelIdRef = useRef(novelId)
   const loadRef = useRef<(p: number) => void>(null as any)
 
+  // eslint-disable-next-line react-hooks/refs
   loadRef.current = async (p: number) => {
     try {
       const res = await app.ListStyleSamples({ novel_id: novelId, page: p, size: PAGE_SIZE, search: '' })

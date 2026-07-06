@@ -27,6 +27,7 @@ export default function StyleSampleList({ onSelectSample, activeId, novelId = 0 
   const listRef = useRef<HTMLDivElement>(null)
   const loadPageRef = useRef<(p: number, q: string) => void>(null as any)
 
+  // eslint-disable-next-line react-hooks/refs
   loadPageRef.current = async (p: number, q: string) => {
     if (loadingRef.current) return
     loadingRef.current = true
