@@ -99,7 +99,7 @@ export namespace app {
 	    }
 	}
 	export class ComputeStyleStatsInput {
-	    sample_ids: string[];
+	    sample_ids: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ComputeStyleStatsInput(source);
@@ -253,8 +253,11 @@ export namespace app {
 	    }
 	}
 	export class CreateStyleSampleInput {
+	    novel_id: number;
+	    is_global: boolean;
 	    name: string;
 	    content: string;
+	    tags: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateStyleSampleInput(source);
@@ -262,8 +265,11 @@ export namespace app {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.novel_id = source["novel_id"];
+	        this.is_global = source["is_global"];
 	        this.name = source["name"];
 	        this.content = source["content"];
+	        this.tags = source["tags"];
 	    }
 	}
 	export class CreateTimelineEntryInput {
@@ -309,7 +315,7 @@ export namespace app {
 	    }
 	}
 	export class DeleteStyleSampleInput {
-	    id: string;
+	    id: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new DeleteStyleSampleInput(source);
@@ -322,7 +328,7 @@ export namespace app {
 	}
 	export class ExtractStyleInput {
 	    task_id: string;
-	    sample_ids: string[];
+	    sample_ids: number[];
 	    provider_name: string;
 	    model_id: string;
 	    reasoning_effort: string;
@@ -430,6 +436,24 @@ export namespace app {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.novel_id = source["novel_id"];
+	    }
+	}
+	export class ListStyleSamplesInput {
+	    novel_id: number;
+	    page: number;
+	    size: number;
+	    search: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ListStyleSamplesInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.novel_id = source["novel_id"];
+	        this.page = source["page"];
+	        this.size = source["size"];
+	        this.search = source["search"];
 	    }
 	}
 	export class PreferenceResult {
@@ -564,28 +588,6 @@ export namespace app {
 	        this.name = source["name"];
 	        this.description = source["description"];
 	        this.type = source["type"];
-	    }
-	}
-	export class StyleSampleMeta {
-	    id: string;
-	    name: string;
-	    preview: string;
-	    tags: string[];
-	    word_count: number;
-	    created_at: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new StyleSampleMeta(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
-	        this.preview = source["preview"];
-	        this.tags = source["tags"];
-	        this.word_count = source["word_count"];
-	        this.created_at = source["created_at"];
 	    }
 	}
 	export class TestConnectionInput {
@@ -757,10 +759,12 @@ export namespace app {
 	    }
 	}
 	export class UpdateStyleSampleInput {
-	    id: string;
+	    id: number;
 	    name: string;
 	    content: string;
 	    tags: string[];
+	    is_global: boolean;
+	    novel_id: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateStyleSampleInput(source);
@@ -772,6 +776,8 @@ export namespace app {
 	        this.name = source["name"];
 	        this.content = source["content"];
 	        this.tags = source["tags"];
+	        this.is_global = source["is_global"];
+	        this.novel_id = source["novel_id"];
 	    }
 	}
 	export class UpdateTimelineEntryInput {
@@ -1858,6 +1864,44 @@ export namespace storage {
 		    return a;
 		}
 	}
+	export class PageResult_novel_internal_style_Sample_ {
+	    items: style.Sample[];
+	    total: number;
+	    page: number;
+	    size: number;
+	    total_pages: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PageResult_novel_internal_style_Sample_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = this.convertValues(source["items"], style.Sample);
+	        this.total = source["total"];
+	        this.page = source["page"];
+	        this.size = source["size"];
+	        this.total_pages = source["total_pages"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
@@ -1987,13 +2031,18 @@ export namespace style {
 	    }
 	}
 	export class Sample {
-	    id: string;
+	    id: number;
+	    novel_id: number;
+	    is_global: boolean;
 	    name: string;
 	    content: string;
+	    preview: string;
 	    tags: string[];
 	    word_count: number;
 	    // Go type: time
 	    created_at: any;
+	    // Go type: time
+	    updated_at: any;
 	
 	    static createFrom(source: any = {}) {
 	        return new Sample(source);
@@ -2002,11 +2051,15 @@ export namespace style {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.novel_id = source["novel_id"];
+	        this.is_global = source["is_global"];
 	        this.name = source["name"];
 	        this.content = source["content"];
+	        this.preview = source["preview"];
 	        this.tags = source["tags"];
 	        this.word_count = source["word_count"];
 	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.updated_at = this.convertValues(source["updated_at"], null);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

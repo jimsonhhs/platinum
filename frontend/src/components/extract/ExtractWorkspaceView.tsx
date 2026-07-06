@@ -7,7 +7,7 @@ import PatternExtractView from '@/components/pattern/PatternExtractView'
 
 interface Props {
   novelId: number
-  focusSampleId?: string | null
+  focusSampleId?: number | null
   onFocusSampleHandled?: () => void
 }
 
@@ -54,6 +54,7 @@ export default function ExtractWorkspaceView({ novelId, focusSampleId, onFocusSa
           focusId={activeTab === 'style' ? focusSampleId : null}
           onFocusHandled={handleFocusSampleHandled}
           embedded
+          novelId={novelId}
         />
       </div>
       <div className={activeTab === 'pattern' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>

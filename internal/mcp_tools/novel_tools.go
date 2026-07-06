@@ -123,7 +123,7 @@ type CreatePreferenceTool struct{}
 
 func (t *CreatePreferenceTool) Name() string { return "create_preference" }
 func (t *CreatePreferenceTool) Description() string {
-	return "批量创建创作偏好（1-5个）。所有条目在一次批量 INSERT 中写入，单语句保证原子性。" +
+	return "批量创建创作偏好（1-5个）。保证原子性，失败时返回具体条目原因。" +
 		"偏好按自由文本 Category 归类，同 Category 即为同类条目。" +
 		"如果已存在相似分类的偏好，应优先调用 update_preference 对已有条目做增量合并（在原文基础上追加），而非创建重复条目。"
 }
@@ -136,23 +136,31 @@ func (t *CreatePreferenceTool) NewArgs() any                { return &CreatePref
 func (t *CreatePreferenceTool) Execute(ctx context.Context, args any, tc ToolContext) (*ToolResult, error) {
 	a := args.(*CreatePreferenceArgs)
 
-	items := make([]novel.PreferenceItem, len(a.Preferences))
-	for i, item := range a.Preferences {
-		items[i] = novel.PreferenceItem{
-			NovelID:  tc.NovelID,
-			IsGlobal: item.IsGlobal,
-			Category: item.Category,
-			Content:  item.Content,
+	var ids []int64
+	var failedName string
+	var failedErr error
+	err := tc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, item := range a.Preferences {
+			pref := novel.PreferenceItem{
+				NovelID:  tc.NovelID,
+				IsGlobal: item.IsGlobal,
+				Category: item.Category,
+				Content:  item.Content,
+			}
+			if err := tx.Create(&pref).Error; err != nil {
+				failedName = item.Category
+				failedErr = err
+				return err
+			}
+			ids = append(ids, pref.ID)
 		}
-	}
-
-	if err := tc.DB.WithContext(ctx).Create(&items).Error; err != nil {
-		return nil, fmt.Errorf("create preferences: %w", err)
-	}
-
-	ids := make([]int64, len(items))
-	for i := range items {
-		ids[i] = items[i].ID
+		return nil
+	})
+	if err != nil {
+		return &ToolResult{
+			Success: false,
+			Error:   fmt.Sprintf("创建偏好 [%s] 失败: %s", failedName, failedErr),
+		}, nil
 	}
 
 	return &ToolResult{

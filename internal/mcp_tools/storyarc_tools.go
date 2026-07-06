@@ -158,7 +158,7 @@ type CreateStoryArcTool struct{}
 
 func (t *CreateStoryArcTool) Name() string { return "create_story_arc" }
 func (t *CreateStoryArcTool) Description() string {
-	return "批量创建叙事弧线（1-5个）。所有弧线在一次批量 INSERT 中写入，单语句保证原子性。" +
+	return "批量创建叙事弧线（1-5个）。保证原子性，失败时返回具体条目原因。" +
 		"弧线类型：main（主线）/ sub（支线）/ character（角色线）/ background（背景线）。" +
 		"弧线是跨越多章节的故事线容器，内部节点通过 create_arc_node 添加。"
 }
@@ -171,32 +171,43 @@ func (t *CreateStoryArcTool) NewArgs() any                { return &CreateStoryA
 func (t *CreateStoryArcTool) Execute(ctx context.Context, args any, tc ToolContext) (*ToolResult, error) {
 	a := args.(*CreateStoryArcArgs)
 
-	items := make([]storyarc.StoryArc, len(a.StoryArcs))
-	for i, item := range a.StoryArcs {
-		importance := item.Importance
-		if importance == 0 {
-			importance = 1
+	var ids []int64
+	var failedName string
+	var failedErr error
+	err := tc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, item := range a.StoryArcs {
+			importance := item.Importance
+			if importance == 0 {
+				importance = 1
+			}
+			arc := storyarc.StoryArc{
+				NovelID:     tc.NovelID,
+				Name:        item.Name,
+				ArcType:     item.ArcType,
+				Description: item.Description,
+				Importance:  importance,
+				Status:      "active",
+			}
+			if err := tx.Create(&arc).Error; err != nil {
+				failedName = item.Name
+				failedErr = err
+				return err
+			}
+			ids = append(ids, arc.ID)
 		}
-		items[i] = storyarc.StoryArc{
-			NovelID:     tc.NovelID,
-			Name:        item.Name,
-			ArcType:     item.ArcType,
-			Description: item.Description,
-			Importance:  importance,
-			Status:      "active",
-		}
+		return nil
+	})
+	if err != nil {
+		return &ToolResult{
+			Success: false,
+			Error:   fmt.Sprintf("创建弧线 [%s] 失败: %s", failedName, failedErr),
+		}, nil
 	}
 
-	if err := tc.DB.WithContext(ctx).Create(&items).Error; err != nil {
-		return nil, fmt.Errorf("create arcs: %w", err)
-	}
-
-	ids := make([]int64, len(items))
-	for i := range items {
-		ids[i] = items[i].ID
-	}
-
-	return &ToolResult{Success: true, Data: map[string]any{"ids": ids, "count": len(ids)}}, nil
+	return &ToolResult{
+		Success: true,
+		Data:    map[string]any{"ids": ids, "count": len(ids)},
+	}, nil
 }
 
 // ── update_story_arc ───────────────────────────────────
@@ -272,7 +283,7 @@ type CreateArcNodeTool struct{}
 
 func (t *CreateArcNodeTool) Name() string { return "create_arc_node" }
 func (t *CreateArcNodeTool) Description() string {
-	return "批量向弧线添加节点（1-10个）。所有节点在一次批量 INSERT 中写入，单语句保证原子性。" +
+	return "批量向弧线添加节点（1-10个）。保证原子性，失败时返回具体条目原因。" +
 		"target_chapter 为预计发生的章节号（不准确不要紧，后续可通过 update_arc_node 调整）。" +
 		"节点按 target_chapter 排序构成弧线演进链。"
 }
@@ -304,28 +315,39 @@ func (t *CreateArcNodeTool) Execute(ctx context.Context, args any, tc ToolContex
 		return &ToolResult{Success: false, Error: "部分弧线不存在或不属于当前小说"}, nil
 	}
 
-	items := make([]storyarc.ArcNode, len(a.ArcNodes))
-	for i, item := range a.ArcNodes {
-		items[i] = storyarc.ArcNode{
-			NovelID:       tc.NovelID,
-			StoryArcID:    item.StoryArcID,
-			Title:         item.Title,
-			Description:   item.Description,
-			TargetChapter: item.TargetChapter,
-			Status:        "pending",
+	var ids []int64
+	var failedName string
+	var failedErr error
+	err := tc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, item := range a.ArcNodes {
+			node := storyarc.ArcNode{
+				NovelID:       tc.NovelID,
+				StoryArcID:    item.StoryArcID,
+				Title:         item.Title,
+				Description:   item.Description,
+				TargetChapter: item.TargetChapter,
+				Status:        "pending",
+			}
+			if err := tx.Create(&node).Error; err != nil {
+				failedName = item.Title
+				failedErr = err
+				return err
+			}
+			ids = append(ids, node.ID)
 		}
+		return nil
+	})
+	if err != nil {
+		return &ToolResult{
+			Success: false,
+			Error:   fmt.Sprintf("创建节点 [%s] 失败: %s", failedName, failedErr),
+		}, nil
 	}
 
-	if err := tc.DB.WithContext(ctx).Create(&items).Error; err != nil {
-		return nil, fmt.Errorf("create arc nodes: %w", err)
-	}
-
-	ids := make([]int64, len(items))
-	for i := range items {
-		ids[i] = items[i].ID
-	}
-
-	return &ToolResult{Success: true, Data: map[string]any{"ids": ids, "count": len(ids)}}, nil
+	return &ToolResult{
+		Success: true,
+		Data:    map[string]any{"ids": ids, "count": len(ids)},
+	}, nil
 }
 
 // ── update_arc_node ────────────────────────────────────

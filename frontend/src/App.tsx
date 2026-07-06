@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
+import { Toaster } from 'sonner'
 import InitView from '@/views/InitView'
 import WorkspaceView from '@/views/WorkspaceView'
 
@@ -38,6 +39,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Toaster position="top-center" richColors toastOptions={{ actionButtonStyle: { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)', border: 'none', padding: '2px 10px', borderRadius: '4px', fontSize: '12px' } }} />
       {view === 'init' && (
         <InitView onInitialized={async () => {
           const settings = await app.GetSettings()

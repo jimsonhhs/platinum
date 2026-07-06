@@ -17,6 +17,7 @@ import (
 	"novel/internal/storage"
 	"novel/internal/storyarc"
 	"novel/internal/timeline"
+	"novel/internal/style"
 	"novel/internal/writing"
 )
 
@@ -44,6 +45,7 @@ func Run(db *gorm.DB, log *slog.Logger) error {
 		&session.Message{},
 		&storage.OperationLogRecord{},
 		&rollback.TurnCommit{},
+		&style.Sample{},
 		&writing.WritingLog{},
 	}
 

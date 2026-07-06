@@ -42,7 +42,7 @@ interface Props {
   searchResults: SearchResult[]
   onSearchChange: (query: string, results: SearchResult[]) => void
   onSelectGitFile: (file: git.FileDiff) => void
-  onSelectStyleSample: (id: string) => void
+  onSelectStyleSample: (id: number) => void
   sidePanelWidth: number
   onSidePanelResize: (w: number) => void
 }
@@ -149,6 +149,7 @@ export default function SidePanel({
       ) : activePanel === 'style-samples' ? (
         <StyleSampleList
           onSelectSample={onSelectStyleSample}
+          novelId={novelId}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center">

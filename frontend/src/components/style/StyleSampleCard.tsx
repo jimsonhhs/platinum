@@ -1,17 +1,16 @@
 import { Check, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { style } from '@/lib/wailsjs/go/models'
 
-export interface StyleSampleMeta {
-  id: string
-  name: string
-  preview: string
-  tags: string[]
-  word_count: number
-  created_at: string
+function formatDate(v: any): string {
+  if (!v) return ''
+  if (typeof v === 'string') return v.length >= 16 ? v.slice(0, 16).replace('T', ' ') : v
+  try { const d = new Date(v); return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 16).replace('T', ' ') }
+  catch { return '' }
 }
 
 interface Props {
-  sample: StyleSampleMeta
+  sample: style.Sample
   selected: boolean
   onToggle: () => void
   onDelete: () => void
@@ -74,7 +73,7 @@ export default function StyleSampleCard({ sample, selected, onToggle, onDelete, 
           <div className="flex items-center gap-3">
             <span>{sample.word_count} {t('styleSample.charCount')}</span>
             <span className="w-px h-2.5 bg-border" />
-            <span>{sample.created_at}</span>
+            <span>{formatDate(sample.created_at)}</span>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete() }}

@@ -52,11 +52,11 @@ func withoutTurn(ctx context.Context) context.Context {
 // 不通过 GORM AutoMigrate 创建，由 migrate.go 统一管理建表。
 type OperationLogRecord struct {
 	ID        int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	TurnID    int       `gorm:"column:turn_id;not null;index:idx_oplog_rollback"`
-	SessionID string    `gorm:"column:session_id;not null;index:idx_oplog_rollback"`
+	SessionID string    `gorm:"column:session_id;not null;index:idx_oplog_rollback,priority:1"`
+	TurnID    int       `gorm:"column:turn_id;not null;index:idx_oplog_rollback,priority:2"`
 	Operation string    `gorm:"column:operation;not null"`  // "create" | "update" | "delete"
-	Table     string    `gorm:"column:table_name;not null;index:idx_oplog_entity"` // 目标表名，如 "characters"
-	EntityID  string    `gorm:"column:entity_id;not null;index:idx_oplog_entity"`  // JSON 化的主键条件，如 {"id":5} 或 {"novel_id":1,"scope":"next"}
+	Table     string    `gorm:"column:table_name;not null;index:idx_oplog_entity,priority:1"` // 目标表名，如 "characters"
+	EntityID  string    `gorm:"column:entity_id;not null;index:idx_oplog_entity,priority:2"`  // JSON 化的主键条件，如 {"id":5} 或 {"novel_id":1,"scope":"next"}
 	OldValues string    `gorm:"column:old_values"`          // JSON，create 时为 ""
 	NewValues string    `gorm:"column:new_values"`          // JSON，delete 时为 ""
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
@@ -359,7 +359,7 @@ func skipOperLog(db *gorm.DB) bool {
 	}
 	t := db.Statement.Schema.Table
 	return t == "operation_log" || t == "messages" || t == "app_config" || t == "turn_commits" ||
-		t == "sessions" || t == "novels" || t == "writing_log"
+		t == "sessions" || t == "novels" || t == "writing_log" || t == "style_samples"
 }
 
 // toJSON 将任意值序列化为 JSON 字符串。

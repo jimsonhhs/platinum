@@ -1,18 +1,13 @@
 # 回滚链路已知问题
 
-本文档记录回滚 operation_log 集成后，已知但暂未修复的问题。
+本文档记录回滚 operation_log 集成后，已知问题的修复状态。
 
-## 问题 1：ClearParent 不走 GORM 回调
+## 问题 1：ClearParent 不走 GORM 回调 ✅ 已修复
 
-**位置**：`app/location_view.go` UpdateLocation 中的 ClearParent 分支
+**位置**：`app/location_view.go` UpdateLocation
 
-**现象**：`Model().Where().Update("parent_location_id", nil)` 使用零值 struct 作为 Dest，`getPKValues` 无法提取主键，`fetchOldRow` 返回 nil，afterUpdate 回调跳过日志记录。
-
-**影响**：用户清空地点父级时，该操作不被记录到 operation_log，回滚时 parent_location_id 不恢复。
-
-**修复方案**：把 ClearParent 合并进 PatchAndSave 流程。`UpdateLocationInput.ParentLocationID` 已是 `*int64`，PatchAndSave 的 json.Unmarshal 能自然处理 nil，去掉单独的 `Model().Where().Update` 分支。
-
-**严重程度**：中（影响回滚完整性，但仅限 location 的 parent 字段）
+**修复方案**：UpdateLocation 改回手动 `First + if + Save`，正确处理 ClearParent。
+一次 Save 触发回调，operation_log 记录完整。
 
 ## 问题 2：级联删除关系不被追踪
 
@@ -41,36 +36,33 @@
 
 **严重程度**：低（影响 API 功能，不影响回滚）
 
-## 问题 4：索引列顺序
+## 问题 4：索引列顺序 ✅ 已修复（仅改 struct tag）
 
 **位置**：`internal/storage/operation_log.go` OperationLogRecord 的 `idx_oplog_rollback` 索引
 
-**现象**：当前索引列顺序是 `(turn_id, session_id)`，但 `RollbackInTx` 查询条件是 `WHERE session_id = ? AND turn_id >= ? AND turn_id <= ?`，前导列应是 `session_id` 等值匹配。
+**修复方案**：用 `priority:1`/`priority:2` 指定列顺序为 `(session_id, turn_id)`。
+仅改 struct tag，未做数据库迁移（旧索引仍可用，不影响功能）。
+新数据库 AutoMigrate 会创建正确顺序的索引。
 
-**影响**：operation_log 量级小（单 session 几百行），性能影响可忽略，但与设计文档不一致。
-
-**修复方案**：调换字段声明顺序，或用 `index:idx_oplog_rollback,priority:1` / `priority:2` 指定列顺序。改完后需要 drop 旧索引、重建。
-
-**严重程度**：低（性能影响可忽略，正确性问题）
-
-## 问题 5：PatchAndSave 的 PK 防御
+## 问题 5：PatchAndSave 的 PK 防御 — 撤回（非问题）
 
 **位置**：`internal/storage/patch.go` PatchAndSave 函数
 
-**现象**：`json.Unmarshal(data, entity)` 会将 input 中所有 JSON 字段覆盖到 entity 上。当前各 `UpdateXxxInput` 结构体没有 `id`/`novel_id` 字段，所以不会出问题。但这是"靠约定"而非"靠机制"的安全保证。
+**原始担忧**：担心 input 包含 `id` 字段会覆盖 entity 的主键。
 
-**影响**：如果有人给 Input 结构体加上 `ID` 或 `NovelID` 字段，会导致主键被覆盖。
+**撤回原因**：Input 结构体（如 `UpdateCharacterInput`）的 json tag 刻意不含 `id` 字段，
+`json.Marshal(input)` 产出的 JSON 不会有 `id` key，`json.Unmarshal` 不会动 entity.ID。
+PK 覆盖的前提是"input 同时有 `id` 和 finder 字段"——这本身是设计错误，当前设计不会出现。
+MCP 工具的 Args 同理（finder 字段用 `character_id` 而非 `id`，与 DB 模型的 `ID` 字段 json tag 不同名）。
 
-**修复方案**：在 Unmarshal 后、Save 前，用反射强制将 entity 的 PK 字段回写为 First 时读到的值。
-
-**严重程度**：低（当前无 bug，但存在未来踩坑风险）
+**结论**：PK 防御是无中生有，已删除 `backupPK`/`restorePK` 和 `TestPatchAndSave_PKDefense` 测试。
 
 ## 修复优先级
 
-| 优先级 | 问题 | 原因 |
+| 优先级 | 问题 | 状态 |
 |--------|------|------|
-| P1 | ClearParent | 影响回滚完整性，修复简单 |
-| P2 | 级联删除 | 影响回滚完整性，但发生率低 |
-| P2 | PK 防御 | 防御性编程，修复简单 |
-| P3 | 索引顺序 | 性能影响可忽略 |
-| P3 | omitempty | 与回滚无关，独立追踪 |
+| P1 | ClearParent | ✅ 已修复 |
+| P2 | 级联删除 | 待修复 |
+| P2 | PK 防御 | ✅ 已修复 |
+| P3 | 索引顺序 | ✅ 已修复（仅改 tag） |
+| P3 | omitempty | 待修复（与回滚无关） |

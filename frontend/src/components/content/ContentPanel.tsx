@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHand
 import { type OnMount, DiffEditor } from '@monaco-editor/react'
 import { FileText, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toastError } from '@/lib/utils'
 import { useApp } from '@/hooks/useApp'
 import { useEditorTabs } from '@/hooks/useEditorTabs'
 import { useTheme, type Theme } from '@/hooks/useTheme'
@@ -139,9 +140,14 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
 
   const doSave = useCallback(async (tabId: string, path: string, content: string) => {
     if (!novelIdRef.current) return
-    await app.SaveContent({ novel_id: novelIdRef.current, path, content })
-    updateTab(tabId, { isDirty: false })
-  }, [app, updateTab])
+    try {
+      await app.SaveContent({ novel_id: novelIdRef.current, path, content })
+      updateTab(tabId, { isDirty: false })
+    } catch (err) {
+      toastError(t('common.saveFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
+      console.error(err)
+    }
+  }, [app, updateTab, t])
 
   // Ctrl+S 立即保存
   useEffect(() => {

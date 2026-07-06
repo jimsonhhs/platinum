@@ -131,7 +131,7 @@ type CreateTimelineEntryTool struct{}
 
 func (t *CreateTimelineEntryTool) Name() string { return "create_timeline_entry" }
 func (t *CreateTimelineEntryTool) Description() string {
-	return "批量创建伏笔或用户指令（1-6条）。所有条目在一次批量 INSERT 中写入，单语句保证原子性。" +
+	return "批量创建伏笔或用户指令（1-6条）。保证原子性，失败时返回具体条目原因。" +
 		"每章写完后发现新埋的伏笔或用户指令时调用。" +
 		"category 为 foreshadowing（伏笔）或 user_directive（用户创作指令）。"
 }
@@ -146,37 +146,45 @@ func (t *CreateTimelineEntryTool) NewArgs() any      { return &CreateTimelineEnt
 func (t *CreateTimelineEntryTool) Execute(ctx context.Context, args any, tc ToolContext) (*ToolResult, error) {
 	a := args.(*CreateTimelineEntryArgs)
 
-	items := make([]timeline.TimelineEntry, len(a.Entries))
-	for i, item := range a.Entries {
-		source := item.Source
-		if source == "" {
-			source = "ai"
+	var ids []int64
+	var failedName string
+	var failedErr error
+	err := tc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, item := range a.Entries {
+			source := item.Source
+			if source == "" {
+				source = "ai"
+			}
+			importance := item.Importance
+			if importance == 0 {
+				importance = 3
+			}
+			entry := timeline.TimelineEntry{
+				NovelID:         tc.NovelID,
+				Category:        item.Category,
+				Title:           item.Title,
+				Content:         item.Content,
+				DetailJSON:      item.DetailJSON,
+				TargetChapter:   item.TargetChapter,
+				Importance:      importance,
+				SourceChapterID: item.SourceChapterID,
+				Source:          source,
+				Status:          "pending",
+			}
+			if err := tx.Create(&entry).Error; err != nil {
+				failedName = item.Title
+				failedErr = err
+				return err
+			}
+			ids = append(ids, entry.ID)
 		}
-		importance := item.Importance
-		if importance == 0 {
-			importance = 3
-		}
-		items[i] = timeline.TimelineEntry{
-			NovelID:         tc.NovelID,
-			Category:        item.Category,
-			Title:           item.Title,
-			Content:         item.Content,
-			DetailJSON:      item.DetailJSON,
-			TargetChapter:   item.TargetChapter,
-			Importance:      importance,
-			SourceChapterID: item.SourceChapterID,
-			Source:          source,
-			Status:          "pending",
-		}
-	}
-
-	if err := tc.DB.WithContext(ctx).Create(&items).Error; err != nil {
-		return nil, fmt.Errorf("batch create timeline entries: %w", err)
-	}
-
-	ids := make([]int64, len(items))
-	for i := range items {
-		ids[i] = items[i].ID
+		return nil
+	})
+	if err != nil {
+		return &ToolResult{
+			Success: false,
+			Error:   fmt.Sprintf("创建时间线条目 [%s] 失败: %s", failedName, failedErr),
+		}, nil
 	}
 
 	return &ToolResult{

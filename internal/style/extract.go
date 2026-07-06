@@ -11,11 +11,11 @@ import (
 
 // Extract 分析样本文字的写作风格，生成仿写 skill。
 // 取消由调用方（app 层）通过 ctx 管理。
-func (s *Service) Extract(ctx context.Context, llmClient *llm.Client,
+func Extract(ctx context.Context, llmClient *llm.Client,
 	samples []Sample, providerName, modelID, reasoningEffort string) (*ExtractResult, error) {
 
 	// 计算 stats + 拼接全文
-	stats := s.ComputeStats(samples)
+	stats := ComputeStats(samples)
 	var combined strings.Builder
 	combined.WriteString(formatStatsForLLM(stats))
 	for _, sample := range samples {

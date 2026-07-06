@@ -28,10 +28,15 @@ download_mingit() {
 
 copy_native_git() {
     # Linux: 直接复制系统 git（AppImage 打包时由 linuxdeploy 处理依赖）
-    # macOS: 优先使用 Xcode CLT 的 git（自包含），避免 Homebrew 版本的动态库依赖缺失
+    # macOS: 复制 Xcode CLT 的 git（Universal Binary, 只依赖系统库, 复制后可独立运行）
     local git_bin
-    if [[ "$(uname -s)" == "Darwin" ]] && [ -x "/usr/bin/git" ]; then
-        git_bin="/usr/bin/git"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        if [ -x "/Library/Developer/CommandLineTools/usr/bin/git" ]; then
+            git_bin="/Library/Developer/CommandLineTools/usr/bin/git"
+        else
+            echo "错误: 未找到 Command Line Tools git，请先安装 CLT"
+            exit 1
+        fi
     else
         git_bin=$(which git 2>/dev/null || echo "/usr/bin/git")
     fi

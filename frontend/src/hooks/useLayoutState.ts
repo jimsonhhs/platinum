@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 const SIDEPANEL_KEY = 'goink_sidepanel_width'
 const CHATPANEL_KEY = 'goink_chatpanel_width'
@@ -25,12 +25,24 @@ export function useLayoutState() {
     loadNumber(CHATPANEL_KEY, CHATPANEL_DEFAULT, 280, 800),
   )
 
+  // 防抖写入 localStorage，避免拖拽时频繁同步 I/O
+  const sideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const chatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
-    localStorage.setItem(SIDEPANEL_KEY, String(sidePanelWidth))
+    if (sideTimerRef.current) clearTimeout(sideTimerRef.current)
+    sideTimerRef.current = setTimeout(() => {
+      localStorage.setItem(SIDEPANEL_KEY, String(sidePanelWidth))
+    }, 300)
+    return () => { if (sideTimerRef.current) clearTimeout(sideTimerRef.current) }
   }, [sidePanelWidth])
 
   useEffect(() => {
-    localStorage.setItem(CHATPANEL_KEY, String(chatPanelWidth))
+    if (chatTimerRef.current) clearTimeout(chatTimerRef.current)
+    chatTimerRef.current = setTimeout(() => {
+      localStorage.setItem(CHATPANEL_KEY, String(chatPanelWidth))
+    }, 300)
+    return () => { if (chatTimerRef.current) clearTimeout(chatTimerRef.current) }
   }, [chatPanelWidth])
 
   const setSidePanelWidth = useCallback((w: number) => {
