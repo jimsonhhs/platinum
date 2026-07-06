@@ -68,8 +68,9 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
       setTotal(res?.total ?? 0)
       setTotalPages(res?.total_pages ?? 0)
       setPage(p)
-    } catch (e) {
+    } catch (err) {
       toast.error(t('styleSample.loadFailed'))
+      console.error(err)
     }
   }, [app, page, t])
 
@@ -91,7 +92,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
         setEditContent(s.content)
         setEditTags((s.tags || []).join('，'))
       }
-    } catch (e) {
+    } catch {
       toast.error(t('styleSample.loadFailed'))
     }
   }, [app, t])
@@ -162,7 +163,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
       await app.DeleteStyleSample({ id })
       setSelected(prev => { const n = new Set(prev); n.delete(id); return n })
       await load(page)
-    } catch (e) {
+    } catch {
       toast.error(t('styleSample.deleteFailed'))
     }
   }, [app, load, page, t])
