@@ -35,7 +35,7 @@ func setupTestStore(t *testing.T) *Store {
 }
 
 // ---------------------------------------------------------------------------
-// Store CRUD 测试
+// Store CRUD 测试（浅包装已移至 app 层，这里直接用 DB 测试）
 // ---------------------------------------------------------------------------
 
 func TestStore_Create(t *testing.T) {
@@ -51,7 +51,7 @@ func TestStore_Create(t *testing.T) {
 		Tags:      StringSlice{"标签1", "标签2"},
 		WordCount: 8,
 	}
-	if err := s.Create(ctx, sample); err != nil {
+	if err := s.DB.WithContext(ctx).Create(sample).Error; err != nil {
 		t.Fatalf("create: %v", err)
 	}
 	if sample.ID == 0 {
@@ -70,12 +70,12 @@ func TestStore_Get(t *testing.T) {
 		Preview:   "内容",
 		WordCount: 2,
 	}
-	if err := s.Create(ctx, sample); err != nil {
+	if err := s.DB.WithContext(ctx).Create(sample).Error; err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	got, err := s.Get(ctx, sample.ID)
-	if err != nil {
+	var got Sample
+	if err := s.DB.WithContext(ctx).First(&got, sample.ID).Error; err != nil {
 		t.Fatalf("get: %v", err)
 	}
 	if got.Name != "获取测试" {
@@ -97,18 +97,22 @@ func TestStore_Update(t *testing.T) {
 		Preview:   "原始内容",
 		WordCount: 4,
 	}
-	if err := s.Create(ctx, sample); err != nil {
+	if err := s.DB.WithContext(ctx).Create(sample).Error; err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	sample.Name = "更新名称"
-	sample.Content = "更新内容"
-	if err := s.Update(ctx, sample); err != nil {
+	var loaded Sample
+	if err := s.DB.WithContext(ctx).First(&loaded, sample.ID).Error; err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	loaded.Name = "更新名称"
+	loaded.Content = "更新内容"
+	if err := s.DB.WithContext(ctx).Save(&loaded).Error; err != nil {
 		t.Fatalf("update: %v", err)
 	}
 
-	got, err := s.Get(ctx, sample.ID)
-	if err != nil {
+	var got Sample
+	if err := s.DB.WithContext(ctx).First(&got, sample.ID).Error; err != nil {
 		t.Fatalf("get after update: %v", err)
 	}
 	if got.Name != "更新名称" {
@@ -127,15 +131,16 @@ func TestStore_Delete(t *testing.T) {
 		Preview:   "内容",
 		WordCount: 2,
 	}
-	if err := s.Create(ctx, sample); err != nil {
+	if err := s.DB.WithContext(ctx).Create(sample).Error; err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	if err := s.Delete(ctx, sample.ID); err != nil {
+	if err := s.DB.WithContext(ctx).Delete(&Sample{}, sample.ID).Error; err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 
-	_, err := s.Get(ctx, sample.ID)
+	var got Sample
+	err := s.DB.WithContext(ctx).First(&got, sample.ID).Error
 	if err == nil {
 		t.Error("expected error after delete, got nil")
 	}
@@ -153,7 +158,7 @@ func TestStore_List(t *testing.T) {
 			Preview:   "内容",
 			WordCount: 2,
 		}
-		if err := s.Create(ctx, sample); err != nil {
+		if err := s.DB.WithContext(ctx).Create(sample).Error; err != nil {
 			t.Fatalf("create %d: %v", i, err)
 		}
 	}
@@ -189,7 +194,7 @@ func TestStore_GetByIDs(t *testing.T) {
 			Preview:   "内容",
 			WordCount: 2,
 		}
-		if err := s.Create(ctx, sample); err != nil {
+		if err := s.DB.WithContext(ctx).Create(sample).Error; err != nil {
 			t.Fatalf("create %d: %v", i, err)
 		}
 		ids = append(ids, sample.ID)
@@ -209,14 +214,14 @@ func TestStore_ListNovelScope(t *testing.T) {
 	ctx := context.Background()
 
 	// 创建全局素材
-	if err := s.Create(ctx, &Sample{IsGlobal: true, Name: "全局素材", Preview: "p", WordCount: 1}); err != nil {
+	if err := s.DB.WithContext(ctx).Create(&Sample{IsGlobal: true, Name: "全局素材", Preview: "p", WordCount: 1}).Error; err != nil {
 		t.Fatalf("create global: %v", err)
 	}
 	// 创建小说专属素材
-	if err := s.Create(ctx, &Sample{IsGlobal: false, NovelID: 1, Name: "小说1素材", Preview: "p", WordCount: 1}); err != nil {
+	if err := s.DB.WithContext(ctx).Create(&Sample{IsGlobal: false, NovelID: 1, Name: "小说1素材", Preview: "p", WordCount: 1}).Error; err != nil {
 		t.Fatalf("create novel: %v", err)
 	}
-	if err := s.Create(ctx, &Sample{IsGlobal: false, NovelID: 2, Name: "小说2素材", Preview: "p", WordCount: 1}); err != nil {
+	if err := s.DB.WithContext(ctx).Create(&Sample{IsGlobal: false, NovelID: 2, Name: "小说2素材", Preview: "p", WordCount: 1}).Error; err != nil {
 		t.Fatalf("create novel 2: %v", err)
 	}
 

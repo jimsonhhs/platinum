@@ -54,6 +54,7 @@ export default function ExtractWorkspaceView({ novelId, focusSampleId, onFocusSa
           focusId={activeTab === 'style' ? focusSampleId : null}
           onFocusHandled={handleFocusSampleHandled}
           embedded
+          novelId={novelId}
         />
       </div>
       <div className={activeTab === 'pattern' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>

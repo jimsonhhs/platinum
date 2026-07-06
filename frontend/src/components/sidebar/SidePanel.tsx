@@ -149,6 +149,7 @@ export default function SidePanel({
       ) : activePanel === 'style-samples' ? (
         <StyleSampleList
           onSelectSample={onSelectStyleSample}
+          novelId={novelId}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center">

@@ -9,6 +9,7 @@ import StyleSampleCard from './StyleSampleCard'
 import Markdown from '@/components/Markdown'
 import { splitFrontmatter } from '@/components/content/types'
 import PopSelect from '@/components/chat/PopSelect'
+import TagInput from '@/components/shared/TagInput'
 
 const PAGE_SIZE = 15
 
@@ -16,11 +17,12 @@ interface Props {
   focusId?: number | null
   onFocusHandled?: () => void
   embedded?: boolean
+  novelId?: number
 }
 
 type Phase = 'browse' | 'adding' | 'extracting' | 'preview'
 
-export default function StyleView({ focusId, onFocusHandled, embedded = false }: Props) {
+export default function StyleView({ focusId, onFocusHandled, embedded = false, novelId = 0 }: Props) {
   const app = useApp()
   const { t } = useTranslation()
   const runningTaskIdRef = useRef<string | null>(null)
@@ -37,6 +39,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
   const [newName, setNewName] = useState('')
   const [newContent, setNewContent] = useState('')
   const [newNovelId, setNewNovelId] = useState(0)
+  const [newTags, setNewTags] = useState<string[]>([])
 
   // extract
   const [modelKey, setModelKey] = useState('')
@@ -61,9 +64,12 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
     ...novels.map(n => ({ value: String(n.id), label: n.title })),
   ], [novels, t])
 
-  const load = useCallback(async (p: number = page) => {
+  const novelIdRef = useRef(novelId)
+  const loadRef = useRef<(p: number) => void>(null as any)
+
+  loadRef.current = async (p: number) => {
     try {
-      const res = await app.ListStyleSamples({ novel_id: 0, page: p, size: PAGE_SIZE, search: '' })
+      const res = await app.ListStyleSamples({ novel_id: novelId, page: p, size: PAGE_SIZE, search: '' })
       setSamples(res?.items ?? [])
       setTotal(res?.total ?? 0)
       setTotalPages(res?.total_pages ?? 0)
@@ -72,15 +78,26 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
       toastError(t('styleSample.loadFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
       console.error(err)
     }
-  }, [app, page, t])
+  }
+
+  const load = useCallback((p: number) => { loadRef.current?.(p) }, [])
 
   useEffect(() => { load(1) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // novelId 变化时重新加载
+  useEffect(() => {
+    if (novelIdRef.current !== novelId) {
+      novelIdRef.current = novelId
+      load(1)
+    }
+  }, [novelId, load])
 
   // detail/edit dialog
   const [detailId, setDetailId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editContent, setEditContent] = useState('')
-  const [editTags, setEditTags] = useState('')
+  const [editTags, setEditTags] = useState<string[]>([])
+  const [editNovelId, setEditNovelId] = useState(0)
   const [editSaving, setEditSaving] = useState(false)
 
   const openDetail = useCallback(async (id: number) => {
@@ -90,7 +107,8 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
         setDetailId(id)
         setEditName(s.name)
         setEditContent(s.content)
-        setEditTags((s.tags || []).join('，'))
+        setEditTags(s.tags || [])
+        setEditNovelId(s.is_global ? 0 : s.novel_id)
       }
     } catch (err) {
       toastError(t('styleSample.loadFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
@@ -145,10 +163,11 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
     setLoading(true)
     try {
       const isGlobal = newNovelId === 0
-      await app.CreateStyleSample({ novel_id: newNovelId, is_global: isGlobal, name: newName.trim(), content: newContent.trim() })
+      await app.CreateStyleSample({ novel_id: newNovelId, is_global: isGlobal, name: newName.trim(), content: newContent.trim(), tags: newTags })
       setNewName('')
       setNewContent('')
       setNewNovelId(0)
+      setNewTags([])
       setPhase('browse')
       await load(1)
     } catch (e: any) {
@@ -156,7 +175,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
     } finally {
       setLoading(false)
     }
-  }, [newName, newContent, newNovelId, app, load, t])
+  }, [newName, newContent, newNovelId, newTags, app, load, t])
 
   const handleDelete = useCallback(async (id: number, name: string) => {
     if (!confirm(t('styleSample.confirmDeleteSample') + `「${name}」？`)) return
@@ -221,7 +240,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
     if (!result) return
     setLoading(true)
     try {
-      await app.SaveContent({ novel_id: 0, path: result.filePath, content: result.rawContent })
+      await app.SaveContent({ novel_id: novelId, path: result.filePath, content: result.rawContent })
       setPhase('browse')
       setResult(null)
       setSelected(new Set())
@@ -230,18 +249,17 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
     } finally {
       setLoading(false)
     }
-  }, [result, app, t])
+  }, [result, app, t, novelId])
 
   const handleUpdate = useCallback(async () => {
     if (!detailId) return
     setEditSaving(true)
     try {
-      const tags = editTags.split(/[,，]/).map((tag: string) => tag.trim()).filter(Boolean)
-      const currentSample = samples.find(s => s.id === detailId)
+      const isGlobal = editNovelId === 0
       await app.UpdateStyleSample({
         id: detailId,
-        name: editName, content: editContent, tags,
-        is_global: currentSample?.is_global ?? true,
+        name: editName, content: editContent, tags: editTags,
+        is_global: isGlobal, novel_id: editNovelId,
       })
       setDetailId(null)
       await load(page)
@@ -250,7 +268,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
     } finally {
       setEditSaving(false)
     }
-  }, [detailId, editName, editContent, editTags, samples, app, load, page, t])
+  }, [detailId, editName, editContent, editTags, editNovelId, app, load, page, t])
 
   const modelOptions = models.map(m => ({ value: m.Key, label: m.ModelName }))
 
@@ -365,7 +383,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
               dropUp={false}
             />
             <button
-              onClick={() => { setPhase('browse'); setNewName(''); setNewContent(''); setNewNovelId(0) }}
+              onClick={() => { setPhase('browse'); setNewName(''); setNewContent(''); setNewNovelId(0); setNewTags([]) }}
               className="h-9 px-3 text-sm border rounded-md hover:bg-muted transition-colors"
             >
               {t('styleSample.cancel')}
@@ -377,6 +395,14 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
             >
               {loading ? t('styleSample.saving') : t('styleSample.addSample')}
             </button>
+          </div>
+          <div className="mt-2">
+            <TagInput
+              tags={newTags}
+              onChange={setNewTags}
+              placeholder={t('styleSample.tagPlaceholder')}
+              size="md"
+            />
           </div>
           <textarea
             value={newContent}
@@ -477,21 +503,33 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
               <button onClick={() => setDetailId(null)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">✕</button>
             </div>
             <div className="flex-1 min-h-0 flex flex-col px-5 py-4 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">{t('styleSample.name')}</label>
-                <input
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-lg border bg-background outline-none focus:ring-2 focus:ring-ring"
-                />
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('styleSample.name')}</label>
+                  <input
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border bg-background outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('styleSample.belongTo')}</label>
+                  <PopSelect
+                    value={String(editNovelId)}
+                    options={novelOptions}
+                    onChange={(v: string) => setEditNovelId(Number(v))}
+                    minWidth="120px"
+                    dropUp={false}
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">{t('styleSample.tags')}</label>
-                <input
-                  value={editTags}
-                  onChange={e => setEditTags(e.target.value)}
+                <TagInput
+                  tags={editTags}
+                  onChange={setEditTags}
                   placeholder={t('styleSample.tagPlaceholder')}
-                  className="w-full px-3 py-2 text-sm rounded-lg border bg-background outline-none focus:ring-2 focus:ring-ring"
+                  size="md"
                 />
               </div>
               <div className="flex-1 flex flex-col min-h-0">

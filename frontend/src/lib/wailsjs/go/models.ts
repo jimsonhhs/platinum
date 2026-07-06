@@ -257,6 +257,7 @@ export namespace app {
 	    is_global: boolean;
 	    name: string;
 	    content: string;
+	    tags: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateStyleSampleInput(source);
@@ -268,6 +269,7 @@ export namespace app {
 	        this.is_global = source["is_global"];
 	        this.name = source["name"];
 	        this.content = source["content"];
+	        this.tags = source["tags"];
 	    }
 	}
 	export class CreateTimelineEntryInput {
@@ -762,6 +764,7 @@ export namespace app {
 	    content: string;
 	    tags: string[];
 	    is_global: boolean;
+	    novel_id: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateStyleSampleInput(source);
@@ -774,6 +777,7 @@ export namespace app {
 	        this.content = source["content"];
 	        this.tags = source["tags"];
 	        this.is_global = source["is_global"];
+	        this.novel_id = source["novel_id"];
 	    }
 	}
 	export class UpdateTimelineEntryInput {

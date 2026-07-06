@@ -770,8 +770,8 @@
     "name": "名称",
     "summary": "简介",
     "editSample": "编辑素材",
-    "tags": "标签（逗号分隔）",
-    "tagPlaceholder": "如：武侠, 金庸, 打斗",
+    "tags": "标签",
+    "tagPlaceholder": "输入标签后按回车添加",
     "body": "正文",
     "bodyPlaceholder": "粘贴要模仿的文字样本...",
     "charCount": "字",
@@ -783,7 +783,8 @@
     "loadFailed": "加载失败",
     "deleteFailed": "删除失败",
     "searchPlaceholder": "搜索素材...",
-    "noMatching": "没有匹配的素材"
+    "noMatching": "没有匹配的素材",
+    "belongTo": "归属"
   },
   "extract": {
     "styleSamples": "风格素材",

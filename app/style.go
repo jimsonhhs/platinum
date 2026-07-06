@@ -7,6 +7,7 @@ import (
 	"novel/internal/agent"
 	"novel/internal/storage"
 	"novel/internal/style"
+	"novel/internal/text"
 )
 
 // ListStyleSamplesInput 是列出风格素材的入参。
@@ -32,10 +33,11 @@ func (a *App) ListStyleSamples(input ListStyleSamplesInput) (*storage.PageResult
 
 // CreateStyleSampleInput 是创建风格素材的入参。
 type CreateStyleSampleInput struct {
-	NovelID  int64  `json:"novel_id"`
-	IsGlobal bool   `json:"is_global"`
-	Name     string `json:"name"`
-	Content  string `json:"content"`
+	NovelID  int64    `json:"novel_id"`
+	IsGlobal bool     `json:"is_global"`
+	Name     string   `json:"name"`
+	Content  string   `json:"content"`
+	Tags     []string `json:"tags"`
 }
 
 // CreateStyleSample 创建一条风格素材。
@@ -46,10 +48,10 @@ func (a *App) CreateStyleSample(input CreateStyleSampleInput) (*style.Sample, er
 		Name:      input.Name,
 		Content:   input.Content,
 		Preview:   style.TruncatePreview(input.Content),
-		Tags:      style.StringSlice(nil),
-		WordCount: len([]rune(input.Content)),
+		Tags:      style.StringSlice(input.Tags),
+		WordCount: text.ComputeStats(input.Content).WordCount,
 	}
-	if err := a.style.Create(a.ctx, sample); err != nil {
+	if err := a.style.DB.WithContext(a.ctx).Create(sample).Error; err != nil {
 		return nil, fmt.Errorf("create style sample: %w", err)
 	}
 	return sample, nil
@@ -62,29 +64,35 @@ type UpdateStyleSampleInput struct {
 	Content  string   `json:"content"`
 	Tags     []string `json:"tags"`
 	IsGlobal bool     `json:"is_global"`
+	NovelID  int64    `json:"novel_id"`
 }
 
 // UpdateStyleSample 更新一条风格素材。
 func (a *App) UpdateStyleSample(input UpdateStyleSampleInput) (*style.Sample, error) {
-	sample, err := a.style.Get(a.ctx, input.ID)
-	if err != nil {
+	var sample style.Sample
+	if err := a.style.DB.WithContext(a.ctx).First(&sample, input.ID).Error; err != nil {
 		return nil, fmt.Errorf("update style sample: %w", err)
 	}
 	sample.Name = input.Name
 	sample.Content = input.Content
 	sample.Preview = style.TruncatePreview(input.Content)
 	sample.Tags = style.StringSlice(input.Tags)
-	sample.WordCount = len([]rune(input.Content))
+	sample.WordCount = text.ComputeStats(input.Content).WordCount
 	sample.IsGlobal = input.IsGlobal
-	if err := a.style.Update(a.ctx, sample); err != nil {
+	sample.NovelID = input.NovelID
+	if err := a.style.DB.WithContext(a.ctx).Save(&sample).Error; err != nil {
 		return nil, fmt.Errorf("update style sample: %w", err)
 	}
-	return sample, nil
+	return &sample, nil
 }
 
 // GetStyleSample 获取单条风格素材的完整内容。
 func (a *App) GetStyleSample(id int64) (*style.Sample, error) {
-	return a.style.Get(a.ctx, id)
+	var sample style.Sample
+	if err := a.style.DB.WithContext(a.ctx).First(&sample, id).Error; err != nil {
+		return nil, fmt.Errorf("get style sample: %w", err)
+	}
+	return &sample, nil
 }
 
 // DeleteStyleSampleInput 是删除风格素材的入参。
@@ -94,7 +102,10 @@ type DeleteStyleSampleInput struct {
 
 // DeleteStyleSample 删除一条风格素材。
 func (a *App) DeleteStyleSample(input DeleteStyleSampleInput) error {
-	return a.style.Delete(a.ctx, input.ID)
+	if err := a.style.DB.WithContext(a.ctx).Delete(&style.Sample{}, input.ID).Error; err != nil {
+		return fmt.Errorf("delete style sample: %w", err)
+	}
+	return nil
 }
 
 // ComputeStyleStatsInput 是计算风格统计的入参。

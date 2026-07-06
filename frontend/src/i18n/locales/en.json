@@ -799,8 +799,8 @@
     "name": "Name",
     "summary": "Summary",
     "editSample": "Edit Sample",
-    "tags": "Tags (comma separated)",
-    "tagPlaceholder": "e.g., Wuxia, Jin Yong, Fighting",
+    "tags": "Tags",
+    "tagPlaceholder": "Type a tag and press Enter",
     "body": "Body",
     "bodyPlaceholder": "Paste a text sample to imitate...",
     "charCount": "chars",
@@ -812,7 +812,8 @@
     "loadFailed": "Load failed",
     "deleteFailed": "Delete failed",
     "searchPlaceholder": "Search samples...",
-    "noMatching": "No matching samples"
+    "noMatching": "No matching samples",
+    "belongTo": "Belongs to"
   },
   "extract": {
     "styleSamples": "Style Samples",

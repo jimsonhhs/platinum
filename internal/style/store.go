@@ -63,39 +63,6 @@ func (s *Store) List(ctx context.Context, opts ListOptions) (*storage.PageResult
 	return storage.NewPageResult(samples, total, pp.Page, pp.Size), nil
 }
 
-// Create 创建一条风格素材。
-func (s *Store) Create(ctx context.Context, sample *Sample) error {
-	if err := s.DB.WithContext(ctx).Create(sample).Error; err != nil {
-		return fmt.Errorf("style store: create: %w", err)
-	}
-	return nil
-}
-
-// Get 获取单条素材完整内容。
-func (s *Store) Get(ctx context.Context, id int64) (*Sample, error) {
-	var sample Sample
-	if err := s.DB.WithContext(ctx).First(&sample, id).Error; err != nil {
-		return nil, fmt.Errorf("style store: get: %w", err)
-	}
-	return &sample, nil
-}
-
-// Update 更新一条风格素材。
-func (s *Store) Update(ctx context.Context, sample *Sample) error {
-	if err := s.DB.WithContext(ctx).Save(sample).Error; err != nil {
-		return fmt.Errorf("style store: update: %w", err)
-	}
-	return nil
-}
-
-// Delete 删除一条风格素材。
-func (s *Store) Delete(ctx context.Context, id int64) error {
-	if err := s.DB.WithContext(ctx).Delete(&Sample{}, id).Error; err != nil {
-		return fmt.Errorf("style store: delete: %w", err)
-	}
-	return nil
-}
-
 // GetByIDs 批量按 ID 获取素材，用于 ComputeStats 和 ExtractStyle。
 func (s *Store) GetByIDs(ctx context.Context, ids []int64) ([]Sample, error) {
 	if len(ids) == 0 {
