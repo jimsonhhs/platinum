@@ -1,14 +1,19 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Sparkle, Loader2, BarChart3 } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { Plus, Sparkle, Loader2, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useApp } from '@/hooks/useApp'
-import StyleSampleCard, { type StyleSampleMeta } from './StyleSampleCard'
+import type { novel } from '@/lib/wailsjs/go/models'
+import type { style } from '@/lib/wailsjs/go/models'
+import StyleSampleCard from './StyleSampleCard'
 import Markdown from '@/components/Markdown'
 import { splitFrontmatter } from '@/components/content/types'
 import PopSelect from '@/components/chat/PopSelect'
 
+const PAGE_SIZE = 15
+
 interface Props {
-  focusId?: string | null
+  focusId?: number | null
   onFocusHandled?: () => void
   embedded?: boolean
 }
@@ -20,14 +25,18 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
   const { t } = useTranslation()
   const runningTaskIdRef = useRef<string | null>(null)
 
-  const [samples, setSamples] = useState<StyleSampleMeta[]>([])
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [samples, setSamples] = useState<style.Sample[]>([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
   const [phase, setPhase] = useState<Phase>('browse')
   const [loading, setLoading] = useState(false)
 
   // add form
   const [newName, setNewName] = useState('')
   const [newContent, setNewContent] = useState('')
+  const [newNovelId, setNewNovelId] = useState(0)
 
   // extract
   const [modelKey, setModelKey] = useState('')
@@ -35,25 +44,45 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
   const [error, setError] = useState('')
   const [result, setResult] = useState<{ name: string; filePath: string; rawContent: string } | null>(null)
 
-  const load = useCallback(async () => {
-    try {
-      const list = await app.ListStyleSamples()
-      setSamples(list ?? [])
-    } catch (e) {
-      console.error('Load style samples failed', e)
-    }
+  // novels for PopSelect
+  const [novels, setNovels] = useState<novel.Novel[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    app.GetNovels().then(list => {
+      if (cancelled) return
+      setNovels(list ?? [])
+    }).catch(() => {})
+    return () => { cancelled = true }
   }, [app])
 
-  useEffect(() => { load() }, [load])
+  const novelOptions = useMemo(() => [
+    { value: '0', label: t('styleSample.global') },
+    ...novels.map(n => ({ value: String(n.id), label: n.title })),
+  ], [novels, t])
+
+  const load = useCallback(async (p: number = page) => {
+    try {
+      const res = await app.ListStyleSamples({ novel_id: 0, page: p, size: PAGE_SIZE, search: '' })
+      setSamples(res?.items ?? [])
+      setTotal(res?.total ?? 0)
+      setTotalPages(res?.total_pages ?? 0)
+      setPage(p)
+    } catch (e) {
+      toast.error(t('styleSample.loadFailed'))
+    }
+  }, [app, page, t])
+
+  useEffect(() => { load(1) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // detail/edit dialog
-  const [detailId, setDetailId] = useState<string | null>(null)
+  const [detailId, setDetailId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editContent, setEditContent] = useState('')
   const [editTags, setEditTags] = useState('')
   const [editSaving, setEditSaving] = useState(false)
 
-  const openDetail = useCallback(async (id: string) => {
+  const openDetail = useCallback(async (id: number) => {
     try {
       const s = await app.GetStyleSample(id)
       if (s) {
@@ -63,9 +92,9 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
         setEditTags((s.tags || []).join('，'))
       }
     } catch (e) {
-      console.error('Get style sample failed', e)
+      toast.error(t('styleSample.loadFailed'))
     }
-  }, [app])
+  }, [app, t])
 
   useEffect(() => {
     if (focusId) {
@@ -92,7 +121,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
     return () => { cancelled = true }
   }, [app])
 
-  const toggleSelect = useCallback((id: string) => {
+  const toggleSelect = useCallback((id: number) => {
     setSelected(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -113,28 +142,30 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
     if (!newName.trim() || !newContent.trim()) return
     setLoading(true)
     try {
-      await app.CreateStyleSample({ name: newName.trim(), content: newContent.trim() })
+      const isGlobal = newNovelId === 0
+      await app.CreateStyleSample({ novel_id: newNovelId, is_global: isGlobal, name: newName.trim(), content: newContent.trim() })
       setNewName('')
       setNewContent('')
+      setNewNovelId(0)
       setPhase('browse')
-      await load()
+      await load(1)
     } catch (e: any) {
       setError(e?.message ?? t('styleSample.addFailed'))
     } finally {
       setLoading(false)
     }
-  }, [newName, newContent, app, load, t])
+  }, [newName, newContent, newNovelId, app, load, t])
 
-  const handleDelete = useCallback(async (id: string, name: string) => {
+  const handleDelete = useCallback(async (id: number, name: string) => {
     if (!confirm(t('styleSample.confirmDeleteSample') + `「${name}」？`)) return
     try {
       await app.DeleteStyleSample({ id })
       setSelected(prev => { const n = new Set(prev); n.delete(id); return n })
-      await load()
+      await load(page)
     } catch (e) {
-      console.error('Delete style sample failed', e)
+      toast.error(t('styleSample.deleteFailed'))
     }
-  }, [app, load, t])
+  }, [app, load, page, t])
 
   const handleExtract = useCallback(async () => {
     if (selected.size === 0 || !modelKey) return
@@ -203,18 +234,20 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
     setEditSaving(true)
     try {
       const tags = editTags.split(/[,，]/).map((tag: string) => tag.trim()).filter(Boolean)
+      const currentSample = samples.find(s => s.id === detailId)
       await app.UpdateStyleSample({
         id: detailId,
         name: editName, content: editContent, tags,
+        is_global: currentSample?.is_global ?? true,
       })
       setDetailId(null)
-      await load()
+      await load(page)
     } catch (e: any) {
       setError(e?.message ?? t('styleSample.saveFailed'))
     } finally {
       setEditSaving(false)
     }
-  }, [detailId, editName, editContent, editTags, app, load, t])
+  }, [detailId, editName, editContent, editTags, samples, app, load, page, t])
 
   const modelOptions = models.map(m => ({ value: m.Key, label: m.ModelName }))
 
@@ -250,8 +283,8 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
           <>
             <span className="text-sm text-muted-foreground">
               {selected.size > 0 ? (
-                <>{t('styleSample.totalSamples', { count: samples.length })}<span className="ml-2 text-primary">· {t('styleSample.selectedSamples', { count: selected.size })}</span></>
-              ) : samples.length > 0 ? (
+                <>{t('styleSample.totalSamples', { count: total })}<span className="ml-2 text-primary">· {t('styleSample.selectedSamples', { count: selected.size })}</span></>
+              ) : total > 0 ? (
                 t('styleSample.selectHint')
               ) : null}
             </span>
@@ -267,7 +300,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
               )}
               {phase !== 'adding' && selected.size > 0 && (
                 <>
-                  <PopSelect value={modelKey} options={modelOptions} onChange={setModelKey} minWidth="140px" />
+                  <PopSelect value={modelKey} options={modelOptions} onChange={setModelKey} minWidth="140px" dropUp={false} />
                   <button
                     onClick={handleExtract}
                     className={`inline-flex items-center gap-1.5 h-8 px-4 rounded-lg text-sm font-medium transition-colors shadow-sm
@@ -315,8 +348,15 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
               className="flex-1 px-3 py-2 text-sm rounded-lg border bg-background outline-none focus:ring-2 focus:ring-ring"
               autoFocus
             />
+            <PopSelect
+              value={String(newNovelId)}
+              options={novelOptions}
+              onChange={(v: string) => setNewNovelId(Number(v))}
+              minWidth="120px"
+              dropUp={false}
+            />
             <button
-              onClick={() => { setPhase('browse'); setNewName(''); setNewContent('') }}
+              onClick={() => { setPhase('browse'); setNewName(''); setNewContent(''); setNewNovelId(0) }}
               className="h-9 px-3 text-sm border rounded-md hover:bg-muted transition-colors"
             >
               {t('styleSample.cancel')}
@@ -367,24 +407,52 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
 
       {/* 素材卡片网格 */}
       {(phase === 'browse' || phase === 'extracting') && (
-        <div className="flex-1 overflow-y-auto overscroll-contain p-6">
-          {samples.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
-              <BarChart3 className="w-12 h-12 opacity-20" />
-              <p className="text-sm">{t('styleSample.noStyleSamples')}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
-              {samples.map(s => (
-                <StyleSampleCard
-                  key={s.id}
-                  sample={s}
-                  selected={selected.has(s.id)}
-                  onToggle={() => toggleSelect(s.id)}
-                  onDelete={() => handleDelete(s.id, s.name)}
-                  onClick={() => openDetail(s.id)}
-                />
-              ))}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-6">
+            {samples.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+                <BarChart3 className="w-12 h-12 opacity-20" />
+                <p className="text-sm">{t('styleSample.noStyleSamples')}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+                {samples.map(s => (
+                  <StyleSampleCard
+                    key={s.id}
+                    sample={s}
+                    selected={selected.has(s.id)}
+                    onToggle={() => toggleSelect(s.id)}
+                    onDelete={() => handleDelete(s.id, s.name)}
+                    onClick={() => openDetail(s.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 分页控件 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 px-6 py-3 border-t shrink-0">
+              <button
+                onClick={() => load(page - 1)}
+                disabled={page <= 1}
+                className="h-7 w-7 flex items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs text-muted-foreground">
+                {page} / {totalPages}
+              </span>
+              <button
+                onClick={() => load(page + 1)}
+                disabled={page >= totalPages}
+                className="h-7 w-7 flex items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <span className="text-xs text-muted-foreground ml-2">
+                {t('styleSample.totalSamples', { count: total })}
+              </span>
             </div>
           )}
         </div>

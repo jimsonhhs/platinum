@@ -7,7 +7,7 @@ import PatternExtractView from '@/components/pattern/PatternExtractView'
 
 interface Props {
   novelId: number
-  focusSampleId?: string | null
+  focusSampleId?: number | null
   onFocusSampleHandled?: () => void
 }
 

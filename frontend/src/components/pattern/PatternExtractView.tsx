@@ -265,6 +265,7 @@ export default function PatternExtractView({ currentNovelId }: Props) {
                   onChange={handleTargetNovelChange}
                   minWidth="160px"
                   placeholder={t('extract.noAvailableWork')}
+                  dropUp={false}
                 />
               </div>
               <div className="inline-flex items-center gap-1 rounded-lg bg-muted/60 p-0.5">
@@ -286,7 +287,7 @@ export default function PatternExtractView({ currentNovelId }: Props) {
                 </button>
               </div>
               <div className={phase === 'extracting' ? 'pointer-events-none opacity-60' : ''}>
-                <PopSelect value={modelKey} options={modelOptions} onChange={setModelKey} minWidth="140px" />
+                <PopSelect value={modelKey} options={modelOptions} onChange={setModelKey} minWidth="140px" dropUp={false} />
               </div>
               <button
                 onClick={handleExtract}

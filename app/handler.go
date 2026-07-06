@@ -56,7 +56,7 @@ type App struct {
 	character  *character.Store
 	session    *session.Store
 	skill      *skill.Store
-	style      *style.Service
+	style      *style.Store
 	timeline   *timeline.Store
 	storyarc   *storyarc.Store
 	location   *location.Store
@@ -206,13 +206,8 @@ func (a *App) initWithConfig(cfg *config.AppConfig) {
 	a.cancelMgr = agent.NewCancelManager()
 	a.agent = agent.New(a.llmClient, a.registry, a.session, a.db, a.approvals, a.logger, a.skill, a.cancelMgr)
 
-	// 10.5 初始化 style service（全局风格素材）
-	styleSvc, err := style.NewService(a.logger, config.StyleSamplesDir())
-	if err != nil {
-		a.logger.Error("初始化 style service 失败", "err", err)
-	} else {
-		a.style = styleSvc
-	}
+	// 10.5 初始化 style store（全局风格素材）
+	a.style = style.NewStore(db, a.logger)
 
 	// 11. 异步初始化向量存储和搜索服务（不阻塞 UI）
 	go func() {

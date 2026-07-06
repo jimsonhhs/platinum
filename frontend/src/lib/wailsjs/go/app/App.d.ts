@@ -52,7 +52,7 @@ export function CreateReaderPerspective(arg1:number,arg2:app.CreateReaderPerspec
 
 export function CreateStoryArc(arg1:number,arg2:app.CreateStoryArcInput):Promise<storyarc.StoryArc>;
 
-export function CreateStyleSample(arg1:app.CreateStyleSampleInput):Promise<app.StyleSampleMeta>;
+export function CreateStyleSample(arg1:app.CreateStyleSampleInput):Promise<style.Sample>;
 
 export function CreateTimelineEntry(arg1:number,arg2:app.CreateTimelineEntryInput):Promise<timeline.TimelineEntry>;
 
@@ -136,7 +136,7 @@ export function GetSettings():Promise<config.AppSettings>;
 
 export function GetStoryArcs(arg1:number):Promise<Array<storyarc.StoryArc>>;
 
-export function GetStyleSample(arg1:string):Promise<style.Sample>;
+export function GetStyleSample(arg1:number):Promise<style.Sample>;
 
 export function GetTimelineEntries(arg1:number,arg2:number,arg3:number):Promise<Array<timeline.TimelineEntry>>;
 
@@ -156,7 +156,7 @@ export function ListSkills(arg1:app.ListSkillsInput):Promise<Array<skill.SkillMe
 
 export function ListSlashCommands(arg1:app.ListSlashCommandsInput):Promise<Array<app.SlashCommand>>;
 
-export function ListStyleSamples():Promise<Array<app.StyleSampleMeta>>;
+export function ListStyleSamples(arg1:app.ListStyleSamplesInput):Promise<storage.PageResult_novel_internal_style_Sample_>;
 
 export function PickAndImportNovel():Promise<app.ImportNovelResult>;
 
@@ -210,6 +210,6 @@ export function UpdateReaderPerspective(arg1:number,arg2:number,arg3:app.UpdateR
 
 export function UpdateStoryArc(arg1:number,arg2:number,arg3:app.UpdateStoryArcInput):Promise<void>;
 
-export function UpdateStyleSample(arg1:app.UpdateStyleSampleInput):Promise<void>;
+export function UpdateStyleSample(arg1:app.UpdateStyleSampleInput):Promise<style.Sample>;
 
 export function UpdateTimelineEntry(arg1:number,arg2:number,arg3:app.UpdateTimelineEntryInput):Promise<void>;

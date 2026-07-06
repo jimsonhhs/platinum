@@ -359,7 +359,7 @@ func skipOperLog(db *gorm.DB) bool {
 	}
 	t := db.Statement.Schema.Table
 	return t == "operation_log" || t == "messages" || t == "app_config" || t == "turn_commits" ||
-		t == "sessions" || t == "novels" || t == "writing_log"
+		t == "sessions" || t == "novels" || t == "writing_log" || t == "style_samples"
 }
 
 // toJSON 将任意值序列化为 JSON 字符串。

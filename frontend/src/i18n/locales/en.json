@@ -806,7 +806,12 @@
     "deleteSample": "Delete Sample",
     "samples": "Samples",
     "loading": "Loading...",
-    "noSamples": "No samples yet"
+    "noSamples": "No samples yet",
+    "global": "Global",
+    "loadFailed": "Load failed",
+    "deleteFailed": "Delete failed",
+    "searchPlaceholder": "Search samples...",
+    "noMatching": "No matching samples"
   },
   "extract": {
     "styleSamples": "Style Samples",

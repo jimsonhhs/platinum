@@ -1,16 +1,60 @@
 package style
 
-import "time"
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
-// Sample 是一条风格素材。
-type Sample struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Content   string    `json:"content"`
-	Tags      []string  `json:"tags"`
-	WordCount int       `json:"word_count"`
-	CreatedAt time.Time `json:"created_at"`
+// StringSlice 是 []string 的 DB 适配类型，存储为 JSON TEXT。
+type StringSlice []string
+
+// Scan 实现 sql.Scanner，从 DB 读取 JSON TEXT → []string。
+func (s *StringSlice) Scan(value any) error {
+	if value == nil {
+		*s = nil
+		return nil
+	}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return fmt.Errorf("StringSlice: cannot scan %T", value)
+	}
+	return json.Unmarshal(bytes, s)
 }
+
+// Value 实现 driver.Valuer，从 []string → JSON TEXT 写入 DB。
+func (s StringSlice) Value() (driver.Value, error) {
+	if s == nil {
+		return "[]", nil
+	}
+	b, err := json.Marshal([]string(s))
+	if err != nil {
+		return nil, err
+	}
+	return string(b), nil
+}
+
+// Sample 是一条风格素材的 GORM model。
+type Sample struct {
+	ID        int64       `gorm:"column:id;primaryKey;autoIncrement"    json:"id"`
+	NovelID   int64       `gorm:"column:novel_id;not null"               json:"novel_id"`
+	IsGlobal  bool        `gorm:"column:is_global;not null"              json:"is_global"`
+	Name      string      `gorm:"column:name;not null"                   json:"name"`
+	Content   string      `gorm:"column:content;not null"                json:"content"`
+	Preview   string      `gorm:"column:preview;not null"                json:"preview"`
+	Tags      StringSlice `gorm:"column:tags;type:text;not null"         json:"tags"`
+	WordCount int         `gorm:"column:word_count;not null"             json:"word_count"`
+	CreatedAt time.Time   `gorm:"column:created_at;autoCreateTime"       json:"created_at"`
+	UpdatedAt time.Time   `gorm:"column:updated_at;autoUpdateTime"       json:"updated_at"`
+}
+
+func (Sample) TableName() string { return "style_samples" }
 
 // Stats 是代码计算的确定性文本统计，不依赖 LLM。
 type Stats struct {

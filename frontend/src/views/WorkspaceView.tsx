@@ -64,7 +64,7 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
   const [arcFocusId, setArcFocusId] = useState<number>(0)
   const [readerFocusId, setReaderFocusId] = useState<number>(0)
   const [preferenceFocusId, setPreferenceFocusId] = useState<number>(0)
-  const [styleSampleFocusId, setStyleSampleFocusId] = useState<string | null>(null)
+  const [styleSampleFocusId, setStyleSampleFocusId] = useState<number | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')

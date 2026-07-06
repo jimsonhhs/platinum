@@ -21,9 +21,10 @@ interface Props {
   minWidth?: string
   placeholder?: string
   footerAction?: FooterAction
+  dropUp?: boolean // true=向上弹出(默认), false=向下弹出
 }
 
-export default function PopSelect({ value, options, onChange, onOpen, className = '', minWidth = '130px', placeholder, footerAction }: Props) {
+export default function PopSelect({ value, options, onChange, onOpen, className = '', minWidth = '130px', placeholder, footerAction, dropUp = true }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -54,11 +55,11 @@ export default function PopSelect({ value, options, onChange, onOpen, className 
         className="h-[30px] rounded-lg border bg-background px-2.5 text-xs text-muted-foreground flex items-center justify-between gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <span className="truncate">{selected?.label || placeholder || t('chat.noModelAvailable')}</span>
-        <ChevronUp className={`w-3 h-3 shrink-0 transition-transform ${open ? '' : 'rotate-180'}`} />
+        <ChevronUp className={`w-3 h-3 shrink-0 transition-transform ${open === dropUp ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-1 w-full max-h-[200px] overflow-y-auto rounded-lg border bg-background shadow-lg z-50">
+        <div className={`absolute left-0 w-full max-h-[200px] overflow-y-auto rounded-lg border bg-background shadow-lg z-50 ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
           {options.map(opt => (
             <button
               key={opt.value}

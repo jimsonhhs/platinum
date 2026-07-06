@@ -777,7 +777,12 @@
     "deleteSample": "删除素材",
     "samples": "素材",
     "loading": "加载中...",
-    "noSamples": "暂无素材"
+    "noSamples": "暂无素材",
+    "global": "全局",
+    "loadFailed": "加载失败",
+    "deleteFailed": "删除失败",
+    "searchPlaceholder": "搜索素材...",
+    "noMatching": "没有匹配的素材"
   },
   "extract": {
     "styleSamples": "风格素材",
