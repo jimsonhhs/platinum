@@ -19,8 +19,8 @@ describe('cn', () => {
   })
 
   it('handles conditional classes', () => {
-    const hidden = false
-    expect(cn('base', hidden && 'hidden', 'visible')).toBe('base visible')
+    // eslint-disable-next-line no-constant-binary-expression
+    expect(cn('base', false && 'hidden', 'visible')).toBe('base visible')
   })
 
   it('deduplicates tailwind classes (tailwind-merge)', () => {
