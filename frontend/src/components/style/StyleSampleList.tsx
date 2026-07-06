@@ -54,6 +54,7 @@ export default function StyleSampleList({ onSelectSample, activeId, novelId = 0 
     setSamples([])
     setPage(1)
     setHasMore(true)
+    setSearch('')
     searchRef.current = ''
     loadPageRef.current?.(1, '')
   }, [novelId]) // eslint-disable-line react-hooks/exhaustive-deps
