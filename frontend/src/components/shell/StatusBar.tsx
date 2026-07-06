@@ -60,7 +60,7 @@ export default function StatusBar({ content, isDirty }: Props) {
   const { t } = useTranslation()
   const stats = useMemo(() => computeStats(content), [content])
   const [showDetail, setShowDetail] = useState(false)
-  const hoverTimer = useRef<ReturnType<typeof setTimeout>>(0)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function handleMouseEnter() {
     hoverTimer.current = setTimeout(() => setShowDetail(true), 150)
