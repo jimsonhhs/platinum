@@ -49,7 +49,9 @@ jobs:
         shell: bash
         run: |
           cd frontend && npm ci && npm run build && cd ..
-          wails build -tags webkit2_41 -o goink.exe
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"; fi
+          wails build -tags webkit2_41 -o goink.exe -ldflags "-X internal/version.Version=$VERSION"
 
       - name: Install Inno Setup
         run: choco install innosetup -y --limit-output
@@ -58,7 +60,9 @@ jobs:
         shell: bash
         run: |
           export PATH="/c/Program Files (x86)/Inno Setup 6:$PATH"
-          export VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"; fi
+          export VERSION
           iscc build/package/windows/setup.iss
 
       - uses: actions/upload-artifact@v4
@@ -99,10 +103,15 @@ jobs:
       - name: Build
         run: |
           cd frontend && npm ci && npm run build && cd ..
-          wails build -tags webkit2_41 -o goink
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"; fi
+          wails build -tags webkit2_41 -o goink -ldflags "-X internal/version.Version=$VERSION"
 
       - name: Package (AppImage)
-        run: bash build/package/linux/build-appimage.sh ${GITHUB_REF_NAME#v}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"; fi
+          bash build/package/linux/build-appimage.sh "$VERSION"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -139,10 +148,15 @@ jobs:
       - name: Build
         run: |
           cd frontend && npm ci && npm run build && cd ..
-          wails build -tags webkit2_41 -o goink
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"; fi
+          wails build -tags webkit2_41 -o goink -ldflags "-X internal/version.Version=$VERSION"
 
       - name: Package (DMG)
-        run: bash build/package/macos/build-dmg.sh ${GITHUB_REF_NAME#v}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9] ]]; then VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"; fi
+          bash build/package/macos/build-dmg.sh "$VERSION"
 
       - uses: actions/upload-artifact@v4
         with:
