@@ -46,7 +46,7 @@ describe('LocationList', () => {
     ])
     render(<LocationList novelId={1} />)
     expect(await screen.findByText('Castle')).toBeInTheDocument()
-    expect(screen.getByText('Throne Room')).toBeInTheDocument()
+    expect(await screen.findByText('Throne Room')).toBeInTheDocument()
   })
 
   it('shows toastError when delete fails', async () => {
