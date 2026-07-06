@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
+import { toastError } from '@/lib/utils'
 import { useApp } from '@/hooks/useApp'
 import type { character } from '@/hooks/useApp'
 
@@ -41,7 +41,7 @@ export default function CharacterList({ novelId }: Props) {
       await app.DeleteCharacter(novelId, charId)
       await load()
     } catch (err) {
-      toast.error(t('character.deleteFailed'))
+      toastError(t('character.deleteFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
       console.error(err)
     }
   }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ChevronRight, MapPin, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
+import { toastError } from '@/lib/utils'
 import { useApp } from '@/hooks/useApp'
 import type { location } from '@/hooks/useApp'
 
@@ -54,7 +54,7 @@ export default function LocationList({ novelId }: Props) {
       await app.DeleteLocation(novelId, locId)
       await load()
     } catch (err) {
-      toast.error(t('location.deleteFailed'))
+      toastError(t('location.deleteFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
       console.error(err)
     }
   }

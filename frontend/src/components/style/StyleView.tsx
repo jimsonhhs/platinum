@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Plus, Sparkle, Loader2, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
+import { toastError } from '@/lib/utils'
 import { useApp } from '@/hooks/useApp'
 import type { novel } from '@/lib/wailsjs/go/models'
 import type { style } from '@/lib/wailsjs/go/models'
@@ -69,7 +69,7 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
       setTotalPages(res?.total_pages ?? 0)
       setPage(p)
     } catch (err) {
-      toast.error(t('styleSample.loadFailed'))
+      toastError(t('styleSample.loadFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
       console.error(err)
     }
   }, [app, page, t])
@@ -92,8 +92,9 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
         setEditContent(s.content)
         setEditTags((s.tags || []).join('，'))
       }
-    } catch {
-      toast.error(t('styleSample.loadFailed'))
+    } catch (err) {
+      toastError(t('styleSample.loadFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
+      console.error(err)
     }
   }, [app, t])
 
@@ -163,8 +164,9 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
       await app.DeleteStyleSample({ id })
       setSelected(prev => { const n = new Set(prev); n.delete(id); return n })
       await load(page)
-    } catch {
-      toast.error(t('styleSample.deleteFailed'))
+    } catch (err) {
+      toastError(t('styleSample.deleteFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
+      console.error(err)
     }
   }, [app, load, page, t])
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, Plus, Pencil, Trash2, Heart } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
+import { toastError } from '@/lib/utils'
 import { useApp } from '@/hooks/useApp'
 import type { skill } from '@/hooks/useApp'
 import SkillContributeDialog from './SkillContributeDialog'
@@ -63,7 +63,7 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
       await app.DeleteSkill({ novel_id: novelId, name: s.name, source: s.source })
       await load()
     } catch (err) {
-      toast.error(t('skill.deleteFailed'))
+      toastError(t('skill.deleteFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
       console.error(err)
     }
   }

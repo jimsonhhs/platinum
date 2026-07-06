@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, FileText, Pencil, Plus, Download } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastError } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/hooks/useApp'
 import type { chapter } from '@/hooks/useApp'
@@ -109,7 +109,7 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
         await app.UpdateChapterTitle(novelId, ch.chapter_number, newTitle)
         loadChapters()
       } catch (err) {
-        toast.error(t('common.saveFailed'))
+        toastError(t('common.saveFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
         console.error(err)
       }
     }
