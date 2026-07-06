@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useApp } from '@/hooks/useApp'
 import type { character } from '@/hooks/useApp'
 
@@ -39,7 +40,10 @@ export default function CharacterList({ novelId }: Props) {
     try {
       await app.DeleteCharacter(novelId, charId)
       await load()
-    } catch { /* 静默失败，主视图会处理 */ }
+    } catch (err) {
+      toast.error(t('character.deleteFailed'))
+      console.error(err)
+    }
   }
 
   return (

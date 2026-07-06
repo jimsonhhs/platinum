@@ -737,6 +737,7 @@
     "editSkill": "Edit Skill",
     "deleteSkill": "Delete Skill",
     "confirmDeleteSkill": "Confirm Delete Skill",
+    "deleteFailed": "Delete failed",
     "irreversible": "This action cannot be undone",
     "modeSmart": "Smart — AI can invoke autonomously, user can also trigger via /",
     "modeCommand": "Command — Only triggered by user via /, not shown in catalog",

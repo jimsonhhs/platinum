@@ -709,6 +709,7 @@
     "editSkill": "编辑技能",
     "deleteSkill": "删除技能",
     "confirmDeleteSkill": "确定删除技能",
+    "deleteFailed": "删除失败",
     "irreversible": "此操作不可撤销",
     "modeSmart": "智能 — AI 可自主调用，用户也可 / 触发",
     "modeCommand": "指令 — 仅用户 / 手动触发，不出现在目录中",
