@@ -271,6 +271,12 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false }:
                 onClick={() => { setPhase('browse'); setResult(null); setSelected(new Set()) }}
                 className="h-8 px-3 rounded-lg text-sm border border-border hover:bg-muted transition-colors"
               >
+                {t('styleSample.cancel')}
+              </button>
+              <button
+                onClick={() => { setPhase('browse'); setResult(null); setSelected(new Set()) }}
+                className="h-8 px-3 rounded-lg text-sm border border-border hover:bg-muted transition-colors"
+              >
                 {t('styleSample.reExtract')}
               </button>
               <button
