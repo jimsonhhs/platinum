@@ -516,11 +516,11 @@ func (r *Repo) ShowFile(hash, filePath string) (*FileDiff, error) {
 }
 
 // isNotExistInGit 判断 git show 错误是否为文件不存在（正常情况）。
+// git 子进程强制 LC_ALL=C，所有输出均为英文。
 func isNotExistInGit(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "does not exist") ||
-		strings.Contains(msg, "not found") ||
-		strings.Contains(msg, "存在") // 中文错误消息
+		strings.Contains(msg, "not found")
 }
 
 // ── CLI ───────────────────────────────────────────────────
@@ -532,6 +532,7 @@ func (r *Repo) runInDir(args ...string) (stdout, stderr string, err error) {
 func runCmd(gitBin, dir string, args ...string) (stdout, stderr string, err error) {
 	cmd := exec.Command(gitBin, args...)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "LC_ALL=C")
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
