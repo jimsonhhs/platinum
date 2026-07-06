@@ -26,17 +26,17 @@
 
 操作失败后用户看不到任何提示，不知道是否成功。
 
-- CharacterList — DeleteCharacter，catch 注释"静默失败，主视图会处理"
-- LocationList — DeleteLocation，catch 注释"静默失败"
-- SkillList — DeleteSkill，仅 console.error
-- StyleView — DeleteStyleSample，仅 console.error
+- ~~CharacterList — DeleteCharacter，catch 注释"静默失败，主视图会处理"~~ → 已修复
+- ~~LocationList — DeleteLocation，catch 注释"静默失败"~~ → 已修复
+- ~~SkillList — DeleteSkill，仅 console.error~~ → 已修复
+- StyleView — DeleteStyleSample，仅 console.error（暂不修改，其他人在重构）
 
 ### 3. 已修复（原裸 await 或吞错）
 
 - [x] ContentPanel.doSave — 加 try/catch + toast.error（sonner），保存失败时保留 isDirty 不清
 - [x] ChapterList.loadChapters — 加 try/catch + 空状态区域红色错误提示 + 重试按钮
 - [x] ChapterList.handleCreateChapter — 加 try/catch + 创建表单下方红色提示
-- [x] ChapterList.commitEdit — 加 try/catch + console.error（行内编辑失败不影响流程）
+- [x] ChapterList.commitEdit — 加 try/catch + toast.error（行内编辑重命名失败时 toast 提示）
 - [x] ProfileView.handleFileChange — 加 try/catch + 头像下方红色提示
 - [x] ProfileView.handleNameSave — 加 try/catch + 昵称 input 下方红色提示，失败时保留编辑状态
 - [x] WorkspaceView.handleCreateNovelFromDialog — re-throw → NovelEditDialog 展示
@@ -44,6 +44,9 @@
 - [x] WorkspaceView.handleDeleteNovel — re-throw → NovelDeleteDialog 展示
 - [x] WorkspaceView.handleExportNovel — 加 try/catch + re-throw → ExportDialog 展示
 - [x] 引入 sonner toast 库，App.tsx 配置 `<Toaster position="bottom-right" richColors />`
+- [x] CharacterList.DeleteCharacter — 加 toast.error
+- [x] LocationList.DeleteLocation — 加 toast.error
+- [x] SkillList.DeleteSkill — 加 toast.error + i18n key
 
 ### 4. WorkspaceView 中保留原样的操作
 
@@ -55,10 +58,10 @@
 
 ### 优先级中：静默吞错组件加用户可见提示
 
-- [ ] CharacterList.DeleteCharacter — 加 setError 或 toast
-- [ ] LocationList.DeleteLocation — 加 setError 或 toast
-- [ ] SkillList.DeleteSkill — 加 setError 或 toast
-- [ ] StyleView.DeleteStyleSample — 统一使用 setError（与同组件其他操作一致）
+- [x] CharacterList.DeleteCharacter — 加 toast.error
+- [x] LocationList.DeleteLocation — 加 toast.error
+- [x] SkillList.DeleteSkill — 加 toast.error + i18n key
+- [ ] StyleView.DeleteStyleSample — 统一使用 setError（与同组件其他操作一致，暂不修改，其他人在重构）
 
 ### 优先级低：统一错误提示方式
 
