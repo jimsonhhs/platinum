@@ -8,36 +8,11 @@ import (
 	"os"
 	"testing"
 
-	ort "github.com/yalue/onnxruntime_go"
-
 	"novel/internal/config"
-	"novel/internal/platform"
 	"novel/internal/rag"
 )
 
-func initOnnxForTest() {
-	// Set ONNX shared library path before any onnxruntime_go calls
-	lib, err := platform.ResolveOnnxLib()
-	if err != nil {
-		panic("E2E: cannot resolve ONNX lib: " + err.Error())
-	}
-	ort.SetSharedLibraryPath(lib)
-}
-
 func TestOnnxEmbedder_Init(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	t.Logf("Models dir: %s", modelsDir)
-
-	// Verify model files exist
-	if _, err := os.Stat(modelsDir); err != nil {
-		t.Fatalf("models dir not accessible: %v", err)
-	}
-
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
-	// Wait for embedder to be ready
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
@@ -46,23 +21,20 @@ func TestOnnxEmbedder_Init(t *testing.T) {
 		t.Fatal("GetEmbedder() returned nil")
 	}
 
+	// Verify model files exist (sanity check for test environment)
+	modelsDir := config.ModelsDir()
+	if _, err := os.Stat(modelsDir); err != nil {
+		t.Fatalf("models dir not accessible: %v", err)
+	}
+
 	t.Log("ONNX embedder initialized successfully")
-	t.Cleanup(func() {
-		embedder.Close()
-	})
 }
 
 func TestOnnxEmbedder_SingleEmbed(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	ctx := context.Background()
 	vec, err := embedder.Embed(ctx, "这是一段测试文本，用于验证ONNX嵌入器是否正常工作。")
@@ -101,16 +73,10 @@ func TestOnnxEmbedder_SingleEmbed(t *testing.T) {
 }
 
 func TestOnnxEmbedder_BatchEmbed(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	ctx := context.Background()
 	texts := []string{
@@ -147,16 +113,10 @@ func TestOnnxEmbedder_BatchEmbed(t *testing.T) {
 }
 
 func TestOnnxEmbedder_Consistency(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	ctx := context.Background()
 	text := "一致性测试：相同的文本应该产生相同的嵌入向量"
@@ -190,16 +150,10 @@ func TestOnnxEmbedder_Consistency(t *testing.T) {
 }
 
 func TestOnnxEmbedder_DifferentTexts(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	ctx := context.Background()
 	vec1, _ := embedder.Embed(ctx, "一只小猫在草地上玩耍")

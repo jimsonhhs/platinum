@@ -10,23 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"novel/internal/config"
 	"novel/internal/rag"
 )
 
 // TestOnnxConcurrent_Embed launches 10 goroutines each calling Embed()
 // with different Chinese text, verifying all return valid 512-dim L2-normalized vectors.
 func TestOnnxConcurrent_Embed(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	texts := []string{
 		"春风拂过江南水乡的小桥流水",
@@ -102,16 +95,10 @@ func TestOnnxConcurrent_Embed(t *testing.T) {
 // TestOnnxConcurrent_EmbedBatch launches 5 goroutines each calling EmbedBatch()
 // with a batch of 3 texts, verifying all return correct results.
 func TestOnnxConcurrent_EmbedBatch(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	batches := [][]string{
 		{"主角踏入了未知的领域", "暗影中传来低沉的笑声", "命运的丝线交织在一起"},
@@ -188,16 +175,10 @@ func TestOnnxConcurrent_EmbedBatch(t *testing.T) {
 // TestOnnxConcurrent_MixedEmbedAndBatch launches goroutines that mix
 // single Embed and EmbedBatch calls concurrently, verifying no panics.
 func TestOnnxConcurrent_MixedEmbedAndBatch(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()

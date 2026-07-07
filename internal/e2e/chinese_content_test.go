@@ -10,50 +10,18 @@ import (
 	"strings"
 	"testing"
 
-	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-
-	"novel/internal/config"
 	"novel/internal/git"
-	"novel/internal/platform"
 	"novel/internal/rag"
 )
 
-// setupChinesePipelineTest initializes ONNX embedder, opens a SQLite DB with sqlite-vec,
-// and creates a git repo for a novel. Returns the VectorStore, git Repo, novel ID, and a cleanup function.
+// setupChinesePipelineTest returns the shared VectorStore and creates a git repo
+// for a novel. The VectorStore and Embedder singletons are initialized in TestMain.
 func setupChinesePipelineTest(t *testing.T) (*rag.VectorStore, *git.Repo, int64, func()) {
 	t.Helper()
 
-	// Initialize ONNX
-	initOnnxForTest()
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
-	embedder, err := rag.GetEmbedder()
-	if err != nil {
-		t.Fatalf("GetEmbedder() failed: %v", err)
-	}
-
-	// Open a real SQLite database
-	dbPath := filepath.Join(platform.DataDir(), fmt.Sprintf("e2e-chinese-%s.db", t.Name()))
-	sqlite_vec.Auto()
-
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open SQLite failed: %v", err)
-	}
-
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
-	sqlDB.SetMaxIdleConns(1)
-	db.Exec("PRAGMA journal_mode=WAL")
-
-	// Initialize VectorStore
-	rag.InitVectorStore(sqlDB, embedder, testLogger(t))
 	vs := rag.GetVectorStore()
 	if vs == nil {
-		t.Fatal("GetVectorStore() returned nil")
+		t.Fatal("GetVectorStore() returned nil — was TestMain initialization successful?")
 	}
 
 	// Create a git repo for the novel
@@ -67,9 +35,6 @@ func setupChinesePipelineTest(t *testing.T) (*rag.VectorStore, *git.Repo, int64,
 	}
 
 	cleanup := func() {
-		embedder.Close()
-		sqlDB.Close()
-		os.Remove(dbPath)
 		os.RemoveAll(dir)
 	}
 

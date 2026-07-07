@@ -36,16 +36,10 @@ func verifyEmbedding(t *testing.T, vec []float32, label string) {
 // and returns a valid 512-dim L2-normalized vector. The model should produce a
 // [CLS][SEP] sequence which yields a valid embedding.
 func TestOnnxEdge_EmptyText(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	vec, err := embedder.Embed(context.Background(), "")
 	if err != nil {
@@ -72,16 +66,10 @@ func TestOnnxEdge_EmptyText(t *testing.T) {
 // TestOnnxEdge_VeryLongText verifies that text exceeding 512 tokens gets
 // truncated properly and still returns a valid 512-dim L2-normalized vector.
 func TestOnnxEdge_VeryLongText(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	// 2000 Chinese characters — well beyond 512 BERT tokens
 	longText := strings.Repeat("这是一段用于测试超长文本截断功能的文字。", 50)
@@ -102,16 +90,10 @@ func TestOnnxEdge_VeryLongText(t *testing.T) {
 // characters, zero-width joiners, and other special Unicode does not crash the
 // embedder and produces a valid output vector.
 func TestOnnxEdge_SpecialUnicode(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	specialText := "🎉👨‍👩‍👧‍👦𪚥𱁬𰀀❤️🔥💯🇨🇳"
 
@@ -127,16 +109,10 @@ func TestOnnxEdge_SpecialUnicode(t *testing.T) {
 // TestOnnxEdge_MixedLanguage verifies that text mixing Chinese, English,
 // Japanese, and Korean produces a valid embedding without errors.
 func TestOnnxEdge_MixedLanguage(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	mixedText := "这是一段中文，this is English, これは日本語です, 이것은 한국어입니다."
 	vec, err := embedder.Embed(context.Background(), mixedText)
@@ -151,16 +127,10 @@ func TestOnnxEdge_MixedLanguage(t *testing.T) {
 // TestOnnxEdge_RepeatedText verifies that repeating the same short text 100
 // times (a tokenization edge case) still produces a valid embedding.
 func TestOnnxEdge_RepeatedText(t *testing.T) {
-	initOnnxForTest()
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
 	embedder, err := rag.GetEmbedder()
 	if err != nil {
 		t.Fatalf("GetEmbedder() failed: %v", err)
 	}
-	defer embedder.Close()
 
 	repeatedText := strings.Repeat("测试", 100)
 	vec, err := embedder.Embed(context.Background(), repeatedText)

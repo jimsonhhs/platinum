@@ -5,101 +5,68 @@ package e2e
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"gorm.io/gorm"
-
 	"novel/internal/chapter"
-	"novel/internal/config"
 	"novel/internal/git"
-	"novel/internal/migrate"
 	"novel/internal/novel"
-	"novel/internal/platform"
 	"novel/internal/rag"
-	"novel/internal/storage"
 )
 
-// setupRefreshQueueTest initializes all dependencies for RefreshQueue E2E testing.
-// It reuses global singletons (ONNX embedder, VectorStore, RefreshQueue) if already initialized.
-// The queue is started once and left running across tests; only the final test calls Stop().
-func setupRefreshQueueTest(t *testing.T) (*rag.RefreshQueue, *gorm.DB, int64, func()) {
+// setupRefreshQueueTest sets up dependencies for RefreshQueue E2E testing.
+// It uses the shared DB, VectorStore, and Embedder singletons from TestMain.
+// It creates a novel and its git repo, and initializes the RefreshQueue singleton.
+func setupRefreshQueueTest(t *testing.T) (*rag.RefreshQueue, int64, func()) {
 	t.Helper()
 
-	// 1. Initialize ONNX (idempotent via sync.Once)
-	initOnnxForTest()
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
-	embedder, err := rag.GetEmbedder()
-	if err != nil {
-		t.Fatalf("GetEmbedder() failed: %v", err)
-	}
-
-	// 2. Open a real SQLite database
-	dbPath := filepath.Join(platform.DataDir(), "e2e-refresh-queue-test.db")
-	db, err := storage.Open(dbPath, testLogger(t))
-	if err != nil {
-		t.Fatalf("storage.Open() failed: %v", err)
-	}
-
-	// 3. Run migrations
-	if err := migrate.Run(db, testLogger(t)); err != nil {
-		t.Fatalf("migrate.Run() failed: %v", err)
-	}
-
-	// 4. Initialize VectorStore (idempotent via sync.Once)
-	sqlDB, err := db.DB()
-	if err != nil {
-		t.Fatalf("db.DB() failed: %v", err)
-	}
-	rag.InitVectorStore(sqlDB, embedder, testLogger(t))
+	// Get shared singletons
+	sharedDB := getSharedDB(t)
 	vs := rag.GetVectorStore()
 	if vs == nil {
 		t.Fatal("GetVectorStore() returned nil")
 	}
 
-	// 5. Create stores
-	chStore := chapter.NewStore(db, testLogger(t))
-	novelStore := novel.NewStore(db, testLogger(t))
+	// Create stores using shared DB
+	chStore := chapter.NewStore(sharedDB, testLogger(t))
+	novelStore := novel.NewStore(sharedDB, testLogger(t))
 
-	// 6. Create a novel in the DB
+	// Create a novel in the DB
 	n := &novel.Novel{Title: "RefreshQueue E2E 测试小说", Genre: "玄幻"}
-	if err := db.Create(n).Error; err != nil {
+	if err := sharedDB.Create(n).Error; err != nil {
 		t.Fatalf("create novel failed: %v", err)
 	}
 	novelID := n.ID
 
-	// 7. Create the novel's git repo directory
+	// Create the novel's git repo directory
 	repo, err := git.New(novelID, "Goink", "goink@local", testLogger(t))
 	if err != nil {
 		t.Fatalf("git.New() failed: %v", err)
 	}
 	_ = repo // repo initialized, chapters dir created
 
-	// 8. Initialize RefreshQueue (idempotent via sync.Once)
+	// Initialize RefreshQueue (idempotent via sync.Once)
 	rag.InitRefreshQueue(vs, chStore, novelStore, testLogger(t))
 	queue := rag.GetRefreshQueue()
 	if queue == nil {
 		t.Fatal("GetRefreshQueue() returned nil")
 	}
 
-	// 9. Start the consumer goroutine (idempotent — safe to call multiple times
-	// though each call spawns a new goroutine; we call it once globally)
+	// Start the consumer goroutine (idempotent — safe to call multiple times)
 	queue.Start()
 
 	cleanup := func() {
-		storage.Close(db)
-		os.Remove(dbPath)
+		os.RemoveAll(novelDir(novelID))
 	}
 
-	return queue, db, novelID, cleanup
+	return queue, novelID, cleanup
 }
 
 // createChapterInDB creates a chapter record in the database and writes content to disk.
-func createChapterInDB(t *testing.T, db *gorm.DB, novelID int64, chapterNumber int, title, summary, content string) {
+func createChapterInDB(t *testing.T, novelID int64, chapterNumber int, title, summary, content string) {
 	t.Helper()
+
+	sharedDB := getSharedDB(t)
 
 	ch := &chapter.Chapter{
 		NovelID:       novelID,
@@ -107,7 +74,7 @@ func createChapterInDB(t *testing.T, db *gorm.DB, novelID int64, chapterNumber i
 		Title:         title,
 		Summary:       summary,
 	}
-	if err := db.Create(ch).Error; err != nil {
+	if err := sharedDB.Create(ch).Error; err != nil {
 		t.Fatalf("create chapter %d failed: %v", chapterNumber, err)
 	}
 
@@ -118,14 +85,14 @@ func createChapterInDB(t *testing.T, db *gorm.DB, novelID int64, chapterNumber i
 }
 
 func TestRefreshQueue_SubmitAndSearch(t *testing.T) {
-	_, db, novelID, cleanup := setupRefreshQueueTest(t)
+	_, novelID, cleanup := setupRefreshQueueTest(t)
 	defer cleanup()
 
 	ctx := context.Background()
 
 	// Create a chapter
 	chapterContent := "林风盘坐在冰冷的石台上，感受着体内灵力的涌动。经过三年的苦修，他终于触摸到了金丹期的门槛。一道金光从他体内迸发而出，照亮了整个山洞。山洞外，一只白色的灵狐静静地等待着。它感受到了主人的气息变化，尾巴轻轻摇动。"
-	createChapterInDB(t, db, novelID, 1, "第一章 修行之路", "林风在山洞中修炼突破金丹期", chapterContent)
+	createChapterInDB(t, novelID, 1, "第一章 修行之路", "林风在山洞中修炼突破金丹期", chapterContent)
 
 	// Submit a refresh task
 	rag.SubmitRefresh(novelID, 1, chapterContent)
@@ -151,14 +118,14 @@ func TestRefreshQueue_SubmitAndSearch(t *testing.T) {
 }
 
 func TestRefreshQueue_Dedup(t *testing.T) {
-	_, db, novelID, cleanup := setupRefreshQueueTest(t)
+	_, novelID, cleanup := setupRefreshQueueTest(t)
 	defer cleanup()
 
 	ctx := context.Background()
 
 	// Create a chapter
 	chapterContent := "赵云单骑救主，在长坂坡杀了个七进七出。曹操在山上观战，见赵云勇猛无比，下令不许放冷箭。"
-	createChapterInDB(t, db, novelID, 1, "第一章 长坂坡", "赵云单骑救主", chapterContent)
+	createChapterInDB(t, novelID, 1, "第一章 长坂坡", "赵云单骑救主", chapterContent)
 
 	// Submit the same chapter refresh multiple times rapidly
 	for i := 0; i < 10; i++ {
@@ -194,7 +161,7 @@ func TestRefreshQueue_Dedup(t *testing.T) {
 }
 
 func TestRefreshQueue_RebuildNovel(t *testing.T) {
-	queue, db, novelID, cleanup := setupRefreshQueueTest(t)
+	queue, novelID, cleanup := setupRefreshQueueTest(t)
 	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -203,8 +170,8 @@ func TestRefreshQueue_RebuildNovel(t *testing.T) {
 	// Create two chapters
 	ch1Content := "孙悟空从石头中蹦出，天地震动。他在花果山上称王，过着无忧无虑的生活。一日他看到猴子老死，决定出海寻仙访道。"
 	ch2Content := "孙悟空拜入菩提祖师门下，学得七十二变和筋斗云。祖师赐他法名悟空，他从此踏上修行之路。"
-	createChapterInDB(t, db, novelID, 1, "第一章 石猴出世", "孙悟空从石头中诞生", ch1Content)
-	createChapterInDB(t, db, novelID, 2, "第二章 拜师学艺", "孙悟空拜师菩提祖师", ch2Content)
+	createChapterInDB(t, novelID, 1, "第一章 石猴出世", "孙悟空从石头中诞生", ch1Content)
+	createChapterInDB(t, novelID, 2, "第二章 拜师学艺", "孙悟空拜师菩提祖师", ch2Content)
 
 	// First, index some chunks via direct SubmitRefresh
 	rag.SubmitRefresh(novelID, 1, ch1Content)
@@ -263,7 +230,7 @@ func TestRefreshQueue_RebuildNovel(t *testing.T) {
 }
 
 func TestRefreshQueue_RebuildAll(t *testing.T) {
-	queue, db, novelID, cleanup := setupRefreshQueueTest(t)
+	queue, novelID, cleanup := setupRefreshQueueTest(t)
 	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -271,7 +238,7 @@ func TestRefreshQueue_RebuildAll(t *testing.T) {
 
 	// Create chapters for the novel
 	ch1Content := "诸葛亮在隆中对策，为刘备分析天下三分之势。他说北让曹操占天时，南让孙权占地利，刘备可占人和。"
-	createChapterInDB(t, db, novelID, 1, "第一章 隆中对", "诸葛亮三分天下", ch1Content)
+	createChapterInDB(t, novelID, 1, "第一章 隆中对", "诸葛亮三分天下", ch1Content)
 
 	// Don't index anything — RebuildAll should pick up novels with 0 chunks
 	vs := rag.GetVectorStore()
@@ -309,14 +276,14 @@ func TestRefreshQueue_RebuildAll(t *testing.T) {
 }
 
 func TestRefreshQueue_StopDrainsPending(t *testing.T) {
-	queue, db, novelID, cleanup := setupRefreshQueueTest(t)
+	queue, novelID, cleanup := setupRefreshQueueTest(t)
 	defer cleanup()
 
 	ctx := context.Background()
 
 	// Create a chapter
 	chapterContent := "关羽温酒斩华雄，威震诸侯。张飞在旁高声喝彩，声如巨雷。刘备暗自欣喜，兄弟三人初露锋芒。"
-	createChapterInDB(t, db, novelID, 1, "第一章 温酒斩华雄", "关羽斩华雄立威", chapterContent)
+	createChapterInDB(t, novelID, 1, "第一章 温酒斩华雄", "关羽斩华雄立威", chapterContent)
 
 	// Submit a refresh task
 	rag.SubmitRefresh(novelID, 1, chapterContent)

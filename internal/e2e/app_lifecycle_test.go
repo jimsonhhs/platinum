@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	ort "github.com/yalue/onnxruntime_go"
-
 	"novel/internal/config"
 	"novel/internal/migrate"
 	"novel/internal/platform"
@@ -16,34 +14,26 @@ import (
 	"novel/internal/storage"
 )
 
-func init() {
-	// Ensure ONNX lib is set before any test runs
-	if lib, err := platform.ResolveOnnxLib(); err == nil {
-		ort.SetSharedLibraryPath(lib)
-	}
-}
-
 func TestAppLifecycle_InitWithConfig(t *testing.T) {
-	// Simulate the initWithConfig flow from app/handler.go
+	// Verify the singletons initialized in TestMain are functional.
+	// This test validates the same lifecycle flow as app/handler.go initWithConfig,
+	// but without re-initializing singletons (which would fail due to sync.Once).
 
-	// 1. Set ONNX shared library path (normally done in main.go)
-	lib, err := platform.ResolveOnnxLib()
-	if err != nil {
-		t.Fatalf("ResolveOnnxLib() failed: %v", err)
-	}
-	ort.SetSharedLibraryPath(lib)
-
-	// 2. Set global config
+	// 1. Global config should already be set
 	dataDir := platform.DataDir()
 	cfg := &config.AppConfig{DataDir: dataDir}
 	config.Set(cfg)
 
-	// 3. Initialize ONNX embedder (async, like real app)
-	modelsDir := config.ModelsDir()
-	t.Logf("Models dir: %s", modelsDir)
-	rag.InitEmbedder(modelsDir, testLogger(t))
+	// 2. Embedder should already be initialized
+	embedder, err := rag.GetEmbedder()
+	if err != nil {
+		t.Fatalf("GetEmbedder() failed: %v", err)
+	}
+	if embedder == nil {
+		t.Fatal("GetEmbedder() returned nil")
+	}
 
-	// 4. Open global database
+	// 3. Open a separate database to verify the storage/migrate lifecycle
 	dbPath := config.GlobalDBPath()
 	t.Logf("DB path: %s", dbPath)
 	db, err := storage.Open(dbPath, testLogger(t))
@@ -55,37 +45,25 @@ func TestAppLifecycle_InitWithConfig(t *testing.T) {
 		os.Remove(dbPath)
 	})
 
-	// 5. Run auto-migrations
+	// 4. Run auto-migrations
 	if err := migrate.Run(db, testLogger(t)); err != nil {
 		t.Fatalf("migrate.Run() failed: %v", err)
 	}
 
-	// 6. Load settings
+	// 5. Load settings
 	settings, err := config.LoadSettings(db)
 	if err != nil {
 		t.Fatalf("config.LoadSettings() failed: %v", err)
 	}
 	t.Logf("Settings loaded: approval_mode=%s", settings.ApprovalMode)
 
-	// 7. Wait for embedder and initialize vector store
-	embedder, err := rag.GetEmbedder()
-	if err != nil {
-		t.Fatalf("GetEmbedder() failed: %v", err)
-	}
-	defer embedder.Close()
-
-	sqlDB, err := db.DB()
-	if err != nil {
-		t.Fatalf("db.DB() failed: %v", err)
-	}
-
-	rag.InitVectorStore(sqlDB, embedder, testLogger(t))
+	// 6. VectorStore should already be initialized
 	vs := rag.GetVectorStore()
 	if vs == nil {
 		t.Fatal("GetVectorStore() returned nil")
 	}
 
-	t.Log("Full app lifecycle simulation completed successfully")
+	t.Log("Full app lifecycle verification completed successfully")
 }
 
 func TestAppLifecycle_NovelDirectoryCreation(t *testing.T) {

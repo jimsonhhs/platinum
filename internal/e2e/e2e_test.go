@@ -4,14 +4,20 @@ package e2e
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	ort "github.com/yalue/onnxruntime_go"
+
 	"novel/internal/config"
+	"novel/internal/migrate"
 	"novel/internal/platform"
+	"novel/internal/rag"
+	"novel/internal/storage"
 )
 
 func TestMain(m *testing.M) {
@@ -79,5 +85,40 @@ func TestMain(m *testing.M) {
 	cfg := &config.AppConfig{DataDir: platform.DataDir()}
 	config.Set(cfg)
 
-	os.Exit(m.Run())
+	// 7. Set ONNX shared library path (required before any onnxruntime_go calls)
+	ort.SetSharedLibraryPath(onnxLib)
+
+	// 8. Initialize ONNX embedder (singleton, only first call works)
+	rag.InitEmbedder(modelsDir, slog.Default())
+
+	// 9. Open shared SQLite database for VectorStore and GORM operations
+	dbPath := filepath.Join(platform.DataDir(), "e2e-shared.db")
+	sharedDB, err = storage.Open(dbPath, slog.Default())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: storage.Open() failed: %v\n", err)
+		os.Exit(1)
+	}
+	if err := migrate.Run(sharedDB, slog.Default()); err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: migrate.Run() failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 10. Initialize VectorStore (singleton, only first call works)
+	embedder, err := rag.GetEmbedder()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: GetEmbedder() failed: %v\n", err)
+		os.Exit(1)
+	}
+	sqlDB, _ := sharedDB.DB()
+	rag.InitVectorStore(sqlDB, embedder, slog.Default())
+
+	// Run all tests
+	exitCode := m.Run()
+
+	// Cleanup
+	embedder.Close()
+	storage.Close(sharedDB)
+	os.Remove(dbPath)
+
+	os.Exit(exitCode)
 }

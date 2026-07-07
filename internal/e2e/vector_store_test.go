@@ -4,75 +4,23 @@ package e2e
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 
-	ort "github.com/yalue/onnxruntime_go"
-	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-
-	"novel/internal/config"
-	"novel/internal/platform"
 	"novel/internal/rag"
 )
 
-// setupVectorTest initializes ONNX embedder and opens a real SQLite DB with sqlite-vec.
-func setupVectorTest(t *testing.T) (*rag.VectorStore, *gorm.DB, func()) {
+// getVectorStore returns the shared VectorStore singleton initialized in TestMain.
+func getVectorStore(t *testing.T) *rag.VectorStore {
 	t.Helper()
-
-	// Initialize ONNX
-	lib, err := platform.ResolveOnnxLib()
-	if err != nil {
-		t.Fatalf("ResolveOnnxLib() failed: %v", err)
-	}
-	ort.SetSharedLibraryPath(lib)
-
-	modelsDir := config.ModelsDir()
-	rag.InitEmbedder(modelsDir, testLogger(t))
-
-	embedder, err := rag.GetEmbedder()
-	if err != nil {
-		t.Fatalf("GetEmbedder() failed: %v", err)
-	}
-
-	// Open a real SQLite database (file-based for sqlite-vec compatibility)
-	dbPath := filepath.Join(platform.DataDir(), "e2e-vector-test.db")
-	sqlite_vec.Auto()
-
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open SQLite failed: %v", err)
-	}
-
-	// Configure connection pool for SQLite
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
-	sqlDB.SetMaxIdleConns(1)
-
-	// Enable WAL mode
-	db.Exec("PRAGMA journal_mode=WAL")
-
-	// Initialize VectorStore
-	rag.InitVectorStore(sqlDB, embedder, testLogger(t))
 	vs := rag.GetVectorStore()
 	if vs == nil {
-		t.Fatal("GetVectorStore() returned nil")
+		t.Fatal("GetVectorStore() returned nil — was TestMain initialization successful?")
 	}
-
-	cleanup := func() {
-		embedder.Close()
-		sqlDB.Close()
-		os.Remove(dbPath)
-	}
-
-	return vs, db, cleanup
+	return vs
 }
 
 func TestVectorStore_CreateTable(t *testing.T) {
-	vs, _, cleanup := setupVectorTest(t)
-	defer cleanup()
+	vs := getVectorStore(t)
 
 	ctx := context.Background()
 	novelID := int64(10001)
@@ -100,8 +48,7 @@ func TestVectorStore_CreateTable(t *testing.T) {
 }
 
 func TestVectorStore_Search(t *testing.T) {
-	vs, _, cleanup := setupVectorTest(t)
-	defer cleanup()
+	vs := getVectorStore(t)
 
 	ctx := context.Background()
 	novelID := int64(10002)
@@ -168,8 +115,7 @@ func TestVectorStore_Search(t *testing.T) {
 }
 
 func TestVectorStore_SearchWithFilter(t *testing.T) {
-	vs, _, cleanup := setupVectorTest(t)
-	defer cleanup()
+	vs := getVectorStore(t)
 
 	ctx := context.Background()
 	novelID := int64(10003)
@@ -216,8 +162,7 @@ func TestVectorStore_SearchWithFilter(t *testing.T) {
 }
 
 func TestVectorStore_DeleteChapterChunks(t *testing.T) {
-	vs, _, cleanup := setupVectorTest(t)
-	defer cleanup()
+	vs := getVectorStore(t)
 
 	ctx := context.Background()
 	novelID := int64(10004)
@@ -256,8 +201,7 @@ func TestVectorStore_DeleteChapterChunks(t *testing.T) {
 }
 
 func TestVectorStore_DeleteNovel(t *testing.T) {
-	vs, _, cleanup := setupVectorTest(t)
-	defer cleanup()
+	vs := getVectorStore(t)
 
 	ctx := context.Background()
 	novelID := int64(10005)
