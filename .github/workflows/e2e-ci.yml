@@ -1,0 +1,160 @@
+name: E2E CI
+
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+    branches: [master]
+
+jobs:
+  e2e:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      # Windows: sqlite3 headers for CGo
+      - name: Install sqlite3 headers (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/sqlite-amalgamation.zip" "https://www.sqlite.org/2023/sqlite-amalgamation-3440000.zip"
+          unzip -qjo "$RUNNER_TEMP/sqlite-amalgamation.zip" -d "$RUNNER_TEMP/sqlite"
+          echo "CGO_CFLAGS=${CGO_CFLAGS} -I${RUNNER_TEMP}/sqlite" >> $GITHUB_ENV
+
+      - name: Cache runtime deps
+        id: cache-runtime
+        uses: actions/cache@v4
+        with:
+          path: build/runtime
+          key: runtime-${{ runner.os }}-${{ hashFiles('scripts/download-git.sh', 'scripts/download-onnx.sh') }}
+
+      # Download runtime deps (Git + ONNX + BGE model)
+      - name: Download runtime deps
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          bash scripts/download-git.sh
+          bash scripts/download-onnx.sh
+
+      # Hide system git to force bundled git usage
+      - name: Hide system git
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo mv /usr/bin/git /usr/bin/git.e2e-hidden
+            # Also hide git from common alternative locations
+            sudo mv /usr/local/bin/git /usr/local/bin/git.e2e-hidden 2>/dev/null || true
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            sudo mv /usr/local/bin/git /usr/local/bin/git.e2e-hidden 2>/dev/null || true
+            sudo mv /Library/Developer/CommandLineTools/usr/bin/git \
+                   /Library/Developer/CommandLineTools/usr/bin/git.e2e-hidden 2>/dev/null || true
+            # /usr/bin/git is a stub that delegates to CLT; rename it too
+            sudo mv /usr/bin/git /usr/bin/git.e2e-hidden 2>/dev/null || true
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            # Windows: rename git.exe in Git installation directories
+            for f in "/c/Program Files/Git/cmd/git.exe" "/c/Program Files/Git/bin/git.exe"; do
+              [ -f "$f" ] && mv "$f" "${f%.exe}.e2e-hidden.exe"
+            done
+            # Also rename the bash script wrapper
+            for f in "/c/Program Files/Git/cmd/git" "/c/Program Files/Git/bin/git"; do
+              [ -f "$f" ] && mv "$f" "${f}.e2e-hidden"
+            done
+          fi
+          # Verify system git is no longer accessible
+          if command -v git &>/dev/null; then
+            echo "ERROR: system git still accessible after hiding attempt"
+            which git
+            exit 1
+          fi
+          echo "System git successfully hidden"
+
+      # Prepare isolated test data directory with runtime files
+      - name: Setup test data directory
+        shell: bash
+        run: |
+          TEST_DIR="$RUNNER_TEMP/goink-e2e"
+          mkdir -p "$TEST_DIR/runtime/git" "$TEST_DIR/runtime" "$TEST_DIR/models" "$TEST_DIR/novels" "$TEST_DIR/skills"
+
+          # Copy bundled git to DataDir/runtime/git/ (second resolution tier)
+          cp -r build/runtime/git/* "$TEST_DIR/runtime/git/" 2>/dev/null || true
+
+          # Copy ONNX runtime library to DataDir/runtime/
+          cp build/runtime/libonnxruntime* "$TEST_DIR/runtime/" 2>/dev/null || true
+          cp build/runtime/onnxruntime.dll "$TEST_DIR/runtime/" 2>/dev/null || true
+
+          # Copy models to DataDir/models/ (fallback tier)
+          cp -r build/runtime/models/* "$TEST_DIR/models/"
+
+          echo "GOINK_DATA_DIR=$TEST_DIR" >> $GITHUB_ENV
+          echo "Test data dir: $TEST_DIR"
+          echo "=== Directory structure ==="
+          find "$TEST_DIR" -type f | head -30
+
+      - name: Verify test environment
+        shell: bash
+        run: |
+          echo "=== Verify system git is hidden ==="
+          if command -v git &>/dev/null; then
+            echo "FAIL: system git still in PATH"
+            exit 1
+          fi
+          echo "OK: system git is hidden"
+
+          echo "=== Verify bundled git exists ==="
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            GIT_BIN="$GOINK_DATA_DIR/runtime/git/mingw64/bin/git.exe"
+          else
+            GIT_BIN="$GOINK_DATA_DIR/runtime/git/git"
+          fi
+          if [ ! -f "$GIT_BIN" ]; then
+            echo "FAIL: bundled git not found at $GIT_BIN"
+            echo "=== Contents of runtime/git ==="
+            ls -laR "$GOINK_DATA_DIR/runtime/git/" || true
+            exit 1
+          fi
+          "$GIT_BIN" --version
+          echo "OK: bundled git works"
+
+          echo "=== Verify ONNX lib exists ==="
+          ls -la "$GOINK_DATA_DIR/runtime/" | grep -i onnx
+          echo "OK: ONNX lib found"
+
+          echo "=== Verify model files ==="
+          ls -la "$GOINK_DATA_DIR/models/"
+          echo "OK: models found"
+
+      # Run E2E tests with cgo tag (real ONNX + bundled git)
+      - name: Run E2E tests
+        shell: bash
+        run: go test -tags=cgo -count=1 -timeout 15m -v ./internal/e2e/...
+
+      # Restore system git (ensure cleanup even on failure)
+      - name: Restore system git
+        if: always()
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo mv /usr/bin/git.e2e-hidden /usr/bin/git 2>/dev/null || true
+            sudo mv /usr/local/bin/git.e2e-hidden /usr/local/bin/git 2>/dev/null || true
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            sudo mv /usr/local/bin/git.e2e-hidden /usr/local/bin/git 2>/dev/null || true
+            sudo mv /Library/Developer/CommandLineTools/usr/bin/git.e2e-hidden \
+                   /Library/Developer/CommandLineTools/usr/bin/git 2>/dev/null || true
+            sudo mv /usr/bin/git.e2e-hidden /usr/bin/git 2>/dev/null || true
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            for f in "/c/Program Files/Git/cmd/git.e2e-hidden.exe" "/c/Program Files/Git/bin/git.e2e-hidden.exe"; do
+              [ -f "$f" ] && mv "$f" "${f%.e2e-hidden.exe}.exe"
+            done
+            for f in "/c/Program Files/Git/cmd/git.e2e-hidden" "/c/Program Files/Git/bin/git.e2e-hidden"; do
+              [ -f "$f" ] && mv "$f" "${f%.e2e-hidden}"
+            done
+          fi
