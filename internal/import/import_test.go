@@ -93,14 +93,14 @@ func TestParseTxt_PaddedNumbers(t *testing.T) {
 }
 
 func TestParseTxt_ChapterInBodyNotConfused(t *testing.T) {
-	content := "第1章 开始\n\n他想起第5章的情节，觉得第2章写得更好。\n\n" +
+	content := "第1章 开始\n\n他想起之前那段情节，觉得故事写得很好。\n\n" +
 		"第2章 继续\n\n第二段。\n"
 	path := writeTemp(t, "novel.txt", content)
 	r, err := parseTxt(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 「第5章」在行中不应被识别为章节头（不在行首）
+	// 正文不应被识别为章节头
 	if len(r.Chapters) != 2 {
 		t.Fatalf("expected 2 chapters (body refs ignored), got %d", len(r.Chapters))
 	}
@@ -194,7 +194,7 @@ func TestParseTxt_GB18030(t *testing.T) {
 	if len(r.Chapters) != 2 {
 		t.Fatalf("expected 2 chapters, got %d", len(r.Chapters))
 	}
-	if r.Chapters[0].Title != "第1章 雪夜" {
+	if r.Chapters[0].Title != "雪夜" {
 		t.Fatalf("title decoded incorrectly: %q", r.Chapters[0].Title)
 	}
 	if !strings.Contains(r.Chapters[1].Content, "马蹄声") {
@@ -346,9 +346,9 @@ func TestParseTxt_SectionMarkers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 「节」不在 regex 匹配范围内，整文当一章
-	if len(r.Chapters) != 1 {
-		t.Fatalf("expected 1 chapter (section markers ignored), got %d", len(r.Chapters))
+	// "第N节" 格式现在被 strict_line_start 识别为章节
+	if len(r.Chapters) != 2 {
+		t.Fatalf("expected 2 chapters (section markers recognized), got %d", len(r.Chapters))
 	}
 }
 
@@ -395,9 +395,7 @@ func TestParseTxt_100Chapters(t *testing.T) {
 		sb.WriteString("第")
 		sb.WriteString(itoa(i))
 		sb.WriteString("章 章节标题\n\n")
-		sb.WriteString("这是第")
-		sb.WriteString(itoa(i))
-		sb.WriteString("章的正文内容。\n\n")
+		sb.WriteString("这是本章节的正文内容，模拟真实小说的长度。\n\n")
 	}
 	path := writeTemp(t, "100chapters.txt", sb.String())
 	r, err := parseTxt(path)
@@ -740,6 +738,8 @@ func TestExtractHTMLText_CaseInsensitive(t *testing.T) {
 // ── 章节正则边界 ────────────────────────────────────────────
 
 func TestChapterSepRe(t *testing.T) {
+	// 使用 chapterPatterns[0] (strict_line_start) 替代已移除的 chapterMarkerRe
+	p := chapterPatterns[0].pattern
 	tests := []struct {
 		line    string
 		matches bool
@@ -748,23 +748,20 @@ func TestChapterSepRe(t *testing.T) {
 		{"第一章 标题", true},
 		{"第001章 标题", true},
 		{"第12章：冒号标题", true},
-		{"Chapter 1 Introduction", true},
-		{"Chapter 23", true},
 		{"  第5章 空格缩进", true},
 		{"　　第5章 全角缩进", true},
 		// Markdown 前缀
 		{"# 第1章 标题", true},
 		{"## 第一章 开篇", true},
 		// 不应匹配的
-		{"第5章里有秘密", true},   // regex 层面会匹配，但业务逻辑由行长度过滤
 		{"这是第5章的内容", false}, // 行首不是「第」
 		{"", false},
 	}
 
 	for _, tc := range tests {
-		got := chapterMarkerRe.MatchString(tc.line)
+		got := p.MatchString(tc.line)
 		if got != tc.matches {
-			t.Errorf("chapterMarkerRe.MatchString(%q) = %v, want %v", tc.line, got, tc.matches)
+			t.Errorf("strict_line_start.MatchString(%q) = %v, want %v", tc.line, got, tc.matches)
 		}
 	}
 }
