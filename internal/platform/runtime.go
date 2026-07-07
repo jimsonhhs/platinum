@@ -94,7 +94,11 @@ func ResolveOnnxLib() (string, error) {
 // DataDir 返回应用数据目录（绝对路径）。
 // Windows 返回可执行文件所在目录（单目录安装模式），其他平台返回 ~/Goink/。
 // 开发模式下 exe 位于临时目录时，所有平台统一返回 ~/Goink/。
+// 环境变量 GOINK_DATA_DIR 可覆盖以上逻辑，用于集成测试。
 func DataDir() string {
+	if dir := os.Getenv("GOINK_DATA_DIR"); dir != "" {
+		return dir
+	}
 	if runtime.GOOS == "windows" {
 		if dir, err := AppDir(); err == nil {
 			tmp := os.TempDir()

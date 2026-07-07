@@ -2,6 +2,7 @@ package git
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -72,7 +73,7 @@ func New(novelID int64, gitName, gitEmail string, logger *slog.Logger) (*Repo, e
 	r := &Repo{dir: dir, gitBin: gitBin, logger: logger}
 
 	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("git: stat .git: %w", err)
 		}
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -125,7 +126,7 @@ func (r *Repo) DiffContent(relPath, proposed string) (string, error) {
 	fromPath := relPath
 	fullPath := filepath.Join(r.dir, relPath)
 
-	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+	if _, err := os.Stat(fullPath); errors.Is(err, os.ErrNotExist) {
 		empty, err := os.CreateTemp("", "git-diff-empty-*")
 		if err != nil {
 			return "", fmt.Errorf("git: diff: create empty temp: %w", err)

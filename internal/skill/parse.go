@@ -1,6 +1,7 @@
 package skill
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -120,7 +121,7 @@ func scanFS(logger *slog.Logger, fsys fs.FS, dir string) ([]Skill, error) {
 func scanDir(logger *slog.Logger, dir string) ([]Skill, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("读取目录 %s 失败: %w", dir, err)

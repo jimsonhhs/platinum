@@ -24,7 +24,7 @@ var appKey = [32]byte{
 func LoadUserConfig(path string) (*UserLLMConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return &UserLLMConfig{}, nil
 		}
 		return nil, err

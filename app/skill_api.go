@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -69,7 +70,7 @@ func (a *App) DeleteSkill(input DeleteSkillInput) error {
 	}
 
 	if err := os.Remove(filePath); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("技能文件不存在: %s", name)
 		}
 		return fmt.Errorf("删除技能文件失败: %w", err)

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -345,7 +346,7 @@ func (a *App) DeleteCover(novelID int64) error {
 		return fmt.Errorf("delete cover: %w", err)
 	}
 	if err := os.Remove(coverPath); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
 		return fmt.Errorf("delete cover: %w", err)

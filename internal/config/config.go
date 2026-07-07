@@ -119,7 +119,7 @@ func Load() (*AppConfig, error) {
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("%w: %s", ErrNotInitialized, path)
 		}
 		return nil, fmt.Errorf("读取配置文件失败: %w", err)
