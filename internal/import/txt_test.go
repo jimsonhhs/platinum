@@ -634,10 +634,10 @@ func TestChapterPatterns_JuanLineStart(t *testing.T) {
 
 // ── 辅助函数测试 ─────────────────────────────────────────
 
-// decodeText 单元测试：有效 UTF-8 直接返回
+// DecodeText 单元测试：有效 UTF-8 直接返回
 func TestDecodeText_ValidUTF8(t *testing.T) {
 	input := "第1章 你好世界"
-	result, err := decodeText([]byte(input))
+	result, err := DecodeText([]byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -646,14 +646,14 @@ func TestDecodeText_ValidUTF8(t *testing.T) {
 	}
 }
 
-// decodeText 单元测试：无效 UTF-8 回退 GB18030
+// DecodeText 单元测试：无效 UTF-8 回退 GB18030
 func TestDecodeText_InvalidUTF8FallbackGB18030(t *testing.T) {
 	original := "第1章 雪夜"
 	encoded, err := simplifiedchinese.GB18030.NewEncoder().Bytes([]byte(original))
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := decodeText(encoded)
+	result, err := DecodeText(encoded)
 	if err != nil {
 		t.Fatal(err)
 	}
