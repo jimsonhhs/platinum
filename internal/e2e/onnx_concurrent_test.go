@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build cgo && e2e
 
 package e2e
 

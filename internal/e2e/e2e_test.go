@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build cgo && e2e
 
 package e2e
 
@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"novel/internal/config"
@@ -14,20 +15,28 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// 1. System git MUST NOT be accessible (CI hides it)
-	if _, err := exec.LookPath("git"); err == nil {
-		fmt.Fprintln(os.Stderr, "FATAL: system git is still in PATH; E2E tests require system git to be hidden")
+	// 1. GOINK_TESTING must be set (ensures ResolveGit/ResolveOnnxLib skip system fallback)
+	if os.Getenv("GOINK_TESTING") == "" {
+		fmt.Fprintln(os.Stderr, "FATAL: GOINK_TESTING env var not set; E2E tests require GOINK_TESTING=1")
 		os.Exit(1)
 	}
-	fmt.Println("OK: system git is hidden")
+	fmt.Println("OK: GOINK_TESTING is set")
 
-	// 2. ResolveGit() must find bundled git
+	// 2. ResolveGit() must find bundled git (not system git)
 	gitBin, err := platform.ResolveGit()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "FATAL: ResolveGit() failed: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("OK: ResolveGit() -> %s\n", gitBin)
+
+	// Verify the resolved path is a bundled path (under DataDir), not system PATH
+	dataDir := platform.DataDir()
+	if !strings.HasPrefix(gitBin, dataDir) {
+		fmt.Fprintf(os.Stderr, "FATAL: ResolveGit() returned non-bundled path: %s (expected under %s)\n", gitBin, dataDir)
+		os.Exit(1)
+	}
+	fmt.Println("OK: git path is under DataDir (bundled)")
 
 	// 3. Verify the resolved git binary actually works
 	cmd := exec.Command(gitBin, "--version")
@@ -38,13 +47,19 @@ func TestMain(m *testing.M) {
 	}
 	fmt.Printf("OK: bundled git works: %s", string(out))
 
-	// 4. ResolveOnnxLib() must find ONNX runtime
+	// 4. ResolveOnnxLib() must find ONNX runtime (bundled, not system)
 	onnxLib, err := platform.ResolveOnnxLib()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "FATAL: ResolveOnnxLib() failed: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("OK: ResolveOnnxLib() -> %s\n", onnxLib)
+
+	if !strings.HasPrefix(onnxLib, dataDir) {
+		fmt.Fprintf(os.Stderr, "FATAL: ResolveOnnxLib() returned non-bundled path: %s (expected under %s)\n", onnxLib, dataDir)
+		os.Exit(1)
+	}
+	fmt.Println("OK: ONNX lib path is under DataDir (bundled)")
 
 	// 5. Model files must exist
 	modelsDir := config.ModelsDir()

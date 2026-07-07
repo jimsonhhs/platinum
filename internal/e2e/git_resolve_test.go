@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build cgo && e2e
 
 package e2e
 
@@ -12,10 +12,16 @@ import (
 	"novel/internal/platform"
 )
 
-func TestResolveGit_NoSystemGit(t *testing.T) {
-	// Verify system git is NOT accessible via PATH
-	if _, err := exec.LookPath("git"); err == nil {
-		t.Fatal("system git should not be accessible in E2E environment")
+func TestResolveGit_NoSystemFallback(t *testing.T) {
+	// In GOINK_TESTING mode, ResolveGit must NOT use system PATH fallback
+	// Even if system git is available, it must return the bundled path
+	gitBin, err := platform.ResolveGit()
+	if err != nil {
+		t.Fatalf("ResolveGit() failed: %v", err)
+	}
+	dataDir := platform.DataDir()
+	if !strings.HasPrefix(gitBin, dataDir) {
+		t.Errorf("ResolveGit() returned non-bundled path: %s, expected under %s", gitBin, dataDir)
 	}
 }
 
