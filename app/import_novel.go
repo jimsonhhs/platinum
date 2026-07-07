@@ -8,19 +8,8 @@ import (
 	imp "novel/internal/import"
 )
 
-// ImportNovelInput 是导入小说的入参。
-type ImportNovelInput struct {
-	FilePath string `json:"file_path"`
-}
-
 // ImportNovelResult 是导入小说的返回结果。
-type ImportNovelResult struct {
-	NovelID         int64                 `json:"novel_id"`
-	Title           string                `json:"title"`
-	ChapterCount    int                   `json:"chapter_count"`
-	SkippedCount    int                   `json:"skipped_count"`
-	SkippedChapters []imp.SkippedChapter  `json:"skipped_chapters"`
-}
+type ImportNovelResult = imp.ImportResult
 
 // ImportProgress 是导入过程的前端进度事件。
 type ImportProgress struct {
@@ -32,24 +21,14 @@ type ImportProgress struct {
 	NovelID int64  `json:"novel_id,omitempty"`
 }
 
+// ImportNovelInput 是导入小说的入参。
+type ImportNovelInput struct {
+	FilePath string `json:"file_path"`
+}
+
 // ImportNovel 从文件导入一部小说：解析文件 → 创建 Novel → 写入章节文件 → Git 提交。
-//
-// 事务策略（参考 RollbackBeforeTurn 三步模式）：
-//  1. 创建 Novel + 写文件 + git add（可逆操作，不 commit）
-//  2. DB 事务写入 Chapters（原子操作）
-//  3. git commit（不可逆但极低失败率，放在 DB 成功之后）
 func (a *App) ImportNovel(input ImportNovelInput) (*ImportNovelResult, error) {
-	res, err := imp.Import(a.ctx, a.logger, a.novel.DB, input.FilePath, a.settings.GitName, a.settings.GitEmail, a.emitImportProgress)
-	if err != nil {
-		return nil, err
-	}
-	return &ImportNovelResult{
-		NovelID:         res.NovelID,
-		Title:           res.Title,
-		ChapterCount:    res.ChapterCount,
-		SkippedCount:    res.SkippedCount,
-		SkippedChapters: res.SkippedChapters,
-	}, nil
+	return imp.Import(a.ctx, a.logger, a.novel.DB, input.FilePath, a.settings.GitName, a.settings.GitEmail, a.emitImportProgress)
 }
 
 func (a *App) emitImportProgress(stage, message string, current, total, percent int, novelID int64) {
@@ -82,4 +61,25 @@ func (a *App) PickAndImportNovel() (*ImportNovelResult, error) {
 	}
 
 	return a.ImportNovel(ImportNovelInput{FilePath: filePath})
+}
+
+// ImportWithLLMInput 是 AI 辅助导入小说的入参。
+type ImportWithLLMInput struct {
+	FilePath     string `json:"file_path"`
+	ProviderName string `json:"provider_name"`
+	ModelID      string `json:"model_id"`
+}
+
+// ImportWithLLM 使用 LLM 分析章节格式后导入小说。
+// 当 ImportNovel 返回 NeedsLLM=true 时，前端调用此方法。
+// 流程：LLM 生成正则 → 全文分割 → 校验 → 导入。
+func (a *App) ImportWithLLM(input ImportWithLLMInput) (*ImportNovelResult, error) {
+	// 1. LLM 分析 + 分割（内含 isReasonableChapterCount 校验）
+	result, err := imp.AnalyzeWithLLM(a.ctx, input.FilePath, input.ProviderName, input.ModelID, a.llmClient.GenerateText)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. 直接导入
+	return imp.ImportWithResult(a.ctx, a.logger, a.novel.DB, result, input.FilePath, a.settings.GitName, a.settings.GitEmail, a.emitImportProgress)
 }

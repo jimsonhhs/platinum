@@ -13,6 +13,7 @@ import {
   ExtractStyle,
   ImportNovel,
   PickAndImportNovel,
+  ImportWithLLM,
   ListStyleSamples,
   CreateStyleSample,
   UpdateStyleSample,
@@ -90,7 +91,7 @@ import {
   DeleteReaderPerspective,
   DeleteSkill,
 } from '@/lib/wailsjs/go/app/App'
-import type { app, novel, chapter, config, llm, session, character, location, storyarc, timeline, reader, skill } from '@/lib/wailsjs/go/models'
+import type { app, imp, novel, chapter, config, llm, session, character, location, storyarc, timeline, reader, skill } from '@/lib/wailsjs/go/models'
 
 export function useApp() {
   return useMemo(() => ({
@@ -106,6 +107,7 @@ export function useApp() {
     ExtractStyle,
     ImportNovel,
     PickAndImportNovel,
+    ImportWithLLM,
     ListStyleSamples,
     CreateStyleSample,
     UpdateStyleSample,
@@ -186,4 +188,4 @@ export function useApp() {
   }), [])
 }
 
-export type { app, novel, chapter, config, llm, session, character, location, storyarc, timeline, reader, skill }
+export type { app, imp, novel, chapter, config, llm, session, character, location, storyarc, timeline, reader, skill }

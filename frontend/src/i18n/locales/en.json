@@ -348,7 +348,13 @@
     "importRollbackDone": "Import failed, all changes have been rolled back",
     "importFailedRetry": "Import failed, please retry",
     "importSkippedCount_one": "{{count}} chapter skipped below",
-    "importSkippedCount_other": "{{count}} chapters skipped below"
+    "importSkippedCount_other": "{{count}} chapters skipped below",
+    "importNeedsLLM": "Chapter format detection failed",
+    "importNeedsLLMDesc": "Could not auto-detect chapter format. You can try AI analysis to identify chapters (only a few tokens consumed).",
+    "importAnalyzing": "AI is analyzing chapter format",
+    "importAnalyzeBtn": "AI Analysis",
+    "importAnalyzeFailed": "AI analysis failed",
+    "importModel": "Model"
   },
   "character": {
     "character": "Character",

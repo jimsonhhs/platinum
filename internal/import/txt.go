@@ -54,17 +54,10 @@ type matchLine struct {
 }
 
 func parseTxt(filePath string) (*Result, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("读取文件失败: %w", err)
-	}
-
-	content, err := decodeText(data)
+	content, err := readFileContent(filePath)
 	if err != nil {
 		return nil, err
 	}
-	content = strings.ReplaceAll(content, "\r\n", "\n")
-	content = strings.ReplaceAll(content, "\r", "\n")
 
 	title := inferTitle(filePath)
 
@@ -206,37 +199,7 @@ func parseTxt(filePath string) (*Result, error) {
 	}
 
 	var chapters []Chapter
-	for i, c := range candidates {
-		var end int
-		if i+1 < len(candidates) {
-			end = candidates[i+1].start
-		} else {
-			end = len(content)
-		}
-
-		chapContent := strings.TrimSpace(content[c.start:end])
-
-		// 提取标题：取第一行，去除 Markdown 标记
-		lines := strings.SplitN(chapContent, "\n", 2)
-		titleLine := strings.TrimSpace(lines[0])
-		for strings.HasPrefix(titleLine, "#") {
-			titleLine = strings.TrimPrefix(titleLine, "#")
-			titleLine = strings.TrimSpace(titleLine)
-		}
-		chapTitle := titleLine
-
-		// 去掉章节号前缀，避免与前端渲染的"第N章"重复
-		chapTitle = stripChapterPrefix(chapTitle)
-
-		if chapTitle == "" {
-			chapTitle = fmt.Sprintf("第%d章", i+1)
-		}
-
-		chapters = append(chapters, Chapter{
-			Title:   chapTitle,
-			Content: chapContent,
-		})
-	}
+	chapters = splitByPositions(content, candidates)
 
 	if len(chapters) == 0 {
 		return nil, fmt.Errorf("未能从文件中提取到章节")
@@ -252,6 +215,7 @@ func parseTxt(filePath string) (*Result, error) {
 				Title:   "第1章",
 				Content: content,
 			}},
+			NeedsLLM: true, // 正则分割结果不合理，提示前端可调用 LLM 分析
 		}, nil
 	}
 
@@ -261,7 +225,23 @@ func parseTxt(filePath string) (*Result, error) {
 	}, nil
 }
 
-func decodeText(data []byte) (string, error) {
+// readFileContent 读取文件并解码为 UTF-8 字符串，统一换行符为 \n。
+func readFileContent(filePath string) (string, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("读取文件失败: %w", err)
+	}
+	content, err := DecodeText(data)
+	if err != nil {
+		return "", err
+	}
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.ReplaceAll(content, "\r", "\n")
+	return content, nil
+}
+
+// DecodeText 将字节数据解码为 UTF-8 字符串，支持 GB18030 回退。
+func DecodeText(data []byte) (string, error) {
 	data = trimUTF8BOM(data)
 	if utf8.Valid(data) {
 		return string(data), nil
@@ -383,4 +363,43 @@ func stripChapterPrefix(title string) string {
 		return title // 去掉前缀后为空（如"第一章"无副标题），保留原文
 	}
 	return stripped
+}
+
+// splitByPositions 根据位置列表分割 content 为章节。
+// positions 中每个元素代表一个章节的起始位置。
+// 提取标题时去除 Markdown 标记和章节号前缀。
+func splitByPositions(content string, positions []matchLine) []Chapter {
+	var chapters []Chapter
+	for i, c := range positions {
+		var end int
+		if i+1 < len(positions) {
+			end = positions[i+1].start
+		} else {
+			end = len(content)
+		}
+
+		chapContent := strings.TrimSpace(content[c.start:end])
+
+		// 提取标题：取第一行，去除 Markdown 标记
+		lines := strings.SplitN(chapContent, "\n", 2)
+		titleLine := strings.TrimSpace(lines[0])
+		for strings.HasPrefix(titleLine, "#") {
+			titleLine = strings.TrimPrefix(titleLine, "#")
+			titleLine = strings.TrimSpace(titleLine)
+		}
+		chapTitle := titleLine
+
+		// 去掉章节号前缀，避免与前端渲染的"第N章"重复
+		chapTitle = stripChapterPrefix(chapTitle)
+
+		if chapTitle == "" {
+			chapTitle = fmt.Sprintf("第%d章", i+1)
+		}
+
+		chapters = append(chapters, Chapter{
+			Title:   chapTitle,
+			Content: chapContent,
+		})
+	}
+	return chapters
 }

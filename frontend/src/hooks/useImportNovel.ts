@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { app } from '@/hooks/useApp'
+import type { imp, llm, config } from '@/lib/wailsjs/go/models'
+import type { app } from '@/lib/wailsjs/go/models'
 import { EventsOn } from '@/lib/wailsjs/runtime/runtime'
 
 export type ImportProgressStage =
@@ -12,6 +13,8 @@ export type ImportProgressStage =
   | 'commit'
   | 'done'
   | 'error'
+  | 'needs_llm'
+  | 'analyzing'
 
 export interface ImportProgressState {
   stage: ImportProgressStage
@@ -32,10 +35,14 @@ const INITIAL_IMPORT_PROGRESS: ImportProgressState = {
 
 interface UseImportNovelOptions {
   app: {
-    ImportNovel: (input: app.ImportNovelInput) => Promise<app.ImportNovelResult>
-    PickAndImportNovel: () => Promise<app.ImportNovelResult>
+    ImportNovel: (input: app.ImportNovelInput) => Promise<imp.ImportResult>
+    PickAndImportNovel: () => Promise<imp.ImportResult>
+    ImportWithLLM: (input: app.ImportWithLLMInput) => Promise<imp.ImportResult>
+    GetModels: () => Promise<llm.AvailableModel[]>
+    GetSettings: () => Promise<config.AppSettings>
+    [key: string]: unknown
   }
-  onImported: (result: app.ImportNovelResult) => Promise<void>
+  onImported: (result: imp.ImportResult) => Promise<void>
 }
 
 function errorMessage(err: unknown, fallback: string) {
@@ -47,8 +54,13 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
   const [open, setOpen] = useState(false)
   const [progress, setProgress] = useState<ImportProgressState>({ ...INITIAL_IMPORT_PROGRESS, message: t('novel.importPreparing2') })
   const [error, setError] = useState('')
-  const [skippedCount, setSkippedCount] = useState(0)
-  const [skippedChapters, setSkippedChapters] = useState<{ title: string; reason: string }[]>([])
+  const [skippedCount, setskipped_count] = useState(0)
+  const [skippedChapters, setskipped_chapters] = useState<{ title: string; reason: string }[]>([])
+
+  // LLM 兜底相关状态
+  const [filePath, setFilePath] = useState('')
+  const [modelKey, setModelKey] = useState('')
+  const [models, setModels] = useState<llm.AvailableModel[]>([])
 
   useEffect(() => {
     const unsubscribe = EventsOn('import:progress', (data: ImportProgressState) => {
@@ -67,27 +79,46 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
     return unsubscribe
   }, [])
 
+  // 加载模型列表
+  useEffect(() => {
+    let cancelled = false
+    app.GetModels().then(list => {
+      if (cancelled) return
+      if (list?.length) {
+        setModels(list)
+        app.GetSettings().then(s => {
+          if (cancelled) return
+          let key = s?.selected_model_key || ''
+          if (!list.find(m => m.Key === key)) key = list[0].Key
+          setModelKey(key)
+        })
+      }
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [app])
+
   const reset = useCallback(() => {
     setOpen(false)
     setError('')
-    setSkippedCount(0)
-    setSkippedChapters([])
+    setskipped_count(0)
+    setskipped_chapters([])
+    setFilePath('')
     setProgress({ ...INITIAL_IMPORT_PROGRESS, message: t('novel.importPreparing2') })
   }, [t])
 
-  const startImport = useCallback(async (filePath?: string) => {
+  const startImport = useCallback(async (fp?: string) => {
     setError('')
     setProgress({
       ...INITIAL_IMPORT_PROGRESS,
-      stage: filePath ? 'parse' : 'select_file',
-      message: filePath ? t('novel.importParsing2') : t('novel.importSelectFile2'),
+      stage: fp ? 'parse' : 'select_file',
+      message: fp ? t('novel.importParsing2') : t('novel.importSelectFile2'),
     })
     setOpen(true)
 
-    let result: app.ImportNovelResult | null
+    let result: imp.ImportResult | null
     try {
-      result = filePath
-        ? await app.ImportNovel({ file_path: filePath })
+      result = fp
+        ? await app.ImportNovel({ file_path: fp })
         : await app.PickAndImportNovel()
     } catch (err: unknown) {
       setProgress(prev => ({
@@ -105,8 +136,21 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
       return
     }
 
-    setSkippedCount(result.skipped_count ?? 0)
-    setSkippedChapters(result.skipped_chapters ?? [])
+    // 正则分割失败，提示用户使用 AI 分析
+    if (result.needs_llm) {
+      const resolvedPath = fp || ''
+      setFilePath(resolvedPath)
+      setProgress(prev => ({
+        ...prev,
+        stage: 'needs_llm',
+        message: t('novel.importNeedsLLM'),
+        percent: 0,
+      }))
+      return
+    }
+
+    setskipped_count(result.skipped_count ?? 0)
+    setskipped_chapters((result.skipped_chapters ?? []) as { title: string; reason: string }[])
 
     try {
       await onImported(result)
@@ -115,8 +159,50 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
     }
   }, [app, onImported, reset, t])
 
+  // 用户点"AI 分析"→ 调 ImportWithLLM，LLM 分析后直接导入
+  const startLLMImport = useCallback(async () => {
+    if (!filePath || !modelKey) return
+    const [providerName, modelID] = modelKey.split('/')
+    if (!providerName || !modelID) return
+
+    setError('')
+    setProgress(prev => ({
+      ...prev,
+      stage: 'analyzing',
+      message: t('novel.importAnalyzing'),
+      percent: 30,
+    }))
+
+    try {
+      const result = await app.ImportWithLLM({
+        file_path: filePath,
+        provider_name: providerName,
+        model_id: modelID,
+      })
+
+      setskipped_count(result.skipped_count ?? 0)
+      setskipped_chapters((result.skipped_chapters ?? []) as { title: string; reason: string }[])
+
+      await onImported(result)
+    } catch (err: unknown) {
+      setProgress(prev => ({
+        ...prev,
+        stage: 'error',
+        message: t('novel.importRollbackDone'),
+        percent: 100,
+      }))
+      setError(errorMessage(err, t('novel.importFailedRetry')))
+    }
+  }, [app, filePath, modelKey, onImported, t])
+
+  const modelOptions = models.map(m => ({ value: m.Key, label: m.ModelName }))
+
   return {
     startImport,
+    startLLMImport,
+    modelKey,
+    setModelKey,
+    modelOptions,
     dialogProps: {
       open,
       progress,
