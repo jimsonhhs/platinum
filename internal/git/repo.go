@@ -537,7 +537,7 @@ func runCmd(gitBin, dir string, args ...string) (stdout, stderr string, err erro
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
-	setPlatformAttr(cmd)
+	platform.SetPlatformAttr(cmd)
 	err = cmd.Run()
 	return outBuf.String(), errBuf.String(), err
 }

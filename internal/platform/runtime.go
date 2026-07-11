@@ -76,7 +76,9 @@ func verifyGit(path string) error {
 	if _, err := os.Stat(path); err != nil {
 		return err
 	}
-	return exec.Command(path, "--version").Run()
+	cmd := exec.Command(path, "--version")
+	SetPlatformAttr(cmd)
+	return cmd.Run()
 }
 
 // gitBinName 返回当前平台 git 二进制文件名。
