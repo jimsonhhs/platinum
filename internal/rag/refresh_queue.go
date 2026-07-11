@@ -114,13 +114,16 @@ func (q *RefreshQueue) consumer() {
 	for {
 		select {
 		case <-q.ctx.Done():
-			// 退出前清空 pending
+			// 退出前清空 pending（使用独立 context，不受 cancel 影响）
 			q.mu.Lock()
-			for _, task := range q.pending {
-				q.doRefresh(task)
-			}
+			pending := q.pending
 			q.pending = make(map[string]RefreshTask)
 			q.mu.Unlock()
+			drainCtx, drainCancel := context.WithTimeout(context.Background(), 30*time.Second)
+			for _, task := range pending {
+				q.doRefreshWithCtx(drainCtx, task)
+			}
+			drainCancel()
 			return
 
 		case task := <-q.ch:
@@ -149,6 +152,10 @@ func (q *RefreshQueue) consumer() {
 func (q *RefreshQueue) doRefresh(task RefreshTask) {
 	ctx, cancel := context.WithTimeout(q.ctx, 30*time.Second)
 	defer cancel()
+	q.doRefreshWithCtx(ctx, task)
+}
+
+func (q *RefreshQueue) doRefreshWithCtx(ctx context.Context, task RefreshTask) {
 
 	ch, err := q.chStore.GetByNovelAndNumber(ctx, task.NovelID, task.ChapterNumber)
 	if err != nil {

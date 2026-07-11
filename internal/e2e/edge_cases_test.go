@@ -72,7 +72,7 @@ func TestOnnxEdge_VeryLongText(t *testing.T) {
 	}
 
 	// 2000 Chinese characters — well beyond 512 BERT tokens
-	longText := strings.Repeat("这是一段用于测试超长文本截断功能的文字。", 50)
+	longText := strings.Repeat("这是一段用于测试超长文本截断功能的文字。", 100)
 	if len([]rune(longText)) < 2000 {
 		t.Fatalf("test text too short: %d runes", len([]rune(longText)))
 	}

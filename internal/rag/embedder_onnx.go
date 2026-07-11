@@ -74,6 +74,20 @@ func GetEmbedder() (*OnnxEmbedder, error) {
 	return instance, nil
 }
 
+// TryGetEmbedder 非阻塞获取全局 embedder 实例。
+// 若尚未初始化完成则返回 nil，不会阻塞。适用于 shutdown 等不能阻塞的场景。
+func TryGetEmbedder() *OnnxEmbedder {
+	select {
+	case <-ready:
+		if initErr != nil {
+			return nil
+		}
+		return instance
+	default:
+		return nil
+	}
+}
+
 // GetTokenizer 返回全局 tokenizer 实例。InitEmbedder 调用后即可使用，
 // 未调用 InitEmbedder 时返回 nil。
 func GetTokenizer() *Tokenizer {
