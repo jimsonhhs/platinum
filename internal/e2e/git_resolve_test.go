@@ -19,8 +19,8 @@ func TestResolveGit_NoSystemFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveGit() failed: %v", err)
 	}
-	dataDir := platform.DataDir()
-	if !strings.HasPrefix(gitBin, dataDir) {
+	dataDir := filepath.Clean(platform.DataDir())
+	if !strings.HasPrefix(filepath.Clean(gitBin), dataDir) {
 		t.Errorf("ResolveGit() returned non-bundled path: %s, expected under %s", gitBin, dataDir)
 	}
 }

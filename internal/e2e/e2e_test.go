@@ -37,8 +37,9 @@ func TestMain(m *testing.M) {
 	fmt.Printf("OK: ResolveGit() -> %s\n", gitBin)
 
 	// Verify the resolved path is a bundled path (under DataDir), not system PATH
-	dataDir := platform.DataDir()
-	if !strings.HasPrefix(gitBin, dataDir) {
+	dataDir := filepath.Clean(platform.DataDir())
+	gitBinClean := filepath.Clean(gitBin)
+	if !strings.HasPrefix(gitBinClean, dataDir) {
 		fmt.Fprintf(os.Stderr, "FATAL: ResolveGit() returned non-bundled path: %s (expected under %s)\n", gitBin, dataDir)
 		os.Exit(1)
 	}
@@ -61,7 +62,7 @@ func TestMain(m *testing.M) {
 	}
 	fmt.Printf("OK: ResolveOnnxLib() -> %s\n", onnxLib)
 
-	if !strings.HasPrefix(onnxLib, dataDir) {
+	if !strings.HasPrefix(filepath.Clean(onnxLib), dataDir) {
 		fmt.Fprintf(os.Stderr, "FATAL: ResolveOnnxLib() returned non-bundled path: %s (expected under %s)\n", onnxLib, dataDir)
 		os.Exit(1)
 	}
