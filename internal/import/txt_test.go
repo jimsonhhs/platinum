@@ -967,7 +967,7 @@ func TestChapterPatterns_SpecialMarkers(t *testing.T) {
 
 // numeric_line 正则单元测试
 func TestChapterPatterns_NumericLine(t *testing.T) {
-	p := chapterPatterns[5] // numeric_line
+	p := chapterPatterns[6] // numeric_line
 	tests := []struct {
 		line    string
 		matches bool
