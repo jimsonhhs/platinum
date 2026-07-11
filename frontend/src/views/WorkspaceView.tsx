@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
-import type { app as appModels, novel, chapter } from '@/hooks/useApp'
+import type { imp, novel, chapter } from '@/hooks/useApp'
 import type { git } from '@/lib/wailsjs/go/models'
 import ActivityBar from '@/components/shell/ActivityBar'
 import StatusBar from '@/components/shell/StatusBar'
@@ -129,7 +129,7 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
     loadedRef.current = true
   }, [app])
 
-  const handleImportedNovel = useCallback(async (res: appModels.ImportNovelResult) => {
+  const handleImportedNovel = useCallback(async (res: imp.ImportResult) => {
     await loadNovels()
     setActiveNovelId(res.novel_id)
     setActivePanel('chapters')
@@ -530,7 +530,13 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
         onExport={handleExportNovel}
       />
 
-      <ImportProgressDialog {...importNovel.dialogProps} />
+      <ImportProgressDialog
+        {...importNovel.dialogProps}
+        modelKey={importNovel.modelKey}
+        setModelKey={importNovel.setModelKey}
+        modelOptions={importNovel.modelOptions}
+        onStartLLM={importNovel.startLLMImport}
+      />
 
       <UpdateDialog
         open={showUpdate}

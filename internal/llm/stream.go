@@ -219,6 +219,7 @@ func (c *Client) parseSSE(ch chan<- StreamEvent, body io.Reader) {
 		arguments strings.Builder
 	}
 	accumulated := make([]accToolCall, 0, 4)
+	hasContent := false // 追踪是否产出了有效事件
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -269,6 +270,7 @@ func (c *Client) parseSSE(ch chan<- StreamEvent, body io.Reader) {
 		// content → EventContent
 		if content, ok := delta["content"].(string); ok && content != "" {
 			ch <- StreamEvent{Type: EventContent, Data: content}
+			hasContent = true
 		}
 
 		// tool_calls delta → 按 index 累积
@@ -361,6 +363,16 @@ func (c *Client) parseSSE(ch chan<- StreamEvent, body io.Reader) {
 				ArgumentsJSON: json.RawMessage(raw),
 			},
 		}
+		hasContent = true
+	}
+
+	// 零产出检测：流结束但未收到任何有效内容，可能是服务商返回了非标准响应
+	if !hasContent {
+		ch <- StreamEvent{Type: EventError, Error: &APIError{
+			StatusCode: 0,
+			Message:    "流式响应为空，服务商可能不支持流式请求或返回了非标准格式",
+			Retryable:  true,
+		}}
 	}
 }
 

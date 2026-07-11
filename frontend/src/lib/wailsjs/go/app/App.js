@@ -258,6 +258,10 @@ export function ImportNovel(arg1) {
   return window['go']['app']['App']['ImportNovel'](arg1);
 }
 
+export function ImportWithLLM(arg1) {
+  return window['go']['app']['App']['ImportWithLLM'](arg1);
+}
+
 export function Initialize(arg1) {
   return window['go']['app']['App']['Initialize'](arg1);
 }

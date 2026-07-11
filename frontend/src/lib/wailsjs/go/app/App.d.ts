@@ -17,6 +17,7 @@ import {session} from '../models';
 import {storage} from '../models';
 import {config} from '../models';
 import {writing} from '../models';
+import {imp} from '../models';
 import {skill} from '../models';
 import {search} from '../models';
 
@@ -146,7 +147,9 @@ export function GetWritingActivity(arg1:number):Promise<Array<writing.DailyActiv
 
 export function GetWritingStats():Promise<writing.WritingStats>;
 
-export function ImportNovel(arg1:app.ImportNovelInput):Promise<app.ImportNovelResult>;
+export function ImportNovel(arg1:app.ImportNovelInput):Promise<imp.ImportResult>;
+
+export function ImportWithLLM(arg1:app.ImportWithLLMInput):Promise<imp.ImportResult>;
 
 export function Initialize(arg1:string):Promise<void>;
 
@@ -158,7 +161,7 @@ export function ListSlashCommands(arg1:app.ListSlashCommandsInput):Promise<Array
 
 export function ListStyleSamples(arg1:app.ListStyleSamplesInput):Promise<storage.PageResult_novel_internal_style_Sample_>;
 
-export function PickAndImportNovel():Promise<app.ImportNovelResult>;
+export function PickAndImportNovel():Promise<imp.ImportResult>;
 
 export function RebuildNovelIndex(arg1:number):Promise<void>;
 

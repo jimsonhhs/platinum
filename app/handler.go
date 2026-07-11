@@ -101,8 +101,8 @@ func (a *App) OnShutdown(shutdownCtx context.Context) {
 	if q := rag.GetRefreshQueue(); q != nil {
 		q.Stop()
 	}
-	// 3. 释放 ONNX embedder
-	if emb, err := rag.GetEmbedder(); err == nil && emb != nil {
+	// 3. 释放 ONNX embedder（非阻塞，避免未初始化时死锁）
+	if emb := rag.TryGetEmbedder(); emb != nil {
 		_ = emb.Close()
 	}
 

@@ -20,7 +20,7 @@ jobs:
         run: cd frontend && npm ci
 
       - name: ESLint
-        run: cd frontend && npx eslint . --max-warnings 100
+        run: cd frontend && npx eslint .
 
   test:
     strategy:

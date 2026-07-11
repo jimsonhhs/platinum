@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -38,7 +39,7 @@ func (a *App) GetContent(novelID int64, path string) (string, error) {
 
 	content, err := git.ReadFile(novelID, path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return "", nil
 		}
 		return "", err

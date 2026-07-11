@@ -335,7 +335,13 @@
     "importSelectFile2": "请选择要导入的书籍文件",
     "importRollbackDone": "导入失败，已撤销本次导入产生的数据和文件",
     "importFailedRetry": "导入失败，请重试",
-    "importSkippedCount": "以下 {{count}} 个章节被跳过"
+    "importSkippedCount": "以下 {{count}} 个章节被跳过",
+    "importNeedsLLM": "章节格式识别失败",
+    "importNeedsLLMDesc": "未能自动识别章节格式，可以使用 AI 分析来尝试识别（仅消耗少量 tokens）。",
+    "importAnalyzing": "AI 正在分析章节格式",
+    "importAnalyzeBtn": "AI 分析",
+    "importAnalyzeFailed": "AI 分析失败",
+    "importModel": "模型"
   },
   "character": {
     "character": "角色",

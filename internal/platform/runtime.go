@@ -25,7 +25,19 @@ func AppDir() (string, error) {
 // ResolveGit 返回 git 可执行文件的路径。
 // 搜索顺序: app 自带 runtime/git/ → 用户数据目录 runtime/git/ → 系统 PATH。
 // 每个候选路径都会验证可执行性（git --version），不可用则跳过继续 fallback。
+//
+// 当环境变量 GOINK_TESTING=1 时，仅从 DataDir 的 bundled 路径查找，
+// 不 fallback 到系统 PATH，找不到直接报错。用于 E2E 测试确保使用 bundled git。
 func ResolveGit() (string, error) {
+	// GOINK_TESTING 模式：只查 DataDir bundled 路径，不做任何 fallback
+	if os.Getenv("GOINK_TESTING") != "" {
+		path := dataDirBundledGitPath()
+		if verifyGit(path) == nil {
+			return path, nil
+		}
+		return "", fmt.Errorf("git: GOINK_TESTING 模式下未找到 bundled git (%s)", path)
+	}
+
 	// 1. app 自带的 bundled git
 	if appDir, err := AppDir(); err == nil {
 		if path := bundledGitPath(appDir); verifyGit(path) == nil {
@@ -47,12 +59,26 @@ func ResolveGit() (string, error) {
 	return "", fmt.Errorf("git: 找不到可用的 git 可执行文件，请安装 Git")
 }
 
+// dataDirBundledGitPath 返回 DataDir 下 bundled git 的路径，
+// 使用与生产环境相同的目录结构（Windows 为 MinGit 的 mingw64/bin/git.exe）。
+func dataDirBundledGitPath() string {
+	dataDir := DataDir()
+	switch runtime.GOOS {
+	case "windows":
+		return filepath.Join(dataDir, "runtime", "git", "mingw64", "bin", "git.exe")
+	default:
+		return filepath.Join(dataDir, "runtime", "git", "git")
+	}
+}
+
 // verifyGit 验证 git 可执行文件是否存在且能正常运行。
 func verifyGit(path string) error {
 	if _, err := os.Stat(path); err != nil {
 		return err
 	}
-	return exec.Command(path, "--version").Run()
+	cmd := exec.Command(path, "--version")
+	SetPlatformAttr(cmd)
+	return cmd.Run()
 }
 
 // gitBinName 返回当前平台 git 二进制文件名。
@@ -65,8 +91,20 @@ func gitBinName() string {
 
 // ResolveOnnxLib 返回 ONNX Runtime 动态库的路径。
 // 优先 app 自带的 runtime/，然后用户数据目录 runtime/，最后系统路径。
+//
+// 当环境变量 GOINK_TESTING=1 时，仅从 DataDir 的 runtime/ 查找，
+// 不 fallback 到系统路径，找不到直接报错。用于 E2E 测试确保使用 bundled ONNX。
 func ResolveOnnxLib() (string, error) {
 	libName := onnxLibName()
+
+	// GOINK_TESTING 模式：只查 DataDir runtime 路径，不做任何 fallback
+	if os.Getenv("GOINK_TESTING") != "" {
+		p := filepath.Join(DataDir(), "runtime", libName)
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+		return "", fmt.Errorf("platform: GOINK_TESTING 模式下未找到 ONNX Runtime (%s)", p)
+	}
 
 	appDir, err := AppDir()
 	if err == nil {
@@ -94,7 +132,11 @@ func ResolveOnnxLib() (string, error) {
 // DataDir 返回应用数据目录（绝对路径）。
 // Windows 返回可执行文件所在目录（单目录安装模式），其他平台返回 ~/Goink/。
 // 开发模式下 exe 位于临时目录时，所有平台统一返回 ~/Goink/。
+// 环境变量 GOINK_DATA_DIR 可覆盖以上逻辑，用于集成测试。
 func DataDir() string {
+	if dir := os.Getenv("GOINK_DATA_DIR"); dir != "" {
+		return dir
+	}
 	if runtime.GOOS == "windows" {
 		if dir, err := AppDir(); err == nil {
 			tmp := os.TempDir()

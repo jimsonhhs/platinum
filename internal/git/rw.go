@@ -43,7 +43,7 @@ func ReadFile(novelID int64, path string) (string, error) {
 	}
 	data, err := os.ReadFile(fullPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return "", fmt.Errorf("%w: %s", os.ErrNotExist, path)
 		}
 		return "", fmt.Errorf("git: read %s: %w", path, err)
