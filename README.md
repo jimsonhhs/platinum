@@ -92,7 +92,7 @@
 ## Skill 系统：3 层覆盖 × 3 种模式
 
 > [!TIP]
-> **欢迎贡献你的 Skill！** 把你的写作方法论变成 `.md` 文件，[提交 PR](skills/README.md) 分享给所有用户。
+> **欢迎贡献你的 Skill！** 把你的写作方法论变成 `.md` 文件，[提交 PR](https://github.com/sigpanic/goink-skills) 分享给所有用户。
 
 Skill 是 Goink 的创作方法论模块。每个 Skill 由一个 `.md` 文件定义，包含 YAML frontmatter 元数据和 markdown 正文。**三层覆盖 + 三种模式 = 9 种策略维度**，精确控制"什么内容、在什么范围、以什么方式生效"。
 

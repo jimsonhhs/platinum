@@ -1,9 +1,9 @@
 # Contributing
 
-Goink 目前由单人维护，review 精力有限，仅接受 `skills/` 目录下的社区技能贡献。其他模块暂不接受 PR，欢迎通过 Issue 提出改进建议。详见 [skills/README.md](skills/README.md)。
+Goink 目前由单人维护，review 精力有限，核心模块暂不接受 PR，欢迎通过 Issue 提出改进建议。
 
-提交 Skill 时请选择 **Skill Contribution** 模板。
+技能贡献欢迎提交到独立的 [goink-skills](https://github.com/sigpanic/goink-skills) 仓库。
 
-> Goink is maintained by a single developer with limited review bandwidth. Only community skill contributions under the `skills/` directory are accepted for now. Other modules are not open for PRs — please use Issues for suggestions. See [skills/README_EN.md](skills/README_EN.md).
-
-When submitting a Skill, please use the **Skill Contribution** template.
+> Goink is maintained by a single developer with limited review bandwidth. Core modules are not open for PRs for now — suggestions are welcome via Issues.
+>
+> Skill contributions are welcome at [goink-skills](https://github.com/sigpanic/goink-skills).

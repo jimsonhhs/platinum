@@ -92,7 +92,7 @@ Two-tier management: global preferences and per-novel preferences. By chapter th
 ## Skill System: 3 Layers × 3 Modes
 
 > [!TIP]
-> **Contribute your own Skill!** Turn your writing methodology into a `.md` file and [submit a PR](skills/README_EN.md) to share it.
+> **Contribute your own Skill!** Turn your writing methodology into a `.md` file and [submit a PR](https://github.com/sigpanic/goink-skills) to share it.
 
 Skills are Goink's creative methodology modules. Each Skill is defined by a single `.md` file with YAML frontmatter metadata and markdown body. **3 layers × 3 modes = 9 strategic dimensions** — precise control over what content, at what scope, with what activation model.
 
