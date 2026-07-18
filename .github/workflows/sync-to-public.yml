@@ -31,3 +31,6 @@ jobs:
             exit 0
           fi
           git push "$PUBLIC_URL" $TARGET:refs/heads/master
+          git tag -l --merged "$TARGET" | while read tag; do
+            git push "$PUBLIC_URL" "refs/tags/$tag" || true
+          done
