@@ -29,8 +29,8 @@ export default function ContentEditor({ value, onChange, onMount, editorTheme, r
         readOnly: readOnly ?? false,
         scrollBeyondLastLine: false,
         renderLineHighlight: 'gutter', // 只高亮左侧行号槽背景（正文区绝不整行变色）
-        // 关闭光标词高亮：中文无空格分词，整行会被当成一个词导致单击整行变色
-        ...(({ wordHighlight: false, selectionHighlight: false }) as any),
+        // 光标词高亮已在主题中设为透明（中文无空格分词，整行会被当成一个词导致整行变色）
+        ...(({ wordHighlight: false }) as any),
         fontSize: fs,
         lineHeight: Math.round(fs * ls),
         fontFamily: fontFamily ?? "'Noto Serif SC', 'Source Han Serif SC', serif",
