@@ -35,24 +35,41 @@ func Get() *AppConfig {
 }
 
 // AppConfig 是启动指针文件 ~/.goink/config.json 的内容。
-// DataDir 字段保留用于未来扩展，当前数据目录由 platform.DataDir() 确定。
+// DataDir 为数据根目录：非空时生效（优先级：GOINK_DATA_DIR 环境变量 > 此字段 > 平台默认）。
 type AppConfig struct {
-	DataDir string `json:"data_dir"` // 用户选择的数据根目录（保留字段）
+	DataDir string `json:"data_dir"` // 用户选择的数据根目录
 }
 
 // DataDirPath 返回数据根目录（绝对路径）。
+// 优先级：GOINK_DATA_DIR 环境变量 > ~/.goink/config.json 的 data_dir > 平台默认（Windows 为 exe 所在目录）。
 func DataDirPath() string {
+	if dir := os.Getenv("GOINK_DATA_DIR"); dir != "" {
+		return dir
+	}
+	cfgMu.RLock()
+	cfg := globalCfg
+	cfgMu.RUnlock()
+	if cfg != nil && cfg.DataDir != "" {
+		return cfg.DataDir
+	}
 	return platform.DataDir()
 }
 
 // GlobalDBPath 返回全局数据库路径。
 func GlobalDBPath() string {
-	return filepath.Join(platform.DataDir(), "novel-agent.db")
+	return filepath.Join(DataDirPath(), "novel-agent.db")
+}
+
+// TrashDir 返回回收站根目录（数据目录下的 trash/，独立于各小说的 git 仓库）。
+// 结构：trash/chapters/{novelID}/{chapterNumber}_{ts}.md + .json
+//       trash/skills/{source}/{name}_{ts}.md + .json
+func TrashDir() string {
+	return filepath.Join(DataDirPath(), "trash")
 }
 
 // NovelDirPath 返回指定小说的 Git 仓库根目录。
 func NovelDirPath(novelID int64) string {
-	return filepath.Join(platform.DataDir(), "novels", fmt.Sprintf("%d", novelID))
+	return filepath.Join(DataDirPath(), "novels", fmt.Sprintf("%d", novelID))
 }
 
 // LLMConfigPath 返回 LLM 加密配置文件的固定路径 ~/.goink/llm_config.enc。
@@ -61,10 +78,14 @@ func LLMConfigPath() string {
 	return filepath.Join(dir, "llm_config.enc")
 }
 
-// UserSkillsDir 返回用户级 skill 目录 ~/.goink/skills/。
+// UserSkillsDir 返回全局（用户级）skill 目录：数据目录下的 skills/，随数据便携，所有小说共用。
 func UserSkillsDir() string {
-	dir, _ := configDir()
-	return filepath.Join(dir, "skills")
+	return filepath.Join(DataDirPath(), "skills")
+}
+
+// RulesDir 返回用户守则目录：数据目录下的 rules/（热加载，AI 只读）。
+func RulesDir() string {
+	return filepath.Join(DataDirPath(), "rules")
 }
 
 // NovelSkillsDir 返回指定小说的 skill 目录。
@@ -88,7 +109,7 @@ func ModelsDir() string {
 			return bundled
 		}
 	}
-	return filepath.Join(platform.DataDir(), "models")
+	return filepath.Join(DataDirPath(), "models")
 }
 
 // configDir 返回指针文件所在的目录 ~/.goink。
@@ -130,8 +151,11 @@ func Load() (*AppConfig, error) {
 		return nil, fmt.Errorf("解析配置文件失败: %w", err)
 	}
 
-	// 确保平台数据目录存在
-	dataDir := platform.DataDir()
+	// 确保数据目录存在（优先用配置里的 data_dir，其次平台默认）
+	dataDir := cfg.DataDir
+	if dataDir == "" {
+		dataDir = platform.DataDir()
+	}
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return nil, fmt.Errorf("创建数据目录 %s 失败: %w", dataDir, err)
 	}

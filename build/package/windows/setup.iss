@@ -1,6 +1,6 @@
-#define MyAppName "Goink"
+﻿#define MyAppName "Goink"
 #define MyAppVersion GetEnv("VERSION")
-#define MyAppExeName "goink.exe"
+#define MyAppExeName "platinum.exe"
 
 [Setup]
 AppName={#MyAppName}
@@ -17,7 +17,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 DirExistsWarning=no
 
 [Files]
-Source: "..\..\bin\goink.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\bin\platinum.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\runtime\*"; DestDir: "{app}\runtime"; Flags: recursesubdirs
 
 [Tasks]

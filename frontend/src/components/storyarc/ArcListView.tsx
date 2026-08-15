@@ -80,7 +80,7 @@ export default function ArcListView({ novelId, focusArcId }: Props) {
   const app = useApp()
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const PALETTE = { light: PALETTE_LIGHT, dark: PALETTE_DARK }[theme]
+  const PALETTE = theme === 'dark' || theme === 'black-yellow' ? PALETTE_DARK : PALETTE_LIGHT
 
   const [arcs, setArcs] = useState<storyarc.StoryArc[]>([])
   const [allNodes, setAllNodes] = useState<storyarc.ArcNode[]>([])

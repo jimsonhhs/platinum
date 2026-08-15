@@ -9,10 +9,19 @@ import (
 	"novel/internal/skill"
 )
 
+// ExtractProgress 是提取过程中的实时进度回调（供前端可视化推导过程）。
+// Kind 取值：stats（确定性统计）/ thinking（模型推理，如支持）/ content（生成内容增量）/ done（完成，含结果）。
+type ExtractProgress struct {
+	Kind     string `json:"kind"`
+	Data     string `json:"data,omitempty"`
+	StageMsg string `json:"stage_msg,omitempty"`
+}
+
 // Extract 分析样本文字的写作风格，生成仿写 skill。
-// 取消由调用方（app 层）通过 ctx 管理。
+// 取消由调用方（app 层）通过 ctx 管理；progress 非空时实时推送推导过程。
 func Extract(ctx context.Context, llmClient *llm.Client,
-	samples []Sample, providerName, modelID, reasoningEffort string) (*ExtractResult, error) {
+	samples []Sample, providerName, modelID, reasoningEffort string,
+	progress func(ExtractProgress)) (*ExtractResult, error) {
 
 	// 计算 stats + 拼接全文
 	stats := ComputeStats(samples)
@@ -22,11 +31,17 @@ func Extract(ctx context.Context, llmClient *llm.Client,
 		combined.WriteString("\n\n---\n\n")
 		combined.WriteString(sample.Content)
 	}
+	if progress != nil {
+		progress(ExtractProgress{Kind: "stats", Data: formatStatsForLLM(stats), StageMsg: "正在统计文本特征…"})
+	}
 
 	// 调用 LLM
 	opts := &llm.CallOptions{}
 	if reasoningEffort != "" {
 		opts.ReasoningEffort = &reasoningEffort
+	}
+	if progress != nil {
+		progress(ExtractProgress{Kind: "thinking", StageMsg: "AI 正在分析风格特征…"})
 	}
 
 	events := llmClient.ChatStream(ctx, providerName, buildExtractMessages(combined.String()), nil, modelID, opts)
@@ -35,8 +50,14 @@ func Extract(ctx context.Context, llmClient *llm.Client,
 		if evt.Type == llm.EventError {
 			return nil, fmt.Errorf("LLM 调用失败: %w", evt.Error)
 		}
+		if evt.Type == llm.EventThinking && progress != nil {
+			progress(ExtractProgress{Kind: "thinking", Data: evt.Data})
+		}
 		if evt.Type == llm.EventContent {
 			fullText.WriteString(evt.Data)
+			if progress != nil {
+				progress(ExtractProgress{Kind: "content", Data: evt.Data})
+			}
 		}
 	}
 
@@ -49,8 +70,15 @@ func Extract(ctx context.Context, llmClient *llm.Client,
 	if err != nil {
 		return nil, fmt.Errorf("解析 skill 格式失败: %w", err)
 	}
+	// 内容为空校验：有名字但无正文 = 模型未输出文风内容，不落盘
+	if strings.TrimSpace(sk.RawContent) == "" {
+		return nil, fmt.Errorf("模型未输出文风内容（只有元数据），请重试")
+	}
 
 	safeName := skill.SanitizeFileName(sk.Name)
+	if progress != nil {
+		progress(ExtractProgress{Kind: "done", StageMsg: "解析完成", Data: fmt.Sprintf("%s|%s", sk.Name, sk.Description)})
+	}
 	return &ExtractResult{
 		Name:        sk.Name,
 		Description: sk.Description,

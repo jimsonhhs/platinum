@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	repoOwner   = "sigpanic"
-	repoName    = "goink"
+	repoOwner   = "jimsonhhs"
+	repoName    = "platinum"
 	apiBaseURL  = "https://api.github.com/repos/" + repoOwner + "/" + repoName
 	httpTimeout = 5 * time.Second
 )

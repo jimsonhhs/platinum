@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Save } from 'lucide-react'
 import type { novel } from '@/hooks/useApp'
 
 interface Props {
@@ -29,109 +30,94 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
   ]
 
   useEffect(() => {
-    if (open) {
-      setTitle(novel?.title ?? '')
-      setDescription(novel?.description ?? '')
-      setGenre(novel?.genre ?? '')
-      setSaving(false)
-      setError('')
-    }
+    if (!open) return
+    setTitle(novel?.title ?? '')
+    setDescription(novel?.description ?? '')
+    setGenre(novel?.genre ?? '')
+    setError('')
   }, [open, novel])
 
-  if (!open) return null
-
-  const isEdit = !!novel
-  const canSave = isEdit ? true : title.trim().length > 0
-
   async function handleSave() {
-    if (!canSave || saving) return
+    if (!title.trim()) {
+      setError(t('novel.titleRequired'))
+      return
+    }
     setSaving(true)
     setError('')
     try {
       await onSave({ title: title.trim(), description: description.trim(), genre: genre.trim() })
-    } catch (e: any) {
-      setError(e?.message ?? t('novel.saveFailedRetry'))
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setSaving(false)
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSave()
-    }
-    if (e.key === 'Escape') onClose()
-  }
+  if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-background rounded-xl shadow-2xl border w-[420px] max-w-[90vw] p-6" onKeyDown={handleKeyDown}>
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          ✕
-        </button>
-
-        <h2 className="text-base font-semibold mb-5">{isEdit ? t('novel.editWork') : t('novel.newWork')}</h2>
-
-        {error && (
-          <p className="text-sm text-red-600 bg-danger-bg border border-danger-border rounded-md px-3 py-2 mb-4">{error}</p>
-        )}
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('novel.bookTitle')} {!isEdit && <span className="text-red-500">*</span>}</label>
-            <input
-              type="text" value={title} autoFocus
-              onChange={e => setTitle(e.target.value)}
-              placeholder={t('novel.enterBookTitle')}
-              className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('novel.genre')}</label>
-            <input
-              type="text" value={genre}
-              onChange={e => setGenre(e.target.value)}
-              placeholder={t('novel.genreExample')}
-              list="genre-suggestions"
-              className="w-full h-9 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <datalist id="genre-suggestions">
-              {GENRE_PRESETS.map(g => <option key={g} value={g} />)}
-            </datalist>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t('novel.summary')}</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder={t('novel.summaryPlaceholder')}
-              rows={3}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+      <div className="relative bg-background rounded-xl shadow-2xl border w-[560px] max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+          <h3 className="text-base font-semibold">{novel ? t('novel.editNovel') : t('novel.createNovel')}</h3>
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="h-8 px-4 rounded-md text-xs border hover:bg-muted transition-colors">
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 h-8 px-4 rounded-md text-xs bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {saving ? t('common.saving') : t('common.save')}
+            </button>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-6">
-          <button
-            onClick={onClose}
-            className="h-9 px-4 rounded-md text-sm border hover:bg-muted transition-colors"
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!canSave || saving}
-            className="h-9 px-4 rounded-md text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {saving ? t('common.saving') : t('common.save')}
-          </button>
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+          <div className="space-y-3">
+            <label className="block text-xs text-muted-foreground">
+              {t('novel.title')} *
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </label>
+
+            <label className="block text-xs text-muted-foreground">
+              {t('novel.genre')}
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {GENRE_PRESETS.map(g => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGenre(g)}
+                    className={`h-7 px-2.5 rounded-md text-xs border transition-colors ${
+                      genre === g ? 'bg-primary/10 border-primary text-primary' : 'hover:bg-muted'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </label>
+
+            <label className="block text-xs text-muted-foreground">
+              {t('novel.description')}
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows={4}
+                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              />
+            </label>
+          </div>
+
+          {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
         </div>
       </div>
     </div>

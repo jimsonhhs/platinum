@@ -14,6 +14,7 @@ import './Markdown.css'
 interface MarkdownProps {
   content: string
   className?: string
+  highlight?: string // 非空时，正文匹配文本用 <mark> 高亮（搜索用）
 }
 
 interface CodeBlockProps {
@@ -235,6 +236,26 @@ function PreBlock({ children }: { children?: ReactNode }) {
   )
 }
 
+// 对话搜索命中高亮：渲染完成后对 DOM 文本节点应用 <mark>（react-markdown v10 不支持 text 渲染器）
+function splitByHighlight(text: string, query: string): { text: string; hit: boolean }[] {
+  const q = query.toLowerCase()
+  if (!q) return [{ text, hit: false }]
+  const lower = text.toLowerCase()
+  const out: { text: string; hit: boolean }[] = []
+  let idx = 0
+  while (idx < text.length) {
+    const found = lower.indexOf(q, idx)
+    if (found === -1) {
+      out.push({ text: text.slice(idx), hit: false })
+      break
+    }
+    if (found > idx) out.push({ text: text.slice(idx, found), hit: false })
+    out.push({ text: text.slice(found, found + query.length), hit: true })
+    idx = found + query.length
+  }
+  return out
+}
+
 const components: Components = {
   a: ({ href, children }) => (
     <a href={href} target="_blank" rel="noopener noreferrer">
@@ -259,11 +280,58 @@ const components: Components = {
   ),
 }
 
-export default function Markdown({ content, className }: MarkdownProps) {
+export default function Markdown({ content, className, highlight }: MarkdownProps) {
+  const markdownRef = useRef<HTMLDivElement | null>(null)
   const normalizedContent = content.replace(/\r\n?/g, '\n').replace(/^\n+/, '')
 
+  // 高亮应用/恢复：每次渲染后清除旧标记，再按关键词标记命中文本（跳过代码块）
+  useEffect(() => {
+    const root = markdownRef.current
+    if (!root) return
+
+    // 1. 恢复：移除所有旧高亮标记
+    root.querySelectorAll('mark.chat-search-mark').forEach(m => {
+      const parent = m.parentNode
+      if (parent) {
+        parent.replaceChild(document.createTextNode(m.textContent || ''), m)
+        parent.normalize()
+      }
+    })
+
+    const q = (highlight || '').trim()
+    if (!q) return
+
+    // 2. 应用：遍历文本节点，命中处包 <mark>
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node: Node) => {
+        const el = node.parentElement
+        if (el && (el.closest('pre') || el.closest('code'))) return NodeFilter.FILTER_REJECT
+        return NodeFilter.FILTER_ACCEPT
+      },
+    })
+    const nodes: Text[] = []
+    while (walker.nextNode()) nodes.push(walker.currentNode as Text)
+    nodes.forEach(textNode => {
+      const parts = splitByHighlight(textNode.data, q)
+      if (parts.some(p => p.hit)) {
+        const frag = document.createDocumentFragment()
+        parts.forEach(p => {
+          if (p.hit) {
+            const mark = document.createElement('mark')
+            mark.className = 'chat-search-mark'
+            mark.textContent = p.text
+            frag.appendChild(mark)
+          } else {
+            frag.appendChild(document.createTextNode(p.text))
+          }
+        })
+        textNode.parentNode?.replaceChild(frag, textNode)
+      }
+    })
+  }, [normalizedContent, highlight])
+
   return (
-    <div className={`prose prose-sm max-w-none ${className || ''}`}>
+    <div ref={markdownRef} className={`prose prose-sm max-w-none ${className || ''}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeRaw, rehypeSanitize]}

@@ -301,3 +301,170 @@ body {
 .overscroll-contain {
   overscroll-behavior: contain;
 }
+
+/* 编辑器行号：浅灰，不干扰正文阅读 */
+.monaco-editor .margin-view-overlays .line-numbers {
+  color: rgba(148, 148, 148, 0.55) !important;
+  font-size: 12px;
+}
+
+/* ── 护眼主题（豆沙绿）────────────────────────────────── */
+
+[data-theme="eye-care"] {
+  --background: #d5fbe6;
+  --foreground: #2b3a2b;
+  --card: #dffbe9;
+  --card-foreground: #2b3a2b;
+  --popover: #dffbe9;
+  --popover-foreground: #2b3a2b;
+  --primary: #3d6b4f;
+  --primary-foreground: #f2fbf3;
+  --secondary: #e2fcec;
+  --secondary-foreground: #2b3a2b;
+  --muted: #e2fcec;
+  --muted-foreground: #5a6b5c;
+  --accent: #e2fcec;
+  --accent-foreground: #2b3a2b;
+  --destructive: #b3543f;
+  --destructive-foreground: #fdf3f0;
+  --border: #a9d3b0;
+  --input: #a9d3b0;
+  --ring: #3d6b4f;
+  --chart-1: #3d6b4f;
+  --chart-2: #6b8f6e;
+  --chart-3: #9aaf8d;
+  --chart-4: #4f7a62;
+  --chart-5: #7ba080;
+  --sidebar: #c9f2d8;
+  --sidebar-foreground: #2b3a2b;
+  --sidebar-primary: #3d6b4f;
+  --sidebar-primary-foreground: #f2fbf3;
+  --sidebar-accent: #dffbe9;
+  --sidebar-accent-foreground: #2b3a2b;
+  --sidebar-border: #a9d3b0;
+  --sidebar-ring: #3d6b4f;
+  --tag-blue: rgba(90, 140, 220, 0.15);
+  --tag-blue-foreground: #33558a;
+  --tag-green: rgba(70, 160, 110, 0.15);
+  --tag-green-foreground: #2f6b4a;
+  --tag-amber: rgba(200, 150, 60, 0.18);
+  --tag-amber-foreground: #8a6420;
+  --tag-rose: rgba(200, 90, 90, 0.15);
+  --tag-rose-foreground: #8a3535;
+  --tag-teal: rgba(60, 160, 160, 0.15);
+  --tag-teal-foreground: #2f6b6b;
+  --tag-purple: rgba(130, 110, 200, 0.15);
+  --tag-purple-foreground: #5a4a8a;
+  --tool-blue: rgba(90, 140, 220, 0.12);
+  --tool-blue-border: #5a8cdc;
+  --tool-amber: rgba(200, 150, 60, 0.12);
+  --tool-amber-border: #c8963c;
+  --tool-green: rgba(70, 160, 110, 0.12);
+  --tool-green-border: #46a06e;
+  --tool-red: rgba(200, 90, 90, 0.12);
+  --tool-red-border: #c85a5a;
+  --danger-bg: rgba(200, 90, 90, 0.14);
+  --danger-border: rgba(200, 90, 90, 0.3);
+  --bubble-user: rgba(61, 107, 79, 0.18);
+  --bubble-user-foreground: var(--foreground);
+  --action-extract: #8a7a30;
+  --action-extract-foreground: #fdfbe8;
+  --action-save: #3d7a52;
+  --action-save-foreground: #f0faf3;
+  --success: rgba(70, 160, 110, 0.16);
+  --success-foreground: #2f6b4a;
+  --success-border: rgba(70, 160, 110, 0.3);
+  --status-warning: #8a6420;
+  --status-ok: #3d7a52;
+  --contribution-0: rgba(70, 160, 110, 0.1);
+  --contribution-1: rgba(70, 160, 110, 0.3);
+  --contribution-2: rgba(70, 160, 110, 0.55);
+  --contribution-3: rgba(61, 107, 79, 0.75);
+  --contribution-4: #3d6b4f;
+}
+
+/* ── 高对比黑黄主题 ─────────────────────────────────────── */
+
+[data-theme="black-yellow"] {
+  --background: #000000;
+  --foreground: #ffd700;
+  --card: #0d0d00;
+  --card-foreground: #ffd700;
+  --popover: #0d0d00;
+  --popover-foreground: #ffd700;
+  --primary: #ffd700;
+  --primary-foreground: #000000;
+  --secondary: #1a1a00;
+  --secondary-foreground: #ffd700;
+  --muted: #141400;
+  --muted-foreground: #b8a94f;
+  --accent: #1a1a00;
+  --accent-foreground: #ffd700;
+  --destructive: #ff4444;
+  --destructive-foreground: #000000;
+  --border: #4d4400;
+  --input: #4d4400;
+  --ring: #ffd700;
+  --chart-1: #ffd700;
+  --chart-2: #ffb700;
+  --chart-3: #e6c200;
+  --chart-4: #ffe94d;
+  --chart-5: #b89900;
+  --sidebar: #0a0a00;
+  --sidebar-foreground: #ffd700;
+  --sidebar-primary: #ffd700;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #1a1a00;
+  --sidebar-accent-foreground: #ffd700;
+  --sidebar-border: #4d4400;
+  --sidebar-ring: #ffd700;
+  --tag-blue: rgba(255, 215, 0, 0.15);
+  --tag-blue-foreground: #ffd700;
+  --tag-green: rgba(255, 215, 0, 0.15);
+  --tag-green-foreground: #ffd700;
+  --tag-amber: rgba(255, 215, 0, 0.18);
+  --tag-amber-foreground: #ffd700;
+  --tag-rose: rgba(255, 68, 68, 0.18);
+  --tag-rose-foreground: #ff8888;
+  --tag-teal: rgba(255, 215, 0, 0.15);
+  --tag-teal-foreground: #ffd700;
+  --tag-purple: rgba(255, 215, 0, 0.15);
+  --tag-purple-foreground: #ffd700;
+  --tool-blue: rgba(255, 215, 0, 0.12);
+  --tool-blue-border: #ffd700;
+  --tool-amber: rgba(255, 215, 0, 0.12);
+  --tool-amber-border: #ffd700;
+  --tool-green: rgba(255, 215, 0, 0.12);
+  --tool-green-border: #ffd700;
+  --tool-red: rgba(255, 68, 68, 0.12);
+  --tool-red-border: #ff4444;
+  --danger-bg: rgba(255, 68, 68, 0.15);
+  --danger-border: rgba(255, 68, 68, 0.35);
+  --bubble-user: rgba(255, 215, 0, 0.18);
+  --bubble-user-foreground: var(--foreground);
+  --action-extract: #ffd700;
+  --action-extract-foreground: #000000;
+  --action-save: #ffd700;
+  --action-save-foreground: #000000;
+  --success: rgba(255, 215, 0, 0.16);
+  --success-foreground: #ffd700;
+  --success-border: rgba(255, 215, 0, 0.35);
+  --status-warning: #ffb700;
+  --status-ok: #ffd700;
+  --contribution-0: rgba(255, 215, 0, 0.08);
+  --contribution-1: rgba(255, 215, 0, 0.25);
+  --contribution-2: rgba(255, 215, 0, 0.5);
+  --contribution-3: rgba(255, 215, 0, 0.75);
+  --contribution-4: #ffd700;
+}
+
+/* 拖拽插入位置指示线（加粗亮色，行间清晰可见；box-shadow 不改变布局） */
+.drag-indicator-before { box-shadow: 0 -3px 0 0 #3b82f6; }
+.drag-indicator-after { box-shadow: 0 3px 0 0 #3b82f6; }
+
+/* 卷框拖拽高亮（淡蓝） */
+.drag-volume-hover { background: rgba(59, 130, 246, 0.12) !important; }
+
+/* 卷拖拽插入线（inset：画在卷头框内边缘，列表顶端/底端也可见，不被容器裁剪） */
+.drag-vol-before { box-shadow: inset 0 3px 0 0 #3b82f6; }
+.drag-vol-after { box-shadow: inset 0 -3px 0 0 #3b82f6; }

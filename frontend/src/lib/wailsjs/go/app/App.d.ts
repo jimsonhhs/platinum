@@ -18,10 +18,16 @@ import {storage} from '../models';
 import {config} from '../models';
 import {writing} from '../models';
 import {imp} from '../models';
+import {draft} from '../models';
+import {setting} from '../models';
 import {skill} from '../models';
+import {archive} from '../models';
+import {trash} from '../models';
 import {search} from '../models';
 
 export function ApproveTool(arg1:string,arg2:boolean,arg3:string):Promise<void>;
+
+export function ArchiveHistory(arg1:number,arg2:string):Promise<void>;
 
 export function CancelChat(arg1:string):Promise<void>;
 
@@ -37,6 +43,8 @@ export function CompressContext(arg1:app.CompressInput):Promise<app.CompressResu
 
 export function ComputeStyleStats(arg1:app.ComputeStyleStatsInput):Promise<style.Stats>;
 
+export function CopyToDraft(arg1:number,arg2:number):Promise<void>;
+
 export function CreateArcNode(arg1:number,arg2:app.CreateArcNodeInput):Promise<storyarc.ArcNode>;
 
 export function CreateChapter(arg1:app.CreateChapterInput):Promise<chapter.Chapter>;
@@ -51,6 +59,10 @@ export function CreatePreference(arg1:number,arg2:app.CreatePreferenceInput):Pro
 
 export function CreateReaderPerspective(arg1:number,arg2:app.CreateReaderPerspectiveInput):Promise<reader.ReaderPerspective>;
 
+export function CreateSandbox(arg1:number,arg2:string,arg3:string):Promise<string>;
+
+export function CreateSnapshot():Promise<string>;
+
 export function CreateStoryArc(arg1:number,arg2:app.CreateStoryArcInput):Promise<storyarc.StoryArc>;
 
 export function CreateStyleSample(arg1:app.CreateStyleSampleInput):Promise<style.Sample>;
@@ -58,6 +70,8 @@ export function CreateStyleSample(arg1:app.CreateStyleSampleInput):Promise<style
 export function CreateTimelineEntry(arg1:number,arg2:app.CreateTimelineEntryInput):Promise<timeline.TimelineEntry>;
 
 export function DeleteArcNode(arg1:number,arg2:number):Promise<void>;
+
+export function DeleteChapter(arg1:app.DeleteChapterInput):Promise<void>;
 
 export function DeleteCharacter(arg1:number,arg2:number):Promise<void>;
 
@@ -71,19 +85,31 @@ export function DeletePreference(arg1:number):Promise<void>;
 
 export function DeleteReaderPerspective(arg1:number,arg2:number):Promise<void>;
 
+export function DeleteSandbox(arg1:number,arg2:string):Promise<void>;
+
+export function DeleteSetting(arg1:number,arg2:number):Promise<void>;
+
 export function DeleteSkill(arg1:app.DeleteSkillInput):Promise<void>;
 
 export function DeleteStoryArc(arg1:number,arg2:number):Promise<void>;
+
+export function DeleteStyle(arg1:string):Promise<void>;
 
 export function DeleteStyleSample(arg1:app.DeleteStyleSampleInput):Promise<void>;
 
 export function DeleteTimelineEntry(arg1:number,arg2:number):Promise<void>;
 
+export function DeleteVolume(arg1:number,arg2:number):Promise<void>;
+
 export function DiscoverModels(arg1:string,arg2:string):Promise<Array<llm.ModelInfo>>;
 
 export function DismissUpdate(arg1:string):Promise<void>;
 
-export function ExportNovel(arg1:number,arg2:string):Promise<void>;
+export function DuplicateSkill(arg1:app.DuplicateSkillInput):Promise<void>;
+
+export function ExportNovel(arg1:number,arg2:string,arg3:Array<number>):Promise<void>;
+
+export function ExtractMaterialStyle(arg1:app.ExtractMaterialStyleInput):Promise<style.ExtractResult>;
 
 export function ExtractPattern(arg1:pattern.ExtractPatternInput):Promise<pattern.ExtractPatternResult>;
 
@@ -92,6 +118,8 @@ export function ExtractStyle(arg1:app.ExtractStyleInput):Promise<style.ExtractRe
 export function GetAppConfig():Promise<Record<string, any>>;
 
 export function GetArcNodes(arg1:number,arg2:number,arg3:number):Promise<Array<storyarc.ArcNode>>;
+
+export function GetChangedFiles(arg1:number):Promise<Array<git.FileChange>>;
 
 export function GetChapterPlans(arg1:number):Promise<Array<timeline.ChapterPlan>>;
 
@@ -106,6 +134,10 @@ export function GetCommitFileList(arg1:number,arg2:string):Promise<app.CommitFil
 export function GetCommitLog(arg1:number,arg2:number,arg3:string):Promise<Array<git.CommitInfo>>;
 
 export function GetContent(arg1:number,arg2:string):Promise<string>;
+
+export function GetCurrentChapter(arg1:number):Promise<number>;
+
+export function GetEnabledStyle(arg1:number):Promise<string>;
 
 export function GetFileDiff(arg1:number,arg2:string,arg3:string):Promise<git.FileDiff>;
 
@@ -127,6 +159,8 @@ export function GetPreferences(arg1:number):Promise<app.PreferenceResult>;
 
 export function GetReaderPerspectives(arg1:number):Promise<Array<reader.ReaderPerspective>>;
 
+export function GetSandbox(arg1:number,arg2:string):Promise<app.SandboxData>;
+
 export function GetSession(arg1:string):Promise<app.SessionDetail>;
 
 export function GetSessionMessages(arg1:string):Promise<Array<session.Message>>;
@@ -137,15 +171,23 @@ export function GetSettings():Promise<config.AppSettings>;
 
 export function GetStoryArcs(arg1:number):Promise<Array<storyarc.StoryArc>>;
 
+export function GetStyleContent(arg1:string):Promise<string>;
+
 export function GetStyleSample(arg1:number):Promise<style.Sample>;
 
 export function GetTimelineEntries(arg1:number,arg2:number,arg3:number):Promise<Array<timeline.TimelineEntry>>;
 
+export function GetTrashItemContent(arg1:app.TrashItemInput):Promise<string>;
+
 export function GetVersion():Promise<string>;
+
+export function GetVolumes(arg1:number):Promise<Array<novel.Volume>>;
 
 export function GetWritingActivity(arg1:number):Promise<Array<writing.DailyActivity>>;
 
 export function GetWritingStats():Promise<writing.WritingStats>;
+
+export function ImportDraft(arg1:number,arg2:number):Promise<void>;
 
 export function ImportNovel(arg1:app.ImportNovelInput):Promise<imp.ImportResult>;
 
@@ -155,15 +197,57 @@ export function Initialize(arg1:string):Promise<void>;
 
 export function IsInitialized():Promise<boolean>;
 
+export function ListHistory(arg1:number,arg2:string):Promise<Array<draft.HistoryEntry>>;
+
+export function ListSandboxes(arg1:number):Promise<Array<app.SandboxMeta>>;
+
+export function ListSettings(arg1:number):Promise<Array<setting.SettingItem>>;
+
 export function ListSkills(arg1:app.ListSkillsInput):Promise<Array<skill.SkillMeta>>;
 
 export function ListSlashCommands(arg1:app.ListSlashCommandsInput):Promise<Array<app.SlashCommand>>;
 
+export function ListSnapshotFiles(arg1:string):Promise<Array<string>>;
+
+export function ListSnapshots():Promise<Array<archive.SnapshotMeta>>;
+
 export function ListStyleSamples(arg1:app.ListStyleSamplesInput):Promise<storage.PageResult_novel_internal_style_Sample_>;
 
-export function PickAndImportNovel():Promise<imp.ImportResult>;
+export function ListStyles():Promise<Array<app.StyleEntry>>;
+
+export function ListTrashItems(arg1:number):Promise<Array<trash.Item>>;
+
+export function LogFrontend(arg1:string):Promise<void>;
+
+export function NormalizeVolumeOrders(arg1:number,arg2:number):Promise<void>;
+
+export function PickAndImportNovel(arg1:number):Promise<imp.ImportResult>;
+
+export function PurgeTrashItem(arg1:app.TrashItemInput):Promise<void>;
 
 export function RebuildNovelIndex(arg1:number):Promise<void>;
+
+export function RecomputePrevChapters(arg1:number):Promise<void>;
+
+export function RenameSkill(arg1:app.RenameSkillInput):Promise<void>;
+
+export function RenameVolume(arg1:number,arg2:number,arg3:string):Promise<void>;
+
+export function ReorderChapter(arg1:number,arg2:number,arg3:number,arg4:number):Promise<void>;
+
+export function ReorderChaptersBatch(arg1:number,arg2:Array<number>,arg3:number,arg4:number):Promise<void>;
+
+export function ReorderVolumes(arg1:number,arg2:Array<number>):Promise<void>;
+
+export function RestoreHistory(arg1:number,arg2:string,arg3:string):Promise<void>;
+
+export function RestoreSnapshotAll(arg1:string):Promise<number>;
+
+export function RestoreSnapshotFile(arg1:app.ArchiveRestoreInput):Promise<void>;
+
+export function RestoreTrashItem(arg1:app.TrashItemInput):Promise<void>;
+
+export function SaveArchiveInterval(arg1:number):Promise<void>;
 
 export function SaveAvatar(arg1:Array<number>):Promise<void>;
 
@@ -173,17 +257,37 @@ export function SaveCover(arg1:number,arg2:Array<number>):Promise<void>;
 
 export function SaveGitConfig(arg1:string,arg2:string):Promise<void>;
 
+export function SaveHistoryLimit(arg1:number):Promise<void>;
+
 export function SaveLLMConfig(arg1:llm.LLMConfigView):Promise<void>;
+
+export function SaveMaintainReminderMinutes(arg1:number):Promise<void>;
+
+export function SaveSandbox(arg1:number,arg2:string,arg3:app.SandboxData):Promise<void>;
+
+export function SaveSetting(arg1:app.SaveSettingInput):Promise<setting.SettingItem>;
 
 export function SaveSettings(arg1:app.SaveSettingsInput):Promise<void>;
 
+export function SaveStyleToLibrary(arg1:string,arg2:string):Promise<string>;
+
 export function SaveUserName(arg1:string):Promise<void>;
 
+export function SaveVolumes(arg1:number,arg2:Array<novel.Volume>):Promise<void>;
+
 export function SearchAll(arg1:number,arg2:string):Promise<Array<search.Result>>;
+
+export function SelectMaterialFile():Promise<app.MaterialMeta>;
 
 export function SetActiveNovel(arg1:app.SetActiveNovelInput):Promise<void>;
 
 export function SetApprovalMode(arg1:string):Promise<void>;
+
+export function SetCurrentChapter(arg1:number,arg2:number):Promise<void>;
+
+export function SetDataDir(arg1:string):Promise<void>;
+
+export function SetEnabledStyle(arg1:number,arg2:string):Promise<void>;
 
 export function SetLastSession(arg1:string):Promise<void>;
 
@@ -210,6 +314,8 @@ export function UpdateNovel(arg1:number,arg2:app.UpdateNovelInput):Promise<novel
 export function UpdatePreference(arg1:number,arg2:app.UpdatePreferenceInput):Promise<novel.PreferenceItem>;
 
 export function UpdateReaderPerspective(arg1:number,arg2:number,arg3:app.UpdateReaderPerspectiveInput):Promise<void>;
+
+export function UpdateSandboxMeta(arg1:number,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function UpdateStoryArc(arg1:number,arg2:number,arg3:app.UpdateStoryArcInput):Promise<void>;
 

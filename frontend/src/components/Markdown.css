@@ -423,3 +423,11 @@
   color: var(--muted-foreground);
   font-style: italic;
 }
+
+/* 对话搜索命中高亮 */
+.chat-search-mark {
+  background-color: rgba(250, 204, 21, 0.4);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}

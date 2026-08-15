@@ -14,9 +14,11 @@ i18n
       en: { translation: en },
     },
     fallbackLng: 'zh-CN',
+    supportedLngs: ['zh-CN', 'en'],
+    nonExplicitSupportedLngs: false,
     interpolation: { escapeValue: false },
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage'],
       lookupLocalStorage: 'i18nextLng',
       caches: ['localStorage'],
     },

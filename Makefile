@@ -1,4 +1,4 @@
-.PHONY: dev build frontend-dev frontend-build clean deps package lint
+﻿.PHONY: dev build frontend-dev frontend-build clean deps package lint
 
 APP_NAME  := goink
 VERSION   ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -67,7 +67,7 @@ package-macos: build
 clean:
 ifeq ($(OS),Windows_NT)
 	powershell -Command "Remove-Item -Recurse -Force frontend/dist, frontend/node_modules, $(BUILD_DIR)/runtime, $(BUILD_DIR)/dist, $(BUILD_DIR)/bin -ErrorAction SilentlyContinue"
-	powershell -Command "Remove-Item -Force goink.exe -ErrorAction SilentlyContinue"
+	powershell -Command "Remove-Item -Force platinum.exe -ErrorAction SilentlyContinue"
 else
 	rm -rf frontend/dist frontend/node_modules $(BUILD_DIR)/runtime $(BUILD_DIR)/dist $(BUILD_DIR)/bin $(APP_NAME)
 endif

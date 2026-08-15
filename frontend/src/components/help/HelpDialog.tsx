@@ -61,6 +61,8 @@ const toolGroups: { label: string; tools: ToolEntry[] }[] = [
       { name: 'create_reader_perspective_entry', desc: 'help.toolRef_create_reader_perspective_entry' },
       { name: 'update_reader_perspective_entry', desc: 'help.toolRef_update_reader_perspective_entry' },
       { name: 'edit', desc: 'help.toolRef_edit' },
+      { name: 'copy_to_draft', desc: 'help.toolRef_copy_to_draft' },
+      { name: 'import_draft', desc: 'help.toolRef_import_draft' },
       { name: 'run_subagent', desc: 'help.toolRef_run_subagent' },
       { name: 'web_search', desc: 'help.toolRef_web_search' },
       { name: 'web_fetch', desc: 'help.toolRef_web_fetch' },
@@ -201,8 +203,16 @@ function QuickStartTab() {
         <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
           <p><span className="text-foreground font-medium">{t('help.quickStart_conceptTools')}</span> —— {t('help.quickStart_conceptToolsDesc')}</p>
           <p><span className="text-foreground font-medium">{t('help.quickStart_conceptSubagents')}</span> —— {t('help.quickStart_conceptSubagentsDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptVolumes')}</span> —— {t('help.quickStart_conceptVolumesDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptLocate')}</span> —— {t('help.quickStart_conceptLocateDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptDraft')}</span> —— {t('help.quickStart_conceptDraftDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptBody')}</span> —— {t('help.quickStart_conceptBodyDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptOutline')}</span> —— {t('help.quickStart_conceptOutlineDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptHistory')}</span> —— {t('help.quickStart_conceptHistoryDesc')}</p>
           <p><span className="text-foreground font-medium">{t('help.quickStart_conceptSkills')}</span> —— {t('help.quickStart_conceptSkillsDesc')}</p>
           <p><span className="text-foreground font-medium">{t('help.quickStart_conceptApproval')}</span> —— {t('help.quickStart_conceptApprovalDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptSandbox')}</span> —— {t('help.quickStart_conceptSandboxDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptAiTrace')}</span> —— {t('help.quickStart_conceptAiTraceDesc')}</p>
         </div>
       </section>
     </div>

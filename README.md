@@ -1,226 +1,102 @@
-<p align="center">
-  <img src="assets/logo-dark.svg#gh-dark-mode-only" alt="Goink" />
-  <img src="assets/logo-light.svg#gh-light-mode-only" alt="Goink" />
-</p>
+﻿# 证道白金（Zhengdao Platinum）
 
-<h1 align="center">桌面 AI 写作系统<br><sub>Agent 实时决策 × 结构化记忆 × 写完自检状态</sub></h1>
+> 桌面端 AI 小说写作助手 · 基于 goink 的二次开发版本
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Go-1.25-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go 1.25" />
-  <img src="https://img.shields.io/badge/Wails-v2.12-DF0000?style=for-the-badge&logo=wails&logoColor=white" alt="Wails v2" />
-  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React 19" />
-  <img src="https://img.shields.io/badge/SQLite-3-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" />
-  <br />
-  <img src="https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript 6" />
-  <img src="https://img.shields.io/badge/Tailwind-4.3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind 4" />
-  <img src="https://img.shields.io/badge/ONNX_Runtime-1.26-005BED?style=for-the-badge&logo=onnx&logoColor=white" alt="ONNX Runtime" />
-  <img src="https://img.shields.io/badge/source-AGPL_v3-blue?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="AGPL v3" />
-	  <img src="https://img.shields.io/badge/binary-EULA-orange?style=for-the-badge" alt="EULA" />
-</p>
+## 声明（Attribution）
 
-<p align="center"><strong><a href="README_EN.md">English Version</a> | 本文档为中文版</strong></p>
+本项目是 [goink](https://github.com/sigpanic/goink)（原作者 sigpanic，AGPL-3.0）的**派生（fork）版本**，在保留上游许可证与版权声明的前提下，进行了大量功能扩展、流程重构与产品化定制。上游原始 README 保留在 [README.upstream.md](README.upstream.md)。
 
----
+- 本仓库：[jimsonhhs/platinum](https://github.com/jimsonhhs/platinum)
+- 许可证：AGPL-3.0（与上游一致，派生作品必须保持同许可）
+- 本仓库保留上游 git 历史与版权声明，合规使用。
 
-<p align="center"><strong>用过通用 AI 写长篇小说的人都知道——写到第五章它就忘了主角叫什么。到第三十章还要手动翻前文找那句伏笔。写完一章还得自己提醒它"更新角色状态""检查弧线进度"。Goink 不会。它是一个有结构化记忆的桌面 AI 写作系统——角色档案、伏笔状态、弧线进度、地点关系、读者认知，系统记着，Agent 自己查、自己改、自己维护。</strong></p>
+## 功能亮点（相对上游新增 / 重构）
 
-## 跟通用 AI 聊天有什么不同
+1. **回收站（两段式删除）**：删除章节/技能先进回收站，二次删除才彻底清除；回收站按小说过滤、支持 md 预览、批量勾选删除（全选/全不选）；**恢复前自动存档当前状态**，永远有退路。
+2. **双大纲体系**：
+   - 正文大纲 `outlines/NNN.md`：AI 按正文实际内容自动生成/同步（事实层）。
+   - 用户大纲 `user_outlines/NNN.md`：每章独立、用户编辑、AI 只读遵守（意图层）。
+   - 一致性比对技能：正文大纲 vs 用户大纲差异审查，未经确认不改任何文件。
+3. **四视图并列**：章节编辑器中「正文 / 正文大纲 / 用户大纲 / 草稿」四个视图平级切换，章节列表可选视图直接打开。
+4. **草稿（润色暂存区）**：`drafts/NNN.md` 每章独立，不参与索引/维护；润色结果默认输出到草稿，满意后「导入正文」（确认框显示字数、导入前自动存档、重建向量并 git 提交）——不新建章节、不污染原文。
+5. **分段写作（三段独立 Agent 模式）**：主控 + writer 子 Agent + review 子 Agent，独立上下文；创作 / 润色 / 复制润色（A→B，来源只读）/ 定点润色（只改一段）四种模式；段级评审只评最近一段（约 300 字），5 轮上限；同章润色默认输出到草稿。
+6. **破甲词（最高优先级注入）**：创建/编辑小说时设定每书专属破甲词（每行一条）；该书所有 AI（主控/writer/review）运行时最先注入，置于一切规则之前，声明最高优先级、禁止覆盖；压缩后依然保留。
+7. **小说设定管理**：世界设定结构化存储（`setting_items` 表：分类 + 内容，每条带 setting_id）；🌍 面板左侧列表 + 搜索 + 主体分类分组编辑（笔图标编辑/垃圾桶删除/新建设定）；AI 侧 `upsert_setting`（PATCH/新建/同主题合并）与 `delete_record(table=setting)`；**会话开头全量注入** System3（`[setting_id:N | 分类]` 前缀）。
+8. **上一章指针**：每章记录 `prev_chapter_number`（新建自动记录、AI 用 `update_prev_chapter` 工具修正），`get_chapter_list` 直接返回——前情/上下文取真实上一章（跨删除空洞），不再推导。
+9. **检测改动 + 维护范围勾选**：纯本地 git 检测（零 token）；文件级勾选（可单章维护）+ 维护部分勾选（正文大纲/角色/时间线/读者认知/弧线/platinum.md）；未维护红点提醒 + 可配置定时提醒弹窗（挂起不打扰）。
+10. **定时存档**：`archive/` 快照（章节/大纲/技能/规则，AI 路径解析不可达 = 只读禁区）；间隔可设置（默认 30 分钟）；存档面板支持单文件/整快照恢复（恢复前自动存档当前状态）。
+11. **守则外置热加载**：`rules/rules.md` 中修改通用守则（冲突即停、润色以正文为准、审查需确认、禁止擅自创建数据等）即生效，免重新编译；AI 对 rules/ 与 archive/ 无写权限。
+12. **全局技能**：数据目录 `skills/` 为全局技能（所有小说共用，小说级可覆盖）；新建自动模板、重命名、复制（内置→全局/小说级）、损坏文件可见可修、分类筛选。
+13. **对话增强**：对话内搜索（匹配消息/正文/工具/思考内容，上一个/下一个定位高亮）+ 一键回到底部浮动按钮。
+14. **工具上限 150 + 触顶提示**：不再静默截断，达到上限明确提示可继续。
+15. **系统守则**：设定先行（人名地名先查工具）、分层评审（段级→章级）、每章完成即维护 + 同步正文大纲、冲突即停（仅严重冲突触发）、"下一章"编号空洞先确认。
+16. **产品化**：软件名「证道白金」、自定义图标；默认中文界面（设置可切英文）；exe 版本管理（每次部署自动备份 `platinum_时间戳.exe`，可回滚）；导出遇缺失文件不中断。
+17. **AI 不能直接写正文（工具层强制）**：edit 工具对 `chapters/` 路径直接拦截，AI 的任何内容输出只能进草稿/大纲；正文是用户独属区域，只能经「导入」发布（需明确确认），正文更新必须经用户/本地批准。
+18. **草稿（AI用户协作区）升级**：草稿视图内可「对比正文」（草稿 vs 正文 Monaco 差异对比标签页）、「将正文复制到草稿」（本地文件级、旧草稿自动归档）、「把草稿导入正文」（当前正文自动归档、草稿保留可继续编辑、章节不存在自动创建、草稿为空自动用正文初始化）。
+19. **版本历史（正文/草稿/用户大纲/AI总结大纲）**：离开页面（切视图/切标签）自动归档，相同内容自动去重；按类型分目录 `_history/`（`chapters/_history`、`drafts/_history`、`user_outlines/_history`、`outlines/_history`）；视图栏「历史」按钮打开历史面板（保存时间 + 字数 + 大小，点击预览，恢复按钮——AI总结大纲只读不恢复）；保留上限可配置（设置→通用，默认 50，1-200）。
+20. **四视图改名与排版**：视图固定为「正文 / 草稿 / 用户大纲 / AI总结大纲」（最右固定不跳动），历史按钮常驻，草稿视图额外显示「对比/复制/导入」；AI总结大纲为纯 AI 输出（历史只读）。
+21. **行号歧义硬中断**（守则第 9 条）：草稿与正文不同且指令带行号时，AI 必须中断询问「草稿还是正文的行号」，禁止自动确认。
+22. **多章创作 skill**：自动编排的多章节持续创作——整体剧情规划 → 逐章 AI总结大纲 → 逐章正文写草稿（调用分段写作三段迭代）→ 导入+维护 → 整书评审；用户大纲可 AI 起草但必须标注待确认。
+23. **重点分段常驻 skill**（mode=always）：机械信号判定（转折/结论/情绪/关键信息/对话 → 独立成段；超 40 字/3 行即拆），只改分段不改内容，静默执行，写作时直接按短段输出。
+24. **四套主题 + 外观自定义**：浅色 / 深色 / 护眼（豆沙绿）/ 黑黄高对比，顶栏按钮循环切换，Monaco 同步配色；设置→外观：编辑器字号（12-32）、字体（宋体/楷体/黑体/等宽等）、**行间距**（×1.2-2.5）、自定义文字色/背景色（仅编辑器生效），全部带实时预览并即时全局生效。
+25. **编辑器撤回/重做按钮**：视图栏「撤回/重做」按钮（悬停提示 Ctrl+Z / Ctrl+Y），方便不熟悉快捷键的用户。
+26. **软件内说明（帮助对话框）**：快速上手含草稿协作区 / 正文保护 / 版本历史 / AI总结大纲说明；工具参考覆盖全部 MCP 工具；后续新增功能同步更新说明。
+27. **卷与章节编号体系**：编号 = 文件身份（chapters/001.md），由单调计数器分配（删除不回退，回收站内容永不互相覆盖）；**顺序（sort_order）= 展示/叙事顺序**，与编号解耦——拖拽调整顺序不改编号，导出与"上一章"（prev_chapter_number）跟随排序；卷 = 虚拟分组（DB 存储，可命名、默认第一卷、章节列表卷分组折叠、右键移动到卷、卷内 100 章自动分块），删除卷内章节自动归入第一卷，文件物理路径一律不变。
+28. **AI 功能配置（token 节流）**：书籍设置拆分为基本信息 + 「AI 设定（破甲词 · token 节流）」二级对话框——破甲词 3 轮（循序渐进、空则止）+ 注入开关（世界设定/故事状态文档）+ 维护模块勾选（核心项取消需严重确认，可选模块自由勾选，关闭的模块左侧活动栏不显示）；创建/导入书籍后提醒配置。
+29. **章节定位省 token**：用户说「编号006」直接定位；说「第X章/第六章」先 get_chapter_list 只看标题匹配再读正文（守则第 10 条）；「本章」= 当前打开的章节（前端切换时上报，注入 AI 上下文）。
+30. **新书自带首章**：创建（非导入）自动生成第 1 章（编号 001、第一卷），建完直接写；导入/回收站恢复的章节自动补齐卷归属与顺序（Volume/SortOrder/chapter_seq 五入口联动，防文件号冲突与跨卷排序交错）。
+31. **章节标题带 AI 索引号**：编辑器标题显示「章节名（AI索引号XXX）」，XXX=文件号——文件号即身份，改名不改号。
+32. **沙盘（视觉化世界地图）**：多份命名沙盘（左侧栏管理：新建/切换/改名/简介/删除，存 novels/{id}/sandboxs/*.json 随书 git 版本化）；6 种矢量形状（圆形/方形/波浪/弧形/菱形/三角）+ 文字工具（A，就地输入、缩放角柄控字号）；自由移动/旋转（45° 吸附）/缩放/颜色/透明度；框选多选整组移动；「添加实体」从角色/地点/事件列表一键放入并自动关联；点击形状预览 + 跳转完整页面。
+33. **AI 推导过程可视化**：文风提取时实时显示 AI 推演（统计 → 思考 → 生成内容流，只读不可打断）；提取产物空内容校验（有名字无正文明确报错，不再保存空文件）。
+34. **反馈兜底（杜绝静默失败）**：全局未捕获 Promise 拒绝自动弹错误提示；审批等关键操作自带 try/catch 反馈——任何失败用户都看得到「操作失败：原因」。
 
-| | 通用 AI 聊天 | Goink |
-|---|---|---|
-| 创作信息 | 每次对话重新交代 | 角色/关系/伏笔/弧线/地点/读者认知 全链路结构化追踪 |
-| 改正文 | 直接输出文本，改了什么不知道 | Diff 预览 + 逐行对比 + 点确认才写入 |
-| 翻前文 | 手动搜索、逐章翻 | 本地语义搜索引擎，一句"那个吊坠"找到所有段落 |
-| 写完维护 | 不管，除非你再提醒 | 写完自动触发角色更新、伏笔回收、弧线推进、读者认知刷新 |
-| 写作风格 | 靠 prompt 硬写 | 8 个内置方法论 + 自定义 Skill 热重载，三层覆盖 |
-| 版本历史 | 无 | 内置 Git，每次对话自动 commit，随时回退 |
-| 环境依赖 | 往往要 Python/GPU | 一个安装包，打开即用 |
+## 数据目录（可配置）
 
-## AI 自己查、自己改、自己维护——不是流水线，是 Agent
+数据根目录默认 = **exe 所在文件夹**（便携，整个文件夹拷走即迁移），可通过设置修改（写入 `~/.goink/config.json` 的 `data_dir`，重启生效）。优先级：`GOINK_DATA_DIR` 环境变量 > config.json > exe 目录。
 
-31 个结构化工具，LLM 自主决策调用哪个、传什么参数、下一步干什么。不是"写完一章传给下一棒"的 pipeline——Agent 在当前对话中调工具查角色、查伏笔、读写正文、更新状态，直到任务完成。
-
-写完一章正文后，系统自动注入维护提醒，告诉 Agent 具体检查什么：角色有没有变化、该回收的伏笔回收了没有、弧线节点需要推进吗、读者认知需要更新吗。Agent 不会"忘了维护"——它被迫逐项自查。
-
-如果还不放心，可以启动审稿子 Agent——一个独立 Agent 从头审读章节内容与系统状态的一致性，发现问题直接写进对话，主 Agent 当场修正。
-
-## 几十万字里找一句话：本地语义搜索
-
-写到第五十章，要找"主角第一次见到那个吊坠是在哪一章来着？"——不用逐章翻。告诉 AI 一句话，它能在整本书里找到相关段落。
-
-不是关键词匹配，是按意思搜索。你问"关于吊坠的线索"，它能找到那些没写"吊坠"两个字但确实在暗示吊坠存在的段落。Agent 写新章节时也可主动搜索前文，确保持续一致。
-
-整套引擎在本机运行——BGE 中文语义模型 ONNX 本地推理，sqlite-vec 向量索引，MMR 去冗余重排序。写完章节后台自动增量索引，无需网络，无需额外配置。
-
-## 不只是记忆——是结构化创作状态
-
-### 角色：关系有历史
-
-角色档案包含性格、能力、背景。角色关系是有向图——"张三对李四是师徒但暗中提防"，"李四对张三是敬重但有所隐瞒"，两条独立记录。关系变化时旧记录保留，可回顾演变过程。
-
-### 伏笔：不会石沉大海
-
-每条伏笔记录目标回收章节和重要程度。快到回收点系统提醒，超时未回收标记异常。章节计划分三档——下一章、近期、远期——管理创作节奏。
-
-### 弧线：跨章节叙事线索
-
-弧线由节点链组成，每个节点关联目标章节。写完一章自动推进节点。一个故事通常 3–5 条并行弧线同时追踪。
-
-### 世界观：地点是图，不是列表
-
-追踪层级包含（王国 → 王宫 → 大殿）和空间连通（A 和 B 由山路连通）。AI 可查详情、子地点、连通关系或完整地图。
-
-### 读者认知：控制信息释放
-
-追踪读者已知什么、在等什么答案、误认了什么。精确控制悬念和反转时机。
-
-### 创作偏好：说一次就够
-
-全局偏好和单书偏好两层管理。写到第三十七章，"对话保持冷峻风格"依然生效。
-
-## 前端可视化状态
-<p align="center">
-  <img src="assets/arc-demo.png" alt="故事弧线" />
-</p>
-<p align="center">
-  <img src="assets/location-demo.png" alt="地点图谱" />
-</p>
-<p align="center">
-  <img src="assets/preferences-demo.png" alt="创作偏好" />
-</p>
-
-## Skill 系统：3 层覆盖 × 3 种模式
-
-> [!TIP]
-> **欢迎贡献你的 Skill！** 把你的写作方法论变成 `.md` 文件，[提交 PR](https://github.com/sigpanic/goink-skills) 分享给所有用户。
-
-Skill 是 Goink 的创作方法论模块。每个 Skill 由一个 `.md` 文件定义，包含 YAML frontmatter 元数据和 markdown 正文。**三层覆盖 + 三种模式 = 9 种策略维度**，精确控制"什么内容、在什么范围、以什么方式生效"。
-
-### 三层覆盖
-
-同名 Skill 按 **小说 > 用户 > 内置** 优先级覆盖。修改即时热重载，无需重启。
-
-| 层级 | 存储路径 | 可见范围 | 可编辑 |
-|---|---|---|---|
-| 内置 Builtin | 打包只读 | 所有小说 | 否 |
-| 用户 User | `~/.goink/skills/` | 所有小说 | 是 |
-| 小说 Novel | `{novel}/skills/` | 当前小说 | 是 |
-
-### 三种触发模式
-
-| 模式 | AI 自主调用 | 用户 `/` 触发 | 会话开头注入 | 出现在目录 |
-|---|---|---|---|---|
-| 智能 `auto` | 是 | 是 | — | 是 |
-| 指令 `manual` | — | 是 | — | — |
-| 常驻 `always` | 是 | 是 | 是（注入全文） | — |
-
-### 3×3 能力矩阵
-
-|  | 智能 auto | 指令 manual | 常驻 always |
-|---|---|---|---|
-| **内置** | 场景节拍、对白潜台词、节奏控制、悬念钩子、角色设计、修改打磨、去AI味、共创构思 | review / memory / collect / next | — |
-| **用户** | 跨小说可复用的创作工作流 | 个人快捷命令 | 全局生效的风格规则 |
-| **小说** | 单书专属工作流 | 单书快捷命令 | 单书常驻规则 |
-
-新建一个 `.md` 文件就是新 Skill：
-
-```markdown
----
-name: 我的写作流程
-description: 个人定制创作流程
-category: 自定义
-mode: auto
----
-# 正文 markdown 内容
+```
+数据目录/
+├── novel-agent.db          # 全局数据库
+├── novels/{id}/            # 每部小说（独立 git 仓库）
+│   ├── chapters/           # 正文
+│   ├── outlines/           # 正文大纲
+│   ├── user_outlines/      # 用户大纲（每章独立）
+│   ├── drafts/             # 草稿（AI用户协作区，不参与维护/索引）
+│   ├── plans/              # 章节计划
+│   ├── skills/             # 小说级技能（覆盖全局）
+│   └── platinum.md            # 故事状态文档
+├── chapters/_history/      # 正文版本历史
+├── drafts/_history/        # 草稿版本历史
+├── outlines/_history/      # AI总结大纲版本历史
+├── user_outlines/_history/ # 用户大纲版本历史
+├── skills/                 # 全局技能
+├── rules/                  # 通用守则（热加载，AI 只读）
+├── trash/                  # 回收站
+├── archive/                # 定时存档（AI 不可访问）
+└── runtime/                # ONNX 模型与内置 git
 ```
 
-零代码扩展。修改即时生效。删除同理。
+## 构建（Windows）
 
-<p align="center">
-  <img src="assets/skill-demo.png" width="80%" alt="Skill 技能系统" />
-</p>
+前置：Go、git、mingw-w64（CGO）、wails CLI。
 
-## 风格蒸馏：一段文字 → 一个仿写 Skill
-
-想写出某个作家的笔法？贴一段样文，AI 从六个维度拆解——**句式结构、用词习惯、修辞手法、节奏控制、叙事距离、氛围语调**——自动生成一个完整的仿写 Skill。不是关键词替换，是提炼风格模式。
-
-生成的 Skill 立刻出现在列表中，`/风格名` 一键加载，后续所有对话都按此风格输出。也可以打开编辑继续微调。
-
-<p align="center">
-  <img src="assets/extract-demo.png" width="80%" alt="风格蒸馏" />
-</p>
-
-## 三重保障，维护不会遗漏
-
-**第一层—系统提示词** • Agent 核心指令写死维护流程。"创作完成后立即进行状态维护。不是可选步骤。"
-
-**第二层—动态注入** • AI 写完长文后系统自动注入检查项——角色变化、伏笔状态、弧线节点、读者认知。
-
-**第三层—审稿 Agent** • 独立子 Agent 对比章节与系统状态，发现问题立即反馈。
-
-## 你的每一次确认
-
-AI 不会直接改正文。每次编辑系统先生成 Diff，等你批准再写入。可以当场批准、拒绝，或者给反馈让 AI 修正。也可以切换到自动模式，连续多轮自由写作。
-
-所有修改都有 Git 历史，任何时候都可以回退到任意状态。
-<p align="center">
-  <img src="assets/write-demo.png" alt="写作与 Diff 审批" />
-</p>
-<p align="center">
-  <img src="assets/outline-demo.png" alt="大纲与章节计划" />
-</p>
-## AI 碰不到不该碰的文件
-
-双层沙箱安全隔离——正则白名单只允许 `chapters/`、`outlines/`、`goink.md` 等合法路径，SafePath 杜绝路径穿越。文件编辑写入前重读对比，防止覆盖你的手动修改。
-
-## 安装
-
-从 [Releases](https://github.com/sigpanic/goink/releases) 下载对应平台安装包：
-
-- **Windows** — 运行安装程序
-- **macOS** — 打开 DMG，拖入 Applications
-- **Linux** — 运行 AppImage
-
-需要 LLM API Key（内置 DeepSeek、GLM、MiMo 模板，兼容 OpenAI 格式）。安装包 < 60MB，不需要 Python、Node.js、数据库或 GPU。Windows SmartScreen 可能弹出提示（未签名），点击"更多信息"→"仍要运行"即可。
-
-> 网络不好？可从网盘下载：[https://wwayx.lanzouu.com/b0kp2iyoj](https://wwayx.lanzouu.com/b0kp2iyoj) 密码：1111
-
-### 从源码构建
-
-```bash
-sudo apt install libsqlite3-dev libgtk-3-dev libwebkit2gtk-4.1-dev gcc
-git clone https://github.com/sigpanic/goink
-cd goink
-make deps
-make build   # 生产构建
-make dev     # 开发模式（热重载）
+```powershell
+# sqlite-vec 的 cgo 需要 sqlite3.h（从 mattn/go-sqlite3 模块缓存复制）
+$env:CGO_CFLAGS = "-I<包含 sqlite3.h 的目录>"
+wails build
 ```
 
-## 技术栈
+已提供脚本：`scripts/build_windows.ps1`（环境准备 + 构建）、`scripts/deploy_windows.ps1`（部署到桌面 + 自动版本备份）。
 
-| 层 | 选型 |
-|---|---|
-| Agent 引擎 | 自研 ReAct 循环（Go，SSE 流式 + 31 个 Function Calling 工具 + 子 Agent 嵌套） |
-| 桌面框架 | Wails v2（Go + WebView） |
-| 编辑器 | Monaco Editor |
-| 数据库 | SQLite + GORM（ACID 事务 + 操作日志回滚） |
-| 向量搜索 | sqlite-vec + ONNX Runtime（bge-small-zh-v1.5 int8 量化） |
-| 版本控制 | 内置 Git（自动 commit / Diff / Revert） |
-| 安全 | 正则白名单 + SafePath 双层沙箱 + 审批流 |
-| 前端 | React 19 + TypeScript + Tailwind CSS 4 + shadcn/ui |
+## 开发者文档（改代码前必读）
 
-## License
+> **依赖树规则（用户定，永久生效）**：每次完成一个小功能，必须检查依赖/引用是否造成其他影响——相关的东西要建立联系，这样才知道会不会"牵一发动全身"，有影响就连锁修改。本项目的完整依赖树见 **[DEPENDENCIES.md](DEPENDENCIES.md)**。
 
-本仓库源代码以 [AGPL v3](LICENSE) 授权。官方二进制发行版以 [软件许可协议](EULA.md) 发布，免费用于个人及商业用途。
+- **是什么**：不是单向的"A 依赖 B"清单，而是 **B 记录"谁依赖了他"（反向索引）+ 依赖面（依赖了 B 的哪些具体输出）+ 依赖强度/接口变更敏感性（二维模型）**——改 B 时查 B 的反向索引，逐个评估依赖者是否需要连锁修改，**无需重读全部代码**。
+- **怎么用**：改代码前先查 DEPENDENCIES.md 对应章节（数据层 / AI 注入链 / MCP 工具 / 前端↔后端契约 / 组件传参 / i18n / 部署）；改完对照第 9 节"易遗漏联动速查表"逐项检查；新增功能后同步更新该文档。
+- **实战效果**：2026-08-15 依赖审计据此发现并修复 3 个真实遗漏（导入书新建章文件号冲突、回收站恢复章节卷序错乱、跨卷 prev/导出排序交错），详见 DEPENDENCIES.md 第 10 节。
 
-Goink is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE) for the full text and [NOTICE](NOTICE) for additional terms under AGPLv3 Section 7.
+## 许可证
 
-## Star History
+本项目以 **AGPL-3.0** 发布，保留上游 [goink](https://github.com/sigpanic/goink) 的版权声明。详见 [LICENSE](LICENSE)。
 
-<a href="https://www.star-history.com/#repos=sigpanic%2Fgoink&type=Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sigpanic/goink&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sigpanic/goink&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sigpanic/goink&type=date&legend=top-left" />
- </picture>
-</a>

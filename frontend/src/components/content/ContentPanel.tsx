@@ -1,29 +1,33 @@
 import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
 import { type OnMount, DiffEditor } from '@monaco-editor/react'
-import { FileText, Loader2 } from 'lucide-react'
+import { FileText, Loader2, History, Undo2, Redo2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toastError } from '@/lib/utils'
 import { useApp } from '@/hooks/useApp'
 import { useEditorTabs } from '@/hooks/useEditorTabs'
-import { useTheme, type Theme } from '@/hooks/useTheme'
+import { useTheme } from '@/hooks/useTheme'
 import { EventsOn } from '@/lib/wailsjs/runtime/runtime'
 import TabBar from './TabBar'
 import ContentEditor from './ContentEditor'
 import OutlineViewer from './OutlineViewer'
+import ReferenceDrawer from './ReferenceDrawer'
 import SkillPreview from './SkillPreview'
+import HistoryPanel from './HistoryPanel'
 import SkillEditForm from '@/components/skill/SkillEditForm'
 import Markdown from '@/components/Markdown'
-import { outlinePath, isContentPath, isOutlinePath, isSkillPath, skillNameFromPath } from './types'
+import { outlinePath, userOutlinePath, draftPath, isContentPath, isOutlinePath, isSkillPath, skillNameFromPath } from './types'
 import type { EditorTab } from './types'
 import './ContentPanel.css'
 
-const MONACO_THEME: Record<Theme, string> = { light: 'light', dark: 'vs-dark' }
+import { useEditorPrefs } from '@/hooks/useEditorPrefs'
+import { MONACO_THEME, ensureMonacoThemes, getPrefs } from '@/lib/editorTheme'
 
 export interface ContentPanelHandle {
   openFile: (path: string, title: string, readOnly?: boolean, initialViewMode?: string) => void
   openFileWithHighlight: (path: string, title: string, matchPos: number, matchLen: number) => void
   clearHighlight: () => void
   closeAllTabs: () => void
+  closeFile: (path: string) => void
   openDiffTab: (data: {
     path: string; title: string; diff: string; original: string; modified: string
     changeType: string; reason: string; toolId: string
@@ -45,13 +49,18 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
   const { t } = useTranslation()
   const {
     tabs, activeTab, activeTabId,
-    openTab, closeTab, closeAllTabs, setActiveTabId,
+    openTab, closeTab, closeAllTabs, closeOtherTabs, setActiveTabId,
     updateTab, openDiffTab, initRef,
   } = useEditorTabs(novelId)
 
   const { theme } = useTheme()
+  const [showReference, setShowReference] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [showDraftUpdated, setShowDraftUpdated] = useState(false)
+  const [historyTarget, setHistoryTarget] = useState<string | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const userOutlineSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
   const savingRef = useRef<{ id: string; path: string; content: string } | null>(null)
   const pendingHighlightRef = useRef<{ matchPos: number; matchLen: number } | null>(null)
@@ -102,7 +111,7 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
         const tab = tabs.find(t => t.id === activeTabId)
-        if (tab?.type === 'file' && (isSkillPath(tab.path) || tab.path === 'goink.md')) {
+        if (tab?.type === 'file' && (isSkillPath(tab.path) || tab.path === 'platinum.md')) {
           e.preventDefault()
           const newMode = tab.viewMode === 'preview' ? 'content' : 'preview'
           updateTab(tab.id, { viewMode: newMode })
@@ -113,25 +122,49 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
     return () => window.removeEventListener('keydown', handler)
   }, [tabs, activeTabId, updateTab])
 
-  // ── 切换 viewMode：按需加载大纲内容 ──────────────────────
+  // ── 切换 viewMode：按需加载大纲（正文大纲 + 用户大纲 + 草稿） ──────
 
-  const handleSetViewMode = useCallback((tabId: string, mode: 'content' | 'outline') => {
+  const handleSetViewMode = useCallback((tabId: string, mode: 'content' | 'outline' | 'userOutline' | 'draft') => {
     const tab = tabs.find(t => t.id === tabId)
     if (!tab) return
 
+    // 切到草稿视图：先加载草稿内容，再切换视图（保证编辑器挂载时 model 已带内容）
+    if (mode === 'draft' && tab.type === 'file') {
+      const isChapter = isContentPath(tab.path) && tab.path !== 'platinum.md'
+      if (isChapter) {
+        const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+        if (num) {
+          app.GetContent(novelId, draftPath(num)).then(dc => {
+            updateTab(tabId, { viewMode: 'draft', draftContent: dc || '' })
+          }).catch(() => {
+            updateTab(tabId, { viewMode: 'draft', draftContent: '' })
+          })
+          return
+        }
+      }
+    }
+
     updateTab(tabId, { viewMode: mode })
 
-    // 切换到大纲时，如果未加载（或上次加载时文件不存在）则重新加载
-    if (mode === 'outline' && tab.type === 'file' && !tab.outlineContent) {
-      const derivedOutline = isContentPath(tab.path) && tab.path !== 'goink.md'
-        ? outlinePath(parseInt(tab.path.replace(/.*\//, '').replace('.md', '')))
-        : null
-      if (derivedOutline) {
-        app.GetContent(novelId, derivedOutline).then(oc => {
-          updateTab(tabId, { outlineContent: oc || '' })
-        }).catch(() => {
-          updateTab(tabId, { outlineContent: '' })
-        })
+    // 切换到大纲/用户大纲视图时，如未加载则加载
+    if ((mode === 'outline' || mode === 'userOutline') && tab.type === 'file') {
+      const isChapter = isContentPath(tab.path) && tab.path !== 'platinum.md'
+      if (isChapter) {
+        const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+        if (!tab.outlineContent) {
+          app.GetContent(novelId, outlinePath(num)).then(oc => {
+            updateTab(tabId, { outlineContent: oc || '' })
+          }).catch(() => {
+            updateTab(tabId, { outlineContent: '' })
+          })
+        }
+        if (!tab.userOutlineContent) {
+          app.GetContent(novelId, userOutlinePath(num)).then(uc => {
+            updateTab(tabId, { userOutlineContent: uc || '' })
+          }).catch(() => {
+            updateTab(tabId, { userOutlineContent: '' })
+          })
+        }
       }
     }
   }, [novelId, tabs, app, updateTab])
@@ -178,6 +211,154 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
       doSave(s.id, s.path, s.content)
     }, 500)
   }, [tabs, updateTab, doSave, onContentChange])
+
+  const handleUserOutlineChange = useCallback((tabId: string, value: string | undefined) => {
+    const content = value ?? ''
+    updateTab(tabId, { userOutlineContent: content, isDirty: true })
+
+    if (userOutlineSaveTimerRef.current) clearTimeout(userOutlineSaveTimerRef.current)
+    const tab = tabs.find(t => t.id === tabId)
+    if (!tab) return
+    const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+    if (!num) return
+    const path = userOutlinePath(num)
+    userOutlineSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await app.SaveContent({ novel_id: novelIdRef.current, path, content })
+        updateTab(tabId, { isDirty: false })
+      } catch (err) {
+        toastError(t('common.saveFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
+      }
+    }, 500)
+  }, [tabs, updateTab, app, t])
+
+  const handleDraftChange = useCallback((tabId: string, value: string | undefined) => {
+    const content = value ?? ''
+    updateTab(tabId, { draftContent: content, isDirty: true })
+
+    if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current)
+    const tab = tabs.find(t => t.id === tabId)
+    if (!tab) return
+    const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+    if (!num) return
+    const path = draftPath(num)
+    draftSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await app.SaveContent({ novel_id: novelIdRef.current, path, content })
+        updateTab(tabId, { isDirty: false })
+      } catch (err) {
+        toastError(t('common.saveFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
+      }
+    }, 500)
+  }, [tabs, updateTab, app, t])
+
+  async function flushPendingSaves() {
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null }
+    if (draftSaveTimerRef.current) { clearTimeout(draftSaveTimerRef.current); draftSaveTimerRef.current = null }
+    if (userOutlineSaveTimerRef.current) { clearTimeout(userOutlineSaveTimerRef.current); userOutlineSaveTimerRef.current = null }
+    const tab = tabs.find(t => t.id === activeTabId)
+    if (!tab || tab.type !== 'file') return
+    const isChapter = isContentPath(tab.path) && tab.path !== 'platinum.md'
+    const num = isChapter ? parseInt(tab.path.replace(/.*\//, '').replace('.md', '')) : 0
+    if (tab.content != null) {
+      try { await doSave(tab.id, tab.path, tab.content) } catch {}
+    }
+    if (num && tab.draftContent != null) {
+      try { await app.SaveContent({ novel_id: novelIdRef.current, path: draftPath(num), content: tab.draftContent }); updateTab(tab.id, { isDirty: false }) } catch {}
+    }
+    if (num && tab.userOutlineContent != null) {
+      try { await app.SaveContent({ novel_id: novelIdRef.current, path: userOutlinePath(num), content: tab.userOutlineContent }); updateTab(tab.id, { isDirty: false }) } catch {}
+    }
+  }
+
+  async function handleImportDraft() {
+    const tab = tabs.find(t => t.id === activeTabId)
+    if (!tab || tab.type !== 'file') return
+    const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+    if (!num) return
+    const draftLen = (tab.draftContent ?? '').length
+    const bodyLen = (tab.content ?? '').length
+    if (!confirm(t('content.draftImportConfirm', { n: num, draft: draftLen, body: bodyLen }))) return
+    try {
+      await app.ImportDraft(novelIdRef.current, num)
+      toastError(t('content.draftImported'))
+      // 刷新正文内容
+      app.GetContent(novelIdRef.current, tab.path).then(c => updateTab(tab.id, { content: c ?? '' })).catch(() => {})
+    } catch (err) {
+      toastError(t('content.draftImportFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
+      console.error(err)
+    }
+  }
+
+  async function handleCopyToDraft() {
+    const tab = tabs.find(t => t.id === activeTabId)
+    if (!tab || tab.type !== 'file') return
+    const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+    if (!num) return
+    if (!confirm(t('content.copyToDraftConfirm'))) return
+    try {
+      await flushPendingSaves()
+      await app.CopyToDraft(novelIdRef.current, num)
+      app.GetContent(novelIdRef.current, draftPath(num)).then(dc => {
+        updateTab(tab.id, { draftContent: dc || '' })
+        // 兜底：若草稿编辑器已挂载，直接写入（不依赖受控 value 更新链）
+        try { editorRef.current?.setValue(dc ?? '') } catch {}
+      }).catch(() => {})
+    } catch (err) {
+      toastError(t('content.copyToDraftFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
+      console.error(err)
+    }
+  }
+
+  // 对比草稿与正文差异（只读 diff 标签页）
+  async function handleCompareDraft() {
+    const tab = tabs.find(t => t.id === activeTabId)
+    if (!tab || tab.type !== 'file') return
+    const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+    if (!num) return
+    try {
+      await flushPendingSaves()
+      const [body, draftText] = await Promise.all([
+        app.GetContent(novelIdRef.current, tab.path),
+        app.GetContent(novelIdRef.current, draftPath(num)),
+      ])
+      openDiffTab({
+        path: draftPath(num),
+        title: `${t('content.compareDraftTitle')} ${tab.title ?? ''}`,
+        diff: '',
+        original: body ?? '',
+        modified: draftText ?? '',
+        changeType: 'compare',
+        reason: 'draft-vs-body',
+        toolId: `compare-draft-${num}`,
+      })
+    } catch (err) {
+      toastError(t('content.compareDraftFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
+      console.error(err)
+    }
+  }
+
+  // 历史面板：当前视图对应的文件（正文/草稿/用户大纲/正文大纲）
+  function openHistory() {
+    const tab = tabs.find(t => t.id === activeTabId)
+    if (!tab || tab.type !== 'file') return
+    const vm = tab.viewMode || 'content'
+    if (vm === 'content') { setHistoryTarget(tab.path); return }
+    if (vm === 'userOutline') {
+      const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+      if (num) setHistoryTarget(userOutlinePath(num))
+      return
+    }
+    if (vm === 'draft') {
+      const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+      if (num) setHistoryTarget(draftPath(num))
+      return
+    }
+    if (vm === 'outline') {
+      const num = parseInt(tab.path.replace(/.*\//, '').replace('.md', ''))
+      if (num) setHistoryTarget(outlinePath(num))
+    }
+  }
 
   const monacoRef = useRef<any>(null)
 
@@ -227,6 +408,10 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
   const handleEditorMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor
     monacoRef.current = monaco
+    // 注册护眼/黑黄/自定义 Monaco 主题并应用
+    const prefs = getPrefs()
+    const themeName = ensureMonacoThemes(monaco, prefs.customFg, prefs.customBg)
+    try { monaco.editor.setTheme(themeName) } catch { /* ignore */ }
     editor.onDidBlurEditorText(() => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       const s = savingRef.current
@@ -245,6 +430,37 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
     }
   }, [doSave, doHighlight])
 
+  // 主题/自定义颜色变化时，对已挂载的编辑器即时应用
+  const editorPrefs = useEditorPrefs()
+  const editorTheme = (editorPrefs.customFg || editorPrefs.customBg) ? 'platinum-custom' : MONACO_THEME[theme]
+  useEffect(() => {
+    const monaco = monacoRef.current
+    if (!monaco?.editor) return
+    const name = ensureMonacoThemes(monaco, editorPrefs.customFg, editorPrefs.customBg)
+    try { monaco.editor.setTheme(name) } catch { /* ignore */ }
+  }, [theme, editorPrefs.customFg, editorPrefs.customBg])
+
+  // ── 离开页面自动存档：切视图/切标签时，把上一个视图对应文件归档到历史 ──
+  const lastViewRef = useRef<{ id: string | null; mode: string } | null>(null)
+  useEffect(() => {
+    const prev = lastViewRef.current
+    const curMode = (tabsRef.current.find(t => t.id === activeTabId)?.viewMode) || 'content'
+    lastViewRef.current = { id: activeTabId, mode: curMode }
+    if (!prev || !prev.id) return
+    if (prev.id === activeTabId && prev.mode === curMode) return
+    const tab = tabsRef.current.find(t => t.id === prev.id)
+    if (!tab || tab.type !== 'file') return
+    const isChapter = isContentPath(tab.path) && tab.path !== 'platinum.md'
+    const num = isChapter ? parseInt(tab.path.replace(/.*\//, '').replace('.md', '')) : 0
+    let rel: string | null = null
+    if (prev.mode === 'content') rel = tab.path
+    else if (prev.mode === 'draft' && num) rel = draftPath(num)
+    else if (prev.mode === 'userOutline' && num) rel = userOutlinePath(num)
+    else if (prev.mode === 'outline' && num) rel = outlinePath(num)
+    if (rel) app.ArchiveHistory(novelIdRef.current, rel).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTabId, tabs])
+
   // ── file:changed 事件监听 ─────────────────────────────────
   // 用 ref 读取最新 tabs，避免因 tabs 变化频繁重建订阅丢失事件
 
@@ -256,18 +472,29 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
         if (tab.type !== 'file') continue
 
         let needRefresh = false
-        let refreshKey: 'content' | 'outlineContent' = 'content'
+        let refreshKey: 'content' | 'outlineContent' | 'userOutlineContent' | 'draftContent' = 'content'
 
         if (tab.path === data.path) {
           needRefresh = true
           refreshKey = 'content'
         } else {
-          const derivedOutline = isContentPath(tab.path) && tab.path !== 'goink.md'
-            ? outlinePath(parseInt(tab.path.replace(/.*\//, '').replace('.md', '')))
-            : null
+          const isChapter = isContentPath(tab.path) && tab.path !== 'platinum.md'
+          const num = isChapter ? parseInt(tab.path.replace(/.*\//, '').replace('.md', '')) : 0
+          const derivedOutline = isChapter ? outlinePath(num) : null
+          const derivedUserOutline = isChapter ? userOutlinePath(num) : null
+          const derivedDraft = isChapter ? draftPath(num) : null
           if (derivedOutline && derivedOutline === data.path) {
             needRefresh = true
             refreshKey = 'outlineContent'
+          } else if (derivedUserOutline && derivedUserOutline === data.path) {
+            needRefresh = true
+            refreshKey = 'userOutlineContent'
+          } else if (derivedDraft && derivedDraft === data.path) {
+            needRefresh = true
+            refreshKey = 'draftContent'
+            if (viewMode !== 'draft') {
+              setShowDraftUpdated(true)
+            }
           }
         }
 
@@ -289,9 +516,9 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
   const titleFromPath = useCallback((p: string): string => {
     if (p.startsWith('chapters/')) {
       const num = parseInt(p.replace('chapters/', '').replace('.md', ''))
-      return t('sidebar.chapterN', { n: num })
+      return t('sidebar.aiIndex', { n: num })
     }
-    if (p === 'goink.md') return t('content.storyStatus')
+    if (p === 'platinum.md') return t('content.storyStatus')
     if (isSkillPath(p)) return `${t('content.skillLabel')}${skillNameFromPath(p)}`
     return p
   }, [t])
@@ -303,6 +530,18 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
       if (initialViewMode) {
         updateTab(existing.id, { viewMode: initialViewMode as EditorTab['viewMode'] })
       }
+      // 以大纲类视图打开时，如尚未加载则补加载
+      if ((initialViewMode === 'outline' || initialViewMode === 'userOutline') && isContentPath(path) && path !== 'platinum.md') {
+        const num = parseInt(path.replace(/.*\//, '').replace('.md', ''))
+        if (num) {
+          if (!existing.outlineContent) {
+            app.GetContent(novelId, outlinePath(num)).then(oc => updateTab(existing.id, { outlineContent: oc || '' })).catch(() => {})
+          }
+          if (!existing.userOutlineContent) {
+            app.GetContent(novelId, userOutlinePath(num)).then(uc => updateTab(existing.id, { userOutlineContent: uc || '' })).catch(() => {})
+          }
+        }
+      }
       setActiveTabId(existing.id)
       onContentChange?.(existing.content ?? '')
       return
@@ -312,11 +551,26 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
     const initialMode: EditorTab['viewMode'] = initialViewMode as EditorTab['viewMode'] ||
       (skReadOnly ? 'preview' : (isSkillPath(path) ? 'preview' : 'content'))
 
+    const isChapter = isContentPath(path) && path !== 'platinum.md'
+    const num = isChapter ? parseInt(path.replace(/.*\//, '').replace('.md', '')) : 0
+    const wantOutline = isChapter && num > 0 && (initialMode === 'outline' || initialMode === 'userOutline' || initialMode === 'draft')
+
     setIsLoading(true)
-    app.GetContent(novelId, path).then(content => {
-      const c = content ?? ''
-      openTab({ type: 'file', path, title: display, content: c, isDirty: false, viewMode: initialMode, readOnly: skReadOnly })
-      onContentChange?.(c)
+    Promise.all([
+      app.GetContent(novelId, path),
+      wantOutline ? app.GetContent(novelId, outlinePath(num)) : Promise.resolve(''),
+      wantOutline ? app.GetContent(novelId, userOutlinePath(num)) : Promise.resolve(''),
+      wantOutline ? app.GetContent(novelId, draftPath(num)) : Promise.resolve(''),
+    ]).then(([c, oc, uc, dc]) => {
+      const content = c ?? ''
+      openTab({
+        type: 'file', path, title: display, content,
+        outlineContent: wantOutline ? (oc || '') : undefined,
+        userOutlineContent: wantOutline ? (uc || '') : undefined,
+        draftContent: wantOutline ? (dc || '') : undefined,
+        isDirty: false, viewMode: initialMode, readOnly: skReadOnly,
+      })
+      onContentChange?.(content)
     }).catch(() => {
       openTab({ type: 'file', path, title: display, content: '', isDirty: false, viewMode: initialMode, readOnly: skReadOnly })
       onContentChange?.('')
@@ -420,15 +674,20 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
 
   // ── 暴露给父组件的方法 ──────────────────────────────────
 
+  const closeFile = useCallback((path: string) => {
+    tabs.filter(t => t.type === 'file' && t.path === path).forEach(t => closeTab(t.id))
+  }, [tabs, closeTab])
+
   useImperativeHandle(ref, () => ({
     openFile: doOpenFile,
     openFileWithHighlight: doOpenFileWithHighlight,
     clearHighlight,
     closeAllTabs,
+    closeFile,
     openDiffTab,
     handleDiffApprove,
     handleDiffReject,
-  }), [doOpenFile, doOpenFileWithHighlight, clearHighlight, closeAllTabs, openDiffTab, handleDiffApprove, handleDiffReject])
+  }), [doOpenFile, doOpenFileWithHighlight, clearHighlight, closeAllTabs, closeFile, openDiffTab, handleDiffApprove, handleDiffReject])
 
 
   // ── 渲染 ────────────────────────────────────────────────
@@ -442,7 +701,7 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
   if (!activeTab) {
     return (
       <main className="flex-1 bg-background flex flex-col min-w-0 min-h-0 border-r overflow-hidden">
-        <TabBar tabs={tabs} activeTabId={activeTabId} onSelect={setActiveTabId} onClose={closeTab} />
+        <TabBar tabs={tabs} activeTabId={activeTabId} onSelect={setActiveTabId} onClose={closeTab} onCloseOthers={closeOtherTabs} onCloseAll={closeAllTabs} />
         <div className="flex-1 flex items-center justify-center">
           {tabs.length === 0 ? (
             <div className="text-center">
@@ -466,7 +725,7 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
 
     return (
       <main className="flex-1 bg-background flex flex-col min-w-0 min-h-0 border-r overflow-hidden">
-        <TabBar tabs={tabs} activeTabId={activeTabId} onSelect={setActiveTabId} onClose={closeTab} />
+        <TabBar tabs={tabs} activeTabId={activeTabId} onSelect={setActiveTabId} onClose={closeTab} onCloseOthers={closeOtherTabs} onCloseAll={closeAllTabs} />
         <div className="flex items-center px-4 py-2 border-b shrink-0 select-none">
           <span className="text-sm font-medium truncate">{activeTab.title}</span>
         </div>
@@ -514,13 +773,62 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
 
   // File tab
   const viewMode = activeTab.viewMode || 'content'
+
   return (
     <main className="flex-1 bg-background flex flex-col min-w-0 min-h-0 border-r overflow-hidden">
-      <TabBar tabs={tabs} activeTabId={activeTabId} onSelect={setActiveTabId} onClose={closeTab} />
+      <TabBar tabs={tabs} activeTabId={activeTabId} onSelect={setActiveTabId} onClose={closeTab} onCloseOthers={closeOtherTabs} onCloseAll={closeAllTabs} />
       <div className="flex items-center justify-between px-4 py-2 border-b shrink-0 select-none">
         <span className="text-sm font-medium truncate">{activeTab.title}</span>
         <div className="flex items-center gap-0.5 shrink-0">
-          {activeTab.path === 'goink.md' ? (
+          {viewMode === 'draft' && (
+            <>
+              <button
+                onClick={handleCompareDraft}
+                title={t('content.compareDraftTitle')}
+                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs border hover:bg-muted transition-colors ml-1"
+              >
+                {t('content.compareDraft')}
+              </button>
+              <button
+                onClick={handleCopyToDraft}
+                title={t('content.draftHint')}
+                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs border hover:bg-muted transition-colors ml-1"
+              >
+                {t('content.copyToDraft')}
+              </button>
+              <button
+                onClick={handleImportDraft}
+                title={t('content.draftImportHint')}
+                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs bg-primary text-primary-foreground hover:opacity-90 transition-opacity ml-1"
+              >
+                {t('content.draftImport')}
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setShowReference(v => !v)}
+            title={t('content.reference')}
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs border hover:bg-muted transition-colors ml-1"
+          >
+            {t('content.viewSettings')}
+          </button>
+          <button
+            onClick={() => (editorRef.current as any)?.trigger('toolbar', 'undo', null)}
+            title="Ctrl+Z"
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs border hover:bg-muted transition-colors ml-1"
+          >
+            <Undo2 className="w-3.5 h-3.5" />
+            {t('content.undo')}
+          </button>
+          <button
+            onClick={() => (editorRef.current as any)?.trigger('toolbar', 'redo', null)}
+            title="Ctrl+Y"
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs border hover:bg-muted transition-colors ml-1"
+          >
+            <Redo2 className="w-3.5 h-3.5" />
+            {t('content.redo')}
+          </button>
+          {activeTab.path === 'platinum.md' ? (
             <button
               onClick={() => updateTab(activeTab.id, { viewMode: viewMode === 'preview' ? 'content' : 'preview' })}
               className={tabBtnClass(viewMode === 'preview')}
@@ -546,26 +854,51 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
             </>
           ) : (
             <>
+              <button
+                onClick={openHistory}
+                title={t('content.historyTitle')}
+                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs border hover:bg-muted transition-colors ml-1"
+              >
+                <History className="w-3.5 h-3.5" />
+                {t('content.draftHistory')}
+              </button>
               <button onClick={() => handleSetViewMode(activeTab.id, 'content')} className={tabBtnClass(viewMode === 'content')}>
                 {t('content.body')}
               </button>
+              <button onClick={() => handleSetViewMode(activeTab.id, 'draft')} className={tabBtnClass(viewMode === 'draft')}>
+                {t('content.draft')}
+              </button>
+              <button onClick={() => handleSetViewMode(activeTab.id, 'userOutline')} className={tabBtnClass(viewMode === 'userOutline')}>
+                {t('content.userOutline')}
+              </button>
               <button onClick={() => handleSetViewMode(activeTab.id, 'outline')} className={tabBtnClass(viewMode === 'outline')}>
-                {t('content.outline')}
+                {t('content.bodyOutline')}
               </button>
             </>
           )}
         </div>
       </div>
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 flex">
+        <div className="flex-1 min-h-0 min-w-0">
+        {showDraftUpdated && viewMode !== 'draft' && (
+          <button
+            onClick={() => { if (activeTabId) { handleSetViewMode(activeTabId, 'draft'); setShowDraftUpdated(false) } }}
+            className="w-full flex items-center justify-between px-4 py-1.5 text-xs bg-primary/10 text-primary hover:bg-primary/15 transition-colors shrink-0"
+          >
+            <span>{t('content.draftUpdatedHint')}</span>
+            <span className="underline">{t('content.viewDraft')}</span>
+          </button>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         ) : viewMode === 'preview' ? (
-          <SkillPreview content={activeTab.content ?? ''} />
+          <SkillPreview key="view-preview" content={activeTab.content ?? ''} />
         ) : viewMode === 'edit' ? (
           <SkillEditForm
+            key="view-edit"
             content={activeTab.content ?? ''}
             readOnly={activeTab.readOnly}
             onSave={async (newContent) => {
@@ -574,15 +907,79 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
             }}
             onCancel={() => updateTab(activeTab.id, { viewMode: 'preview' })}
           />
+        ) : viewMode === 'userOutline' ? (
+          <ContentEditor
+            key="view-useroutline"
+            value={activeTab.userOutlineContent ?? ''}
+            onChange={v => handleUserOutlineChange(activeTab.id, v)}
+            onMount={handleEditorMount}
+            editorTheme={editorTheme}
+            fontSize={editorPrefs.fontSize}
+            lineSpacing={editorPrefs.lineSpacing}
+            fontFamily={editorPrefs.fontFamily}
+          />
+        ) : viewMode === 'draft' ? (
+          <ContentEditor
+            key="view-draft"
+            value={activeTab.draftContent ?? ''}
+            onChange={v => handleDraftChange(activeTab.id, v)}
+            onMount={handleEditorMount}
+            editorTheme={editorTheme}
+            fontSize={editorPrefs.fontSize}
+            lineSpacing={editorPrefs.lineSpacing}
+            fontFamily={editorPrefs.fontFamily}
+          />
+        ) : viewMode === 'outline' ? (
+          <ContentEditor
+            key="view-outline"
+            value={activeTab.outlineContent ?? ''}
+            onChange={() => {}}
+            onMount={handleEditorMount}
+            editorTheme={editorTheme}
+            fontSize={editorPrefs.fontSize}
+            lineSpacing={editorPrefs.lineSpacing}
+            fontFamily={editorPrefs.fontFamily}
+            readOnly
+          />
         ) : viewMode === 'content' ? (
           <ContentEditor
+            key="view-content"
             value={activeTab.content ?? ''}
             onChange={v => handleEditorChange(activeTab.id, v)}
             onMount={handleEditorMount}
-            editorTheme={MONACO_THEME[theme]}
+            editorTheme={editorTheme}
+            fontSize={editorPrefs.fontSize}
+            lineSpacing={editorPrefs.lineSpacing}
+            fontFamily={editorPrefs.fontFamily}
           />
         ) : (
           <OutlineViewer content={activeTab.outlineContent ?? ''} />
+        )}
+        </div>
+        {showReference && (
+          <ReferenceDrawer novelId={novelId} onClose={() => setShowReference(false)} />
+        )}
+        {historyTarget && (
+          <HistoryPanel
+            novelId={novelId}
+            relPath={historyTarget}
+            allowRestore={viewMode !== 'outline'}
+            onClose={() => setHistoryTarget(null)}
+            onRestored={() => {
+              // 恢复后刷新当前视图内容
+              const tab = tabs.find(t => t.id === activeTabId)
+              if (!tab || tab.type !== 'file') return
+              const isChapter = isContentPath(tab.path) && tab.path !== 'platinum.md'
+              const num = isChapter ? parseInt(tab.path.replace(/.*\//, '').replace('.md', '')) : 0
+              if (viewMode === 'content') {
+                app.GetContent(novelId, tab.path).then(c => updateTab(tab.id, { content: c ?? '' })).catch(() => {})
+              } else if (viewMode === 'draft' && num) {
+                app.GetContent(novelId, draftPath(num)).then(dc => updateTab(tab.id, { draftContent: dc || '' })).catch(() => {})
+              } else if (viewMode === 'userOutline' && num) {
+                app.GetContent(novelId, userOutlinePath(num)).then(uc => updateTab(tab.id, { userOutlineContent: uc || '' })).catch(() => {})
+              }
+            }}
+          />
         )}
       </div>
     </main>

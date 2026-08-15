@@ -17,8 +17,11 @@ type AppSettings struct {
 	ApprovalMode     string `gorm:"column:approval_mode;default:manual"   json:"approval_mode"`
 	LastSessionID    string `gorm:"column:last_session_id;default:''"     json:"last_session_id"`
 	UserName         string `gorm:"column:user_name;default:''"            json:"user_name"`
-	GitName          string `gorm:"column:git_name;default:'Goink'"         json:"git_name"`
-	GitEmail         string `gorm:"column:git_email;default:'goink@local'"  json:"git_email"`
+	GitName          string `gorm:"column:git_name;default:'证道白金'"         json:"git_name"`
+	GitEmail         string `gorm:"column:git_email;default:'zhengdao@local'"  json:"git_email"`
+	MaintainReminderMinutes int `gorm:"column:maintain_reminder_minutes;default:10" json:"maintain_reminder_minutes"` // 维护提醒弹窗间隔（分钟，0=关闭）
+	ArchiveIntervalMinutes  int `gorm:"column:archive_interval_minutes;default:30" json:"archive_interval_minutes"` // 定时存档间隔（分钟，0=关闭）
+	HistoryLimit           int `gorm:"column:history_limit;default:50" json:"history_limit"`                       // 每个文件的版本历史保留上限（1-200）
 	DismissedVersion string `gorm:"column:dismissed_version;default:''"     json:"dismissed_version"` // 用户已忽略的更新版本号
 }
 

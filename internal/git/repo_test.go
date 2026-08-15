@@ -75,7 +75,7 @@ func TestLogDetailed_Basic(t *testing.T) {
 	}
 
 	// 验证降序（最新在前）
-	if commits[0].Time.Before(commits[1].Time) {
+	if commits[0].Time < commits[1].Time {
 		t.Error("expected newest commit first, got ascending order")
 	}
 
@@ -400,7 +400,7 @@ func TestCommitFileList_CommitInfo(t *testing.T) {
 	if commit.AuthorName == "" {
 		t.Error("expected non-empty authorName")
 	}
-	if commit.Time.IsZero() {
+	if commit.Time == "" {
 		t.Error("expected non-zero time")
 	}
 }

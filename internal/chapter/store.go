@@ -34,9 +34,9 @@ func (s *Store) ListByNovel(ctx context.Context, novelID int64, opts ListByNovel
 	pp := opts.PageParams
 	pp.Normalize()
 
-	order := "chapter_number ASC"
+	order := "sort_order ASC"
 	if strings.ToLower(opts.Order) == "desc" {
-		order = "chapter_number DESC"
+		order = "sort_order DESC"
 	}
 
 	q := s.DB.WithContext(ctx).Model(&Chapter{}).Where("novel_id = ?", novelID)
@@ -65,7 +65,7 @@ func (s *Store) ListAllByNovel(ctx context.Context, novelID int64) ([]Chapter, e
 	var chapters []Chapter
 	if err := s.DB.WithContext(ctx).
 		Where("novel_id = ?", novelID).
-		Order("chapter_number ASC").
+		Order("sort_order ASC").
 		Find(&chapters).Error; err != nil {
 		return nil, fmt.Errorf("chapter store: list all: %w", err)
 	}
@@ -133,6 +133,20 @@ func (s *Store) GetRecent(ctx context.Context, novelID int64, limit int) ([]Chap
 		chapters[i].FilePath = git.ChapterPath(chapters[i].ChapterNumber)
 	}
 	return chapters, nil
+}
+
+// Delete 删除某小说的指定章节记录。章节不存在时返回错误。
+func (s *Store) Delete(ctx context.Context, novelID int64, chapterNumber int) error {
+	res := s.DB.WithContext(ctx).
+		Where("novel_id = ? AND chapter_number = ?", novelID, chapterNumber).
+		Delete(&Chapter{})
+	if res.Error != nil {
+		return fmt.Errorf("chapter store: delete: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return fmt.Errorf("chapter store: delete: 章节不存在 (novel_id=%d chapter_number=%d)", novelID, chapterNumber)
+	}
+	return nil
 }
 
 // UpdateTitle 更新章节标题。

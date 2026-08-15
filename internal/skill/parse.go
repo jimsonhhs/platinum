@@ -119,22 +119,34 @@ func scanFS(logger *slog.Logger, fsys fs.FS, dir string) ([]Skill, error) {
 // YAML name 与文件名不一致时以 YAML name 为准重命名文件。
 // 目录不存在时返回空切片（不报错）。
 func scanDir(logger *slog.Logger, dir string) ([]Skill, error) {
+	skills, _, err := scanDirWithIssues(logger, dir)
+	return skills, err
+}
+
+// scanDirWithIssues 同 scanDir，但额外返回解析失败的文件列表（不静默丢弃，便于前端展示修复）。
+func scanDirWithIssues(logger *slog.Logger, dir string) ([]Skill, []ScanIssue, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, fmt.Errorf("读取目录 %s 失败: %w", dir, err)
+		return nil, nil, fmt.Errorf("读取目录 %s 失败: %w", dir, err)
 	}
 
 	var skills []Skill
+	var issues []ScanIssue
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".md" {
 			continue
 		}
-		sk, err := ParseFile(filepath.Join(dir, entry.Name()))
-		if err != nil {
-			logger.Warn("skill: 解析 skill 文件失败，已跳过", "file", entry.Name(), "err", err)
+		sk, perr := ParseFile(filepath.Join(dir, entry.Name()))
+		if perr != nil {
+			logger.Warn("skill: 解析 skill 文件失败，已跳过", "file", entry.Name(), "err", perr)
+			issues = append(issues, ScanIssue{
+				File: entry.Name(),
+				Name: strings.TrimSuffix(entry.Name(), ".md"),
+				Err:  perr.Error(),
+			})
 			continue
 		}
 		fileBase := strings.TrimSuffix(entry.Name(), ".md")
@@ -142,10 +154,91 @@ func scanDir(logger *slog.Logger, dir string) ([]Skill, error) {
 			oldPath := filepath.Join(dir, entry.Name())
 			newPath := filepath.Join(dir, sk.Name+".md")
 			if err := os.Rename(oldPath, newPath); err != nil {
-				return nil, fmt.Errorf("重命名 skill 文件失败 %s -> %s: %w", oldPath, newPath, err)
+				return nil, nil, fmt.Errorf("重命名 skill 文件失败 %s -> %s: %w", oldPath, newPath, err)
 			}
 		}
 		skills = append(skills, *sk)
 	}
-	return skills, nil
+	return skills, issues, nil
+}
+
+// RenameFile 把 dir 下的 oldName.md 重命名为 newName.md，并同步 frontmatter 的 name 字段。
+// 校验重命名后的内容可正常解析且 name 与文件名一致。
+func RenameFile(dir, oldName, newName string) error {
+	oldPath := filepath.Join(dir, oldName+".md")
+	newPath := filepath.Join(dir, newName+".md")
+	data, err := os.ReadFile(oldPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("技能文件不存在: %s", oldName)
+		}
+		return fmt.Errorf("读取技能文件失败: %w", err)
+	}
+	if _, err := os.Stat(newPath); err == nil {
+		return fmt.Errorf("同名技能已存在: %s", newName)
+	}
+	updated, err := replaceFrontmatterName(string(data), newName)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(newPath, []byte(updated), 0644); err != nil {
+		return fmt.Errorf("写入技能文件失败: %w", err)
+	}
+	if err := os.Remove(oldPath); err != nil {
+		_ = os.Remove(newPath) // 回滚新文件
+		return fmt.Errorf("删除旧技能文件失败: %w", err)
+	}
+	return nil
+}
+
+// CopyFile 把 srcDir/name.md 复制为 dstDir/name.md。目标已存在同名文件时报错。
+func CopyFile(srcDir, dstDir, name string) error {
+	srcPath := filepath.Join(srcDir, name+".md")
+	data, err := os.ReadFile(srcPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("技能文件不存在: %s", name)
+		}
+		return fmt.Errorf("读取技能文件失败: %w", err)
+	}
+	dstPath := filepath.Join(dstDir, name+".md")
+	if _, err := os.Stat(dstPath); err == nil {
+		return fmt.Errorf("目标位置已存在同名技能: %s", name)
+	}
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		return fmt.Errorf("创建目录失败: %w", err)
+	}
+	if err := os.WriteFile(dstPath, data, 0644); err != nil {
+		return fmt.Errorf("写入技能文件失败: %w", err)
+	}
+	return nil
+}
+
+// replaceFrontmatterName 替换 frontmatter 中的 name 字段，并校验结果可解析。
+func replaceFrontmatterName(raw, newName string) (string, error) {
+	trimmed := strings.TrimSpace(string(raw))
+	fm, body, err := splitFrontmatter(trimmed)
+	if err != nil {
+		return "", err
+	}
+	if fm == "" {
+		return "", fmt.Errorf("技能文件缺少 YAML frontmatter")
+	}
+	lines := strings.Split(fm, "\n")
+	found := false
+	for i, ln := range lines {
+		if strings.HasPrefix(strings.TrimSpace(ln), "name:") {
+			lines[i] = "name: " + newName
+			found = true
+			break
+		}
+	}
+	if !found {
+		return "", fmt.Errorf("技能文件缺少 name 字段")
+	}
+	updated := "---\n" + strings.Join(lines, "\n") + "\n---\n\n" + body
+	if _, err := ParseBytes([]byte(updated), ""); err != nil {
+		return "", fmt.Errorf("重命名后技能格式非法: %w", err)
+	}
+	return updated, nil
 }

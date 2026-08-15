@@ -38,7 +38,7 @@ func main() {
 	wapp := app.New(log)
 
 	err := wails.Run(&options.App{
-		Title:     "Goink",
+		Title:     "证道白金",
 		Width:     1400,
 		Height:    900,
 		MinWidth:  900,

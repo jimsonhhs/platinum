@@ -56,6 +56,39 @@ func (a *App) SaveUserName(name string) error {
 	return config.SaveSettings(a.db, a.settings)
 }
 
+// SaveHistoryLimit 保存版本历史保留上限（1-200）。
+func (a *App) SaveHistoryLimit(limit int) error {
+	if limit < 1 {
+		limit = 1
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	a.settings.HistoryLimit = limit
+	return config.SaveSettings(a.db, a.settings)
+}
+
+// SetDataDir 修改数据根目录（写入指针文件 ~/.goink/config.json，重启后完整生效）。
+func (a *App) SetDataDir(dir string) error {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return fmt.Errorf("数据目录不能为空")
+	}
+	if err := config.Save(dir); err != nil {
+		return fmt.Errorf("保存数据目录失败: %w", err)
+	}
+	return nil
+}
+
+// SaveMaintainReminderMinutes 保存维护提醒弹窗间隔（分钟，0=关闭）。
+func (a *App) SaveMaintainReminderMinutes(minutes int) error {
+	if minutes < 0 || minutes > 240 {
+		return fmt.Errorf("维护提醒间隔需在 0-240 分钟之间")
+	}
+	a.settings.MaintainReminderMinutes = minutes
+	return config.SaveSettings(a.db, a.settings)
+}
+
 // SaveGitConfig 保存 Git user.name 和 user.email，并同步到所有已有仓库。
 func (a *App) SaveGitConfig(name, email string) error {
 	a.settings.GitName = name

@@ -6,6 +6,10 @@ export function ApproveTool(arg1, arg2, arg3) {
   return window['go']['app']['App']['ApproveTool'](arg1, arg2, arg3);
 }
 
+export function ArchiveHistory(arg1, arg2) {
+  return window['go']['app']['App']['ArchiveHistory'](arg1, arg2);
+}
+
 export function CancelChat(arg1) {
   return window['go']['app']['App']['CancelChat'](arg1);
 }
@@ -32,6 +36,10 @@ export function CompressContext(arg1) {
 
 export function ComputeStyleStats(arg1) {
   return window['go']['app']['App']['ComputeStyleStats'](arg1);
+}
+
+export function CopyToDraft(arg1, arg2) {
+  return window['go']['app']['App']['CopyToDraft'](arg1, arg2);
 }
 
 export function CreateArcNode(arg1, arg2) {
@@ -62,6 +70,14 @@ export function CreateReaderPerspective(arg1, arg2) {
   return window['go']['app']['App']['CreateReaderPerspective'](arg1, arg2);
 }
 
+export function CreateSandbox(arg1, arg2, arg3) {
+  return window['go']['app']['App']['CreateSandbox'](arg1, arg2, arg3);
+}
+
+export function CreateSnapshot() {
+  return window['go']['app']['App']['CreateSnapshot']();
+}
+
 export function CreateStoryArc(arg1, arg2) {
   return window['go']['app']['App']['CreateStoryArc'](arg1, arg2);
 }
@@ -76,6 +92,10 @@ export function CreateTimelineEntry(arg1, arg2) {
 
 export function DeleteArcNode(arg1, arg2) {
   return window['go']['app']['App']['DeleteArcNode'](arg1, arg2);
+}
+
+export function DeleteChapter(arg1) {
+  return window['go']['app']['App']['DeleteChapter'](arg1);
 }
 
 export function DeleteCharacter(arg1, arg2) {
@@ -102,12 +122,24 @@ export function DeleteReaderPerspective(arg1, arg2) {
   return window['go']['app']['App']['DeleteReaderPerspective'](arg1, arg2);
 }
 
+export function DeleteSandbox(arg1, arg2) {
+  return window['go']['app']['App']['DeleteSandbox'](arg1, arg2);
+}
+
+export function DeleteSetting(arg1, arg2) {
+  return window['go']['app']['App']['DeleteSetting'](arg1, arg2);
+}
+
 export function DeleteSkill(arg1) {
   return window['go']['app']['App']['DeleteSkill'](arg1);
 }
 
 export function DeleteStoryArc(arg1, arg2) {
   return window['go']['app']['App']['DeleteStoryArc'](arg1, arg2);
+}
+
+export function DeleteStyle(arg1) {
+  return window['go']['app']['App']['DeleteStyle'](arg1);
 }
 
 export function DeleteStyleSample(arg1) {
@@ -118,6 +150,10 @@ export function DeleteTimelineEntry(arg1, arg2) {
   return window['go']['app']['App']['DeleteTimelineEntry'](arg1, arg2);
 }
 
+export function DeleteVolume(arg1, arg2) {
+  return window['go']['app']['App']['DeleteVolume'](arg1, arg2);
+}
+
 export function DiscoverModels(arg1, arg2) {
   return window['go']['app']['App']['DiscoverModels'](arg1, arg2);
 }
@@ -126,8 +162,16 @@ export function DismissUpdate(arg1) {
   return window['go']['app']['App']['DismissUpdate'](arg1);
 }
 
-export function ExportNovel(arg1, arg2) {
-  return window['go']['app']['App']['ExportNovel'](arg1, arg2);
+export function DuplicateSkill(arg1) {
+  return window['go']['app']['App']['DuplicateSkill'](arg1);
+}
+
+export function ExportNovel(arg1, arg2, arg3) {
+  return window['go']['app']['App']['ExportNovel'](arg1, arg2, arg3);
+}
+
+export function ExtractMaterialStyle(arg1) {
+  return window['go']['app']['App']['ExtractMaterialStyle'](arg1);
 }
 
 export function ExtractPattern(arg1) {
@@ -144,6 +188,10 @@ export function GetAppConfig() {
 
 export function GetArcNodes(arg1, arg2, arg3) {
   return window['go']['app']['App']['GetArcNodes'](arg1, arg2, arg3);
+}
+
+export function GetChangedFiles(arg1) {
+  return window['go']['app']['App']['GetChangedFiles'](arg1);
 }
 
 export function GetChapterPlans(arg1) {
@@ -172,6 +220,14 @@ export function GetCommitLog(arg1, arg2, arg3) {
 
 export function GetContent(arg1, arg2) {
   return window['go']['app']['App']['GetContent'](arg1, arg2);
+}
+
+export function GetCurrentChapter(arg1) {
+  return window['go']['app']['App']['GetCurrentChapter'](arg1);
+}
+
+export function GetEnabledStyle(arg1) {
+  return window['go']['app']['App']['GetEnabledStyle'](arg1);
 }
 
 export function GetFileDiff(arg1, arg2, arg3) {
@@ -214,6 +270,10 @@ export function GetReaderPerspectives(arg1) {
   return window['go']['app']['App']['GetReaderPerspectives'](arg1);
 }
 
+export function GetSandbox(arg1, arg2) {
+  return window['go']['app']['App']['GetSandbox'](arg1, arg2);
+}
+
 export function GetSession(arg1) {
   return window['go']['app']['App']['GetSession'](arg1);
 }
@@ -234,6 +294,10 @@ export function GetStoryArcs(arg1) {
   return window['go']['app']['App']['GetStoryArcs'](arg1);
 }
 
+export function GetStyleContent(arg1) {
+  return window['go']['app']['App']['GetStyleContent'](arg1);
+}
+
 export function GetStyleSample(arg1) {
   return window['go']['app']['App']['GetStyleSample'](arg1);
 }
@@ -242,8 +306,16 @@ export function GetTimelineEntries(arg1, arg2, arg3) {
   return window['go']['app']['App']['GetTimelineEntries'](arg1, arg2, arg3);
 }
 
+export function GetTrashItemContent(arg1) {
+  return window['go']['app']['App']['GetTrashItemContent'](arg1);
+}
+
 export function GetVersion() {
   return window['go']['app']['App']['GetVersion']();
+}
+
+export function GetVolumes(arg1) {
+  return window['go']['app']['App']['GetVolumes'](arg1);
 }
 
 export function GetWritingActivity(arg1) {
@@ -252,6 +324,10 @@ export function GetWritingActivity(arg1) {
 
 export function GetWritingStats() {
   return window['go']['app']['App']['GetWritingStats']();
+}
+
+export function ImportDraft(arg1, arg2) {
+  return window['go']['app']['App']['ImportDraft'](arg1, arg2);
 }
 
 export function ImportNovel(arg1) {
@@ -270,6 +346,18 @@ export function IsInitialized() {
   return window['go']['app']['App']['IsInitialized']();
 }
 
+export function ListHistory(arg1, arg2) {
+  return window['go']['app']['App']['ListHistory'](arg1, arg2);
+}
+
+export function ListSandboxes(arg1) {
+  return window['go']['app']['App']['ListSandboxes'](arg1);
+}
+
+export function ListSettings(arg1) {
+  return window['go']['app']['App']['ListSettings'](arg1);
+}
+
 export function ListSkills(arg1) {
   return window['go']['app']['App']['ListSkills'](arg1);
 }
@@ -278,16 +366,88 @@ export function ListSlashCommands(arg1) {
   return window['go']['app']['App']['ListSlashCommands'](arg1);
 }
 
+export function ListSnapshotFiles(arg1) {
+  return window['go']['app']['App']['ListSnapshotFiles'](arg1);
+}
+
+export function ListSnapshots() {
+  return window['go']['app']['App']['ListSnapshots']();
+}
+
 export function ListStyleSamples(arg1) {
   return window['go']['app']['App']['ListStyleSamples'](arg1);
 }
 
-export function PickAndImportNovel() {
-  return window['go']['app']['App']['PickAndImportNovel']();
+export function ListStyles() {
+  return window['go']['app']['App']['ListStyles']();
+}
+
+export function ListTrashItems(arg1) {
+  return window['go']['app']['App']['ListTrashItems'](arg1);
+}
+
+export function LogFrontend(arg1) {
+  return window['go']['app']['App']['LogFrontend'](arg1);
+}
+
+export function NormalizeVolumeOrders(arg1, arg2) {
+  return window['go']['app']['App']['NormalizeVolumeOrders'](arg1, arg2);
+}
+
+export function PickAndImportNovel(arg1) {
+  return window['go']['app']['App']['PickAndImportNovel'](arg1);
+}
+
+export function PurgeTrashItem(arg1) {
+  return window['go']['app']['App']['PurgeTrashItem'](arg1);
 }
 
 export function RebuildNovelIndex(arg1) {
   return window['go']['app']['App']['RebuildNovelIndex'](arg1);
+}
+
+export function RecomputePrevChapters(arg1) {
+  return window['go']['app']['App']['RecomputePrevChapters'](arg1);
+}
+
+export function RenameSkill(arg1) {
+  return window['go']['app']['App']['RenameSkill'](arg1);
+}
+
+export function RenameVolume(arg1, arg2, arg3) {
+  return window['go']['app']['App']['RenameVolume'](arg1, arg2, arg3);
+}
+
+export function ReorderChapter(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['App']['ReorderChapter'](arg1, arg2, arg3, arg4);
+}
+
+export function ReorderChaptersBatch(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['App']['ReorderChaptersBatch'](arg1, arg2, arg3, arg4);
+}
+
+export function ReorderVolumes(arg1, arg2) {
+  return window['go']['app']['App']['ReorderVolumes'](arg1, arg2);
+}
+
+export function RestoreHistory(arg1, arg2, arg3) {
+  return window['go']['app']['App']['RestoreHistory'](arg1, arg2, arg3);
+}
+
+export function RestoreSnapshotAll(arg1) {
+  return window['go']['app']['App']['RestoreSnapshotAll'](arg1);
+}
+
+export function RestoreSnapshotFile(arg1) {
+  return window['go']['app']['App']['RestoreSnapshotFile'](arg1);
+}
+
+export function RestoreTrashItem(arg1) {
+  return window['go']['app']['App']['RestoreTrashItem'](arg1);
+}
+
+export function SaveArchiveInterval(arg1) {
+  return window['go']['app']['App']['SaveArchiveInterval'](arg1);
 }
 
 export function SaveAvatar(arg1) {
@@ -306,20 +466,48 @@ export function SaveGitConfig(arg1, arg2) {
   return window['go']['app']['App']['SaveGitConfig'](arg1, arg2);
 }
 
+export function SaveHistoryLimit(arg1) {
+  return window['go']['app']['App']['SaveHistoryLimit'](arg1);
+}
+
 export function SaveLLMConfig(arg1) {
   return window['go']['app']['App']['SaveLLMConfig'](arg1);
+}
+
+export function SaveMaintainReminderMinutes(arg1) {
+  return window['go']['app']['App']['SaveMaintainReminderMinutes'](arg1);
+}
+
+export function SaveSandbox(arg1, arg2, arg3) {
+  return window['go']['app']['App']['SaveSandbox'](arg1, arg2, arg3);
+}
+
+export function SaveSetting(arg1) {
+  return window['go']['app']['App']['SaveSetting'](arg1);
 }
 
 export function SaveSettings(arg1) {
   return window['go']['app']['App']['SaveSettings'](arg1);
 }
 
+export function SaveStyleToLibrary(arg1, arg2) {
+  return window['go']['app']['App']['SaveStyleToLibrary'](arg1, arg2);
+}
+
 export function SaveUserName(arg1) {
   return window['go']['app']['App']['SaveUserName'](arg1);
 }
 
+export function SaveVolumes(arg1, arg2) {
+  return window['go']['app']['App']['SaveVolumes'](arg1, arg2);
+}
+
 export function SearchAll(arg1, arg2) {
   return window['go']['app']['App']['SearchAll'](arg1, arg2);
+}
+
+export function SelectMaterialFile() {
+  return window['go']['app']['App']['SelectMaterialFile']();
 }
 
 export function SetActiveNovel(arg1) {
@@ -328,6 +516,18 @@ export function SetActiveNovel(arg1) {
 
 export function SetApprovalMode(arg1) {
   return window['go']['app']['App']['SetApprovalMode'](arg1);
+}
+
+export function SetCurrentChapter(arg1, arg2) {
+  return window['go']['app']['App']['SetCurrentChapter'](arg1, arg2);
+}
+
+export function SetDataDir(arg1) {
+  return window['go']['app']['App']['SetDataDir'](arg1);
+}
+
+export function SetEnabledStyle(arg1, arg2) {
+  return window['go']['app']['App']['SetEnabledStyle'](arg1, arg2);
 }
 
 export function SetLastSession(arg1) {
@@ -380,6 +580,10 @@ export function UpdatePreference(arg1, arg2) {
 
 export function UpdateReaderPerspective(arg1, arg2, arg3) {
   return window['go']['app']['App']['UpdateReaderPerspective'](arg1, arg2, arg3);
+}
+
+export function UpdateSandboxMeta(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['App']['UpdateSandboxMeta'](arg1, arg2, arg3, arg4);
 }
 
 export function UpdateStoryArc(arg1, arg2, arg3) {

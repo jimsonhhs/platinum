@@ -53,7 +53,7 @@ export default function StoryArcGraph({ novelId }: Props) {
   const { t } = useTranslation()
   const C = useGraphColors()
   const { theme } = useTheme()
-  const PALETTE = { light: PALETTE_LIGHT, dark: PALETTE_DARK }[theme]
+  const PALETTE = theme === 'dark' || theme === 'black-yellow' ? PALETTE_DARK : PALETTE_LIGHT
   const containerRef = useRef<HTMLDivElement>(null)
   const graphRef = useRef<Graph | null>(null)
 

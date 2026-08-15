@@ -4,7 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { useTheme, type Theme } from '@/hooks/useTheme'
 import type { git } from '@/lib/wailsjs/go/models'
 
-const MONACO_THEME: Record<Theme, string> = { light: 'light', dark: 'vs-dark' }
+const MONACO_THEME: Record<Theme, string> = {
+  light: 'light',
+  dark: 'vs-dark',
+  'eye-care': 'platinum-eye-care',
+  'black-yellow': 'platinum-black-yellow',
+}
 
 const DIFF_OPTIONS = {
   minimap: { enabled: false },

@@ -6,8 +6,10 @@ export type EditorTab = {
   // file tab
   content?: string
   outlineContent?: string
+  userOutlineContent?: string
+  draftContent?: string
   isDirty?: boolean
-  viewMode?: 'content' | 'outline' | 'preview' | 'edit'
+  viewMode?: 'content' | 'outline' | 'userOutline' | 'draft' | 'preview' | 'edit'
   readOnly?: boolean
   // diff tab
   diff?: string
@@ -27,12 +29,26 @@ export function outlinePath(num: number): string {
   return `outlines/${String(num).padStart(3, '0')}.md`
 }
 
-export function goinkPath(): string {
-  return 'goink.md'
+// 用户大纲：每章独立，与 outlines/NNN.md 同结构，绑定章节。
+export function userOutlinePath(num: number): string {
+  return `user_outlines/${String(num).padStart(3, '0')}.md`
+}
+
+// 草稿：润色暂存区，每章独立，不进入 RAG/维护。
+export function draftPath(num: number): string {
+  return `drafts/${String(num).padStart(3, '0')}.md`
+}
+
+export function isUserOutlinePath(p: string): boolean {
+  return /^user_outlines\/\d{1,6}\.md$/.test(p)
+}
+
+export function platinumPath(): string {
+  return 'platinum.md'
 }
 
 export function isContentPath(p: string): boolean {
-  return p.startsWith('chapters/') || p === 'goink.md'
+  return p.startsWith('chapters/') || p === 'platinum.md'
 }
 
 export function isOutlinePath(p: string): boolean {

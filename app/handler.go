@@ -24,6 +24,7 @@ import (
 	"novel/internal/rollback"
 	"novel/internal/search"
 	"novel/internal/session"
+	"novel/internal/setting"
 	"novel/internal/skill"
 	"novel/internal/style"
 	"novel/internal/storage"
@@ -54,6 +55,7 @@ type App struct {
 	novel      *novel.Store
 	chapter    *chapter.Store
 	character  *character.Store
+	settingStore *setting.Store
 	session    *session.Store
 	skill      *skill.Store
 	style      *style.Store
@@ -208,6 +210,10 @@ func (a *App) initWithConfig(cfg *config.AppConfig) {
 
 	// 10.5 初始化 style store（全局风格素材）
 	a.style = style.NewStore(db, a.logger)
+	a.settingStore = setting.NewStore(db)
+
+	// 10.6 启动定时存档
+	a.startArchiveTimer()
 
 	// 11. 异步初始化向量存储和搜索服务（不阻塞 UI）
 	go func() {

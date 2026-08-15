@@ -1,6 +1,6 @@
 {
-  "name": "goink",
-  "outputfilename": "goink",
+  "name": "证道白金",
+  "outputfilename": "platinum",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",

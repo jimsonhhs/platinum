@@ -53,7 +53,7 @@ export interface TurnSegment {
   approvalPayload?: Record<string, unknown>
   // subagent
   status?: 'streaming' | 'done' | 'failed'
-  agentType?: 'memory' | 'review'
+  agentType?: 'memory' | 'review' | 'writer'
   taskId?: string
   segments?: TurnSegment[]
   finalText?: string
@@ -162,7 +162,7 @@ export function rebuildTurns(messages: session.Message[]): Turn[] {
             ...emptySegment(`seg_${segCounter++}`),
             type: 'subagent',
             status: 'done',
-            agentType: (msg.agent_type as 'memory' | 'review') || 'memory',
+            agentType: (msg.agent_type as 'memory' | 'review' | 'writer') || 'memory',
             taskId: subTaskId,
             segments: [],
             finalText: '',

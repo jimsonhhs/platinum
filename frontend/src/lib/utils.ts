@@ -23,3 +23,8 @@ export function toastError(msg: string) {
     },
   })
 }
+
+/** 显示成功 toast。 */
+export function toastSuccess(msg: string) {
+  return toast.success(msg)
+}

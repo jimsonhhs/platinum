@@ -28,12 +28,12 @@ func TestSaveAndGetContent(t *testing.T) {
 
 	err := app.SaveContent(SaveContentInput{
 		NovelID: novelID,
-		Path:    "goink.md",
+		Path:    "platinum.md",
 		Content: "Hello, world!",
 	})
 	require.NoError(t, err)
 
-	content, err := app.GetContent(novelID, "goink.md")
+	content, err := app.GetContent(novelID, "platinum.md")
 	require.NoError(t, err)
 	assert.Equal(t, "Hello, world!", content)
 }

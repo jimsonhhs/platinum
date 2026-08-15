@@ -10,7 +10,7 @@ import CompressionBlock from './CompressionBlock'
 import './SubagentCard.css'
 
 interface Props {
-  agentType: 'memory' | 'review'
+  agentType: 'memory' | 'review' | 'writer'
   segments: TurnSegment[]
   status: 'streaming' | 'done' | 'failed'
 }
@@ -19,6 +19,7 @@ function getAgentMeta(t: TFunction): Record<string, { label: string; emoji: stri
   return {
     memory: { label: t('chat.memoryAnalyst'), emoji: '📝' },
     review: { label: t('chat.reviewEditor'), emoji: '🔍' },
+    writer: { label: t('chat.writer'), emoji: '✍️' },
   }
 }
 
@@ -26,7 +27,7 @@ export default memo(function SubagentCard({ agentType, segments, status }: Props
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(status !== 'streaming')
   const autoExpanded = useRef(false)
-  const meta = getAgentMeta(t)[agentType]
+  const meta = getAgentMeta(t)[agentType] ?? { label: agentType, emoji: '🤖' }
   const isStreaming = status === 'streaming'
   const isDone = status === 'done'
   const isFailed = status === 'failed'

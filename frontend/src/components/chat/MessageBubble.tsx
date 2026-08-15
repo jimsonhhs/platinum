@@ -4,9 +4,10 @@ import Markdown from '@/components/Markdown'
 interface Props {
   role: 'user' | 'assistant'
   content: string
+  highlight?: string
 }
 
-export default memo(function MessageBubble({ role, content }: Props) {
+export default memo(function MessageBubble({ role, content, highlight }: Props) {
   const isUser = role === 'user'
 
   return (
@@ -18,7 +19,7 @@ export default memo(function MessageBubble({ role, content }: Props) {
             : 'bg-card border border-border/30 text-foreground rounded-bl-sm shadow-xs'
         }`}
       >
-        <Markdown content={content} className={isUser ? 'markdown-user' : undefined} />
+        <Markdown content={content} className={isUser ? 'markdown-user' : undefined} highlight={highlight} />
       </div>
     </div>
   )

@@ -24,10 +24,14 @@ type ImportProgress struct {
 // ImportNovelInput 是导入小说的入参。
 type ImportNovelInput struct {
 	FilePath string `json:"file_path"`
+	MaxChapters int `json:"max_chapters"` // >0 时只导入前 N 章（防超长失忆）
 }
 
 // ImportNovel 从文件导入一部小说：解析文件 → 创建 Novel → 写入章节文件 → Git 提交。
 func (a *App) ImportNovel(input ImportNovelInput) (*ImportNovelResult, error) {
+	if input.MaxChapters > 0 {
+		return imp.ImportWithLimit(a.ctx, a.logger, a.novel.DB, input.FilePath, input.MaxChapters, a.settings.GitName, a.settings.GitEmail, a.emitImportProgress)
+	}
 	return imp.Import(a.ctx, a.logger, a.novel.DB, input.FilePath, a.settings.GitName, a.settings.GitEmail, a.emitImportProgress)
 }
 
@@ -45,8 +49,8 @@ func (a *App) emitImportProgress(stage, message string, current, total, percent 
 	})
 }
 
-// PickAndImportNovel 打开文件选择对话框，然后导入选中的小说文件。
-func (a *App) PickAndImportNovel() (*ImportNovelResult, error) {
+// PickAndImportNovel 打开文件选择对话框，然后导入选中的小说文件（maxChapters>0 时只导入前 N 章）。
+func (a *App) PickAndImportNovel(maxChapters int) (*ImportNovelResult, error) {
 	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "导入小说",
 		Filters: []runtime.FileFilter{
@@ -59,8 +63,10 @@ func (a *App) PickAndImportNovel() (*ImportNovelResult, error) {
 	if filePath == "" {
 		return nil, nil // 用户取消
 	}
-
-	return a.ImportNovel(ImportNovelInput{FilePath: filePath})
+	if maxChapters > 0 {
+		return imp.ImportWithLimit(a.ctx, a.logger, a.novel.DB, filePath, maxChapters, a.settings.GitName, a.settings.GitEmail, a.emitImportProgress)
+	}
+	return imp.Import(a.ctx, a.logger, a.novel.DB, filePath, a.settings.GitName, a.settings.GitEmail, a.emitImportProgress)
 }
 
 // ImportWithLLMInput 是 AI 辅助导入小说的入参。

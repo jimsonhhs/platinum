@@ -27,5 +27,5 @@ const C = {
 
 export function useGraphColors() {
   const { theme } = useTheme()
-  return C[theme]
+  return C[theme === 'dark' || theme === 'black-yellow' ? 'dark' : 'light']
 }

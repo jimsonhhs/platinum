@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageSquare, Loader2, History, Plus } from 'lucide-react'
+import { MessageSquare, Loader2, History, Plus, Search, ArrowDown, ChevronUp, ChevronDown, X } from 'lucide-react'
 import { EventsOn } from '@/lib/wailsjs/runtime/runtime'
 import { useApp } from '@/hooks/useApp'
 import type { llm, app } from '@/hooks/useApp'
@@ -19,6 +19,10 @@ import type { UsageInfo } from './ContextRing'
 import SettingsDialog from '@/components/settings/SettingsDialog'
 import RecentSessions from './RecentSessions'
 import SessionHistory from './SessionHistory'
+
+export interface ChatPanelHandle {
+  send: (text: string) => Promise<boolean>
+}
 
 interface Props {
   novelId: number
@@ -44,7 +48,7 @@ interface ChatStartedEvent {
   turn_id: number
 }
 
-export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFileEdit, chatPanelWidth, onChatPanelResize }: Props) {
+const ChatPanel = forwardRef<ChatPanelHandle, Props>(function ChatPanel({ novelId, onApprove, onReject, onApprovalFileEdit, chatPanelWidth, onChatPanelResize }, ref) {
   const { t } = useTranslation()
   const app = useApp()
   const [isDragging, setIsDragging] = useState(false)
@@ -53,6 +57,10 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
   const [turns, setTurns] = useState<Turn[]>([])
   const [sessionId, setSessionId] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [matchIdx, setMatchIdx] = useState(0)
+  const [isNearBottom, setIsNearBottom] = useState(true)
   const [models, setModels] = useState<llm.AvailableModel[]>([])
   const [selectedKey, setSelectedKey] = useState('')
   const [reasoningEffort, setReasoningEffort] = useState('')
@@ -216,7 +224,9 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
   const handleMessagesScroll = useCallback(() => {
     const el = scrollContainerRef.current
     if (!el) return
-    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+    isNearBottomRef.current = near
+    setIsNearBottom(near)
   }, [])
 
   const handleSelectSession = useCallback((sid: string) => {
@@ -506,7 +516,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
 
           // run_subagent：维护对应的 subagent segment
           if (isSubagent) {
-            const agentType = (event.metadata?.agent_type as 'memory' | 'review') || 'memory'
+            const agentType = (event.metadata?.agent_type as 'memory' | 'review' | 'writer') || 'memory'
             const toolId = event.tool_id || ''
             const subIdx = segments.findIndex(seg =>
               seg.type === 'subagent' && seg.taskId === toolId
@@ -585,7 +595,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
             if (path.startsWith('chapters/')) {
               const num = path.replace('chapters/', '').replace('.md', '')
               title = `diff: ${t('chat.diffChapter', { n: parseInt(num) })}`
-            } else if (path === 'goink.md') {
+            } else if (path === 'platinum.md') {
               title = `diff: ${t('chat.diffStoryStatus')}`
             } else if (path.startsWith('outlines/')) {
               const num = path.replace('outlines/', '').replace('.md', '')
@@ -750,8 +760,8 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
     }
   }, [sessionId, selectedKey, app])
 
-  const handleSend = useCallback(async (content: string) => {
-    if (!selectedKey) return
+  const handleSend = useCallback(async (content: string): Promise<boolean> => {
+    if (!selectedKey) return false
     const [p, m] = selectedKey.split('/')
     activeCountRef.current++
     if (activeCountRef.current > 1) {
@@ -845,12 +855,57 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
       agentUnsubRef.current?.()
       agentUnsubRef.current = null
     }
+    return true
   }, [sessionId, novelId, selectedKey, reasoningEffort, app, handleAgentEvent, applyAgentEvent, activeSessionId])
+
+  // 供外部（如“检测改动后交给 AI 维护”）程序化发送消息
+  useImperativeHandle(ref, () => ({
+    send: (text: string) => handleSend(text),
+  }), [handleSend])
 
   const hasNovel = novelId > 0
   const hasTurns = turns.length > 0
   const hasActiveSession = activeSessionId !== undefined && activeSessionId !== null
   const showRecent = !hasActiveSession && !hasTurns && !isLoading
+
+  // ── 对话内搜索 ──────────────────────────────────────
+
+  const searchMatches = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return []
+    const idx: number[] = []
+    turns.forEach((turn, i) => {
+      const parts: string[] = []
+      if (turn.userMessage) parts.push(turn.userMessage)
+      for (const seg of turn.segments) {
+        if (seg.content) parts.push(seg.content)
+        if (seg.displayText) parts.push(seg.displayText)
+        if (seg.thinkingContent) parts.push(seg.thinkingContent)
+        if (seg.error) parts.push(seg.error)
+      }
+      if (parts.join('\n').toLowerCase().includes(q)) idx.push(i)
+    })
+    return idx
+  }, [turns, searchQuery])
+
+  const goToMatch = useCallback((i: number) => {
+    if (searchMatches.length === 0) return
+    const idx = ((i % searchMatches.length) + searchMatches.length) % searchMatches.length
+    setMatchIdx(idx)
+    const turn = turns[searchMatches[idx]]
+    if (!turn) return
+    const el = document.getElementById(`chat-turn-${turn.id}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      el.classList.add('ring-2', 'ring-primary', 'rounded-md')
+      setTimeout(() => el.classList.remove('ring-2', 'ring-primary', 'rounded-md'), 2500)
+    }
+  }, [searchMatches, turns])
+
+  const jumpToBottom = () => {
+    const el = scrollContainerRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  }
 
 
   const inputPlaceholder = !hasNovel
@@ -870,6 +925,13 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
       <div className="px-4 py-2.5 border-b shrink-0 flex items-center justify-between select-none">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('chat.aiChat')}</span>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setSearchOpen(v => !v); if (searchOpen) setSearchQuery('') }}
+            className={`flex items-center gap-1 text-xs transition-colors cursor-pointer ${searchOpen ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            title={t('chat.searchInChat')}
+          >
+            <Search className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={handleOpenHistory}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -893,6 +955,56 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
             className="underline hover:text-destructive cursor-pointer"
           >
             {t('chat.retry')}
+          </button>
+        </div>
+      )}
+
+      {searchOpen && (
+        <div className="px-3 py-1.5 border-b shrink-0 flex items-center gap-2">
+          <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => { setSearchQuery(e.target.value); setMatchIdx(0) }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                if (e.shiftKey) goToMatch(matchIdx - 1)
+                else goToMatch(matchIdx + 1)
+              }
+            }}
+            placeholder={t('chat.searchPlaceholder')}
+            autoFocus
+            className="flex-1 h-7 px-2 text-xs bg-muted/40 rounded border-0 outline-none focus:ring-1 focus:ring-ring"
+          />
+          {searchQuery.trim() && (
+            <span className="text-[11px] text-muted-foreground shrink-0">
+              {searchMatches.length > 0
+                ? t('chat.searchMatches', { current: matchIdx + 1, total: searchMatches.length })
+                : t('chat.searchNoMatch')}
+            </span>
+          )}
+          <button
+            onClick={() => goToMatch(matchIdx - 1)}
+            disabled={searchMatches.length === 0}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 shrink-0"
+            title={t('chat.searchPrev')}
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => goToMatch(matchIdx + 1)}
+            disabled={searchMatches.length === 0}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 shrink-0"
+            title={t('chat.searchNext')}
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => { setSearchOpen(false); setSearchQuery('') }}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            title={t('common.close')}
+          >
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -950,9 +1062,9 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
             ) : (
               <div className="space-y-4">
                 {turns.map(turn => (
-                  <div key={turn.id} className="space-y-2">
+                  <div key={turn.id} id={`chat-turn-${turn.id}`} className="space-y-2">
                     {turn.userMessage && (
-                      <MessageBubble role="user" content={turn.userMessage} />
+                      <MessageBubble role="user" content={turn.userMessage} highlight={searchOpen ? searchQuery.trim() || undefined : undefined} />
                     )}
 
                     {turn.segments.map(seg => {
@@ -1022,7 +1134,7 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
                             </div>
                           )}
                           {seg.content && (
-                            <MessageBubble role="assistant" content={seg.content} />
+                            <MessageBubble role="assistant" content={seg.content} highlight={searchOpen ? searchQuery.trim() || undefined : undefined} />
                           )}
                         </div>
                       )
@@ -1065,6 +1177,17 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* 回到底部浮动按钮 */}
+      {!isNearBottom && (
+        <button
+          onClick={jumpToBottom}
+          className="absolute bottom-24 right-4 z-20 w-8 h-8 flex items-center justify-center rounded-full border bg-background shadow-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+          title={t('chat.jumpToBottom')}
+        >
+          <ArrowDown className="w-4 h-4" />
+        </button>
+      )}
 
       <ChatInput
         disabled={!hasNovel || !selectedKey}
@@ -1125,4 +1248,6 @@ export default function ChatPanel({ novelId, onApprove, onReject, onApprovalFile
       />
     </aside>
   )
-}
+})
+
+export default ChatPanel

@@ -9,6 +9,8 @@ interface ModelOption {
 }
 
 interface Props {
+  maxChapters?: number
+  setMaxChapters?: (n: number) => void
   open: boolean
   progress: ImportProgressState
   error: string
@@ -21,7 +23,7 @@ interface Props {
   onClose: () => void
 }
 
-export default function ImportProgressDialog({ open, progress, error, skippedCount, skippedChapters, modelKey, setModelKey, modelOptions, onStartLLM, onClose }: Props) {
+export default function ImportProgressDialog({ open, progress, error, skippedCount, skippedChapters, modelKey, setModelKey, modelOptions, maxChapters, setMaxChapters, onStartLLM, onClose }: Props) {
   const { t } = useTranslation()
 
   const STAGE_LABEL: Record<ImportProgressStage, string> = {
@@ -77,6 +79,22 @@ export default function ImportProgressDialog({ open, progress, error, skippedCou
             <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{chapterText}</span>
           )}
         </div>
+
+        {/* 导入上限设置（选文件阶段） */}
+        {progress.stage === 'select_file' && setMaxChapters && (
+          <div className="mt-4 flex items-center gap-2">
+            <label className="text-xs text-muted-foreground shrink-0">{t('novel.importMaxChapters')}</label>
+            <input
+              type="number"
+              min={0}
+              max={10000}
+              value={maxChapters ?? 0}
+              onChange={e => setMaxChapters(Math.max(0, Number(e.target.value)))}
+              className="w-24 h-8 rounded-md border bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <span className="text-[11px] text-muted-foreground">{t('novel.importMaxChaptersHint')}</span>
+          </div>
+        )}
 
         {/* 进度条 */}
         {!isNeedsLLM && (

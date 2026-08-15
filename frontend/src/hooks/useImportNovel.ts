@@ -36,7 +36,7 @@ const INITIAL_IMPORT_PROGRESS: ImportProgressState = {
 interface UseImportNovelOptions {
   app: {
     ImportNovel: (input: app.ImportNovelInput) => Promise<imp.ImportResult>
-    PickAndImportNovel: () => Promise<imp.ImportResult>
+    PickAndImportNovel: (maxChapters: number) => Promise<imp.ImportResult>
     ImportWithLLM: (input: app.ImportWithLLMInput) => Promise<imp.ImportResult>
     GetModels: () => Promise<llm.AvailableModel[]>
     GetSettings: () => Promise<config.AppSettings>
@@ -58,6 +58,9 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
   const [skippedChapters, setskipped_chapters] = useState<{ title: string; reason: string }[]>([])
 
   // LLM 兜底相关状态
+  // 最大导入章数（0=全部；防超长文本导致失忆）
+  const [maxChapters, setMaxChapters] = useState(0)
+
   const [filePath, setFilePath] = useState('')
   const [modelKey, setModelKey] = useState('')
   const [models, setModels] = useState<llm.AvailableModel[]>([])
@@ -118,8 +121,8 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
     let result: imp.ImportResult | null
     try {
       result = fp
-        ? await app.ImportNovel({ file_path: fp })
-        : await app.PickAndImportNovel()
+        ? await app.ImportNovel({ file_path: fp, max_chapters: maxChapters })
+        : await app.PickAndImportNovel(maxChapters)
     } catch (err: unknown) {
       setProgress(prev => ({
         ...prev,
@@ -203,6 +206,8 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
     modelKey,
     setModelKey,
     modelOptions,
+    maxChapters,
+    setMaxChapters,
     dialogProps: {
       open,
       progress,

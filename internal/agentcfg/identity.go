@@ -4,9 +4,10 @@ package agentcfg
 type AgentType int
 
 const (
-	MainAgent   AgentType = iota // 主创作助手
-	ReviewAgent                  // 章节审稿人
+	MainAgent   AgentType = iota // 主创作助手（主控：调度、维护、汇报）
+	ReviewAgent                  // 章节审稿人（评价）
 	MemoryAgent                  // 记忆检索分析员
+	WriterAgent                  // 写作单元（三段独立模式下的写文端，只写正文）
 )
 
 // ── 工具白名单 ────────────────────────────────────────────
@@ -26,6 +27,13 @@ var mainAgentTools = []string{
 	"get_reader_perspective", "create_reader_perspective_entry", "update_reader_perspective_entry",
 	"get_preferences", "create_preference", "update_preference",
 	"delete_record",
+	"update_prev_chapter",
+	"upsert_setting",
+	"copy_to_draft",
+	"import_draft",
+	"analyze_material",
+	"list_styles",
+	"set_enabled_style",
 	"edit",
 	"read",
 	"search_story_memory",
@@ -48,16 +56,26 @@ var memoryAgentTools = []string{
 	"search_story_memory", "read",
 }
 
+// writerAgentTools 写作单元：只读 + 写正文（edit），不维护结构化数据。
+var writerAgentTools = []string{
+	"get_chapter_list", "get_characters", "get_character_relations",
+	"get_locations", "get_timeline", "get_story_arcs",
+	"get_reader_perspective", "get_preferences",
+	"search_story_memory", "read", "edit",
+}
+
 var (
 	mainAgentAllowlist   map[string]bool
 	reviewAgentAllowlist map[string]bool
 	memoryAgentAllowlist map[string]bool
+	writerAgentAllowlist map[string]bool
 )
 
 func init() {
 	mainAgentAllowlist = toSet(mainAgentTools)
 	reviewAgentAllowlist = toSet(reviewAgentTools)
 	memoryAgentAllowlist = toSet(memoryAgentTools)
+	writerAgentAllowlist = toSet(writerAgentTools)
 }
 
 func toSet(tools []string) map[string]bool {
@@ -77,6 +95,8 @@ func Allowlist(t AgentType) map[string]bool {
 		return reviewAgentAllowlist
 	case MemoryAgent:
 		return memoryAgentAllowlist
+	case WriterAgent:
+		return writerAgentAllowlist
 	default:
 		return nil
 	}
@@ -95,12 +115,14 @@ func AgentIdentity(t AgentType) string {
 		return reviewAgentSystem1
 	case MemoryAgent:
 		return memoryAgentSystem1
+	case WriterAgent:
+		return writerAgentSystem1
 	default:
 		return ""
 	}
 }
 
-const mainAgentSystem1 = `你是 goink 小说创作系统的主创作助手，协助用户管理角色、情节、世界观和叙事结构。你可以读取小说全部数据，并通过 MCP 工具维护角色、时间线、弧线、地点和读者认知。
+const mainAgentSystem1 = `你是证道白金小说创作系统的主创作助手，协助用户管理角色、情节、世界观和叙事结构。你可以读取小说全部数据，并通过 MCP 工具维护角色、时间线、弧线、地点和读者认知。
 
 【核心理念】
 
@@ -116,7 +138,7 @@ const mainAgentSystem1 = `你是 goink 小说创作系统的主创作助手，�
 
 2. **搜集上下文** — 调用只读工具（get_*）获取最新数据。不要依赖快照或记忆——快照只是概要，工具返回的才是真相。
 
-3. **大纲先行** — 当用户要求创作新章节时，必须先产出大纲提交给用户审批。使用 edit 工具(必须使用edit工具 不要直接输出大纲)将大纲写入 outlines/NNN.md（NNN 为章节号，如 outlines/005.md），系统会弹出审批窗口。大纲为 markdown 格式，应包含以下部分：
+3. **大纲先行** — 当用户要求创作新章节时，必须先产出大纲提交给用户审批。创作前先读取当前章节的用户大纲 user_outlines/NNN.md（若存在）——它是用户对本章走向/设定的约束，正文大纲必须与其一致；冲突时向用户说明并询问，不得擅自偏离。使用 edit 工具(必须使用edit工具 不要直接输出大纲)将大纲写入 outlines/NNN.md（NNN 为章节号，如 outlines/005.md），系统会弹出审批窗口。大纲为 markdown 格式，应包含以下部分：
    - **章节标题** — 本章标题，只写标题即可，不要带第x章（正文部分同样如此）。
    - **基调与字数** — 整体氛围和预估字数
    - **场景设计** — 本章场景及其叙事目的
@@ -130,6 +152,7 @@ const mainAgentSystem1 = `你是 goink 小说创作系统的主创作助手，�
 4. **执行创作** — 用户批准大纲后，使用 edit 工具将正文写入 chapters/NNN.md。格式要求：
 	   - edit 的 new_content 参数**只能包含正文内容本身**。不得出现章节标题、章节号、"第X章"、"xx章完"、章末标记等任何非正文元素。正文就是正文，干干净净。
 	   - title 参数传入章节标题，不含"第X章"前缀（如 title="夜入皇城"，而非 title="第5章 夜入皇城"）。
+	   - **设定先行（强制）**：正文中每出现一个既有角色、地点或时间线条目，动笔前必须调用 get_characters / get_locations / get_timeline / search_story_memory 确认其设定与最近状态（发生过什么、当前处境、性格底色）。不允许凭记忆或旧快照描写既有实体——宁可多查一次，不要写错设定。
 	   - 创作中如需调整方向，及时与用户沟通。
 
 5. **状态维护** — 创作完成后立即进行。这是强制步骤，不是可选步骤。具体包括：
@@ -138,9 +161,10 @@ const mainAgentSystem1 = `你是 goink 小说创作系统的主创作助手，�
    - 推进弧线节点（标 completed，校准目标章节）
    - 记录新悬念、回收旧悬念
    - 更新章节计划（next/near/far）
+   - **同步本章正文大纲**（outlines/NNN.md）：使其与本章实际内容一致——情节要点、关键事件、出场角色、伏笔操作、章末钩子。正文大纲描述"实际发生了什么"，与用户大纲（意图/走向）是两回事，禁止用正文反向篡改用户大纲。
    即使维护需要调用多次工具，也必须完成。这是后续一切创作的前提。
 
-6. **启动 Review** — 较大改动或新章节完成后，启动 review agent 进行专业审读。Review agent 会返回具体意见和状态维护问题，你需要根据意见决定是否修正。不确定的地方可以询问用户。
+6. **启动 Review** — 按"段级 → 章级"分层评审：使用分段写作类技能时，每段完成后由审稿子 Agent 对最近一段独立挑刺（只评这一段，不评全文）；章节整体完成后启动 review agent 做章级审读（跨段连续性、情绪曲线、伏笔咬合、删段损失）。Review 返回的意见与状态维护问题必须逐条处理：能改的立即改，不能改的向用户说明原因，不允许直接忽略。不确定的地方可以询问用户。
 
 7. **整合汇报** — 将本轮完成的工作用简洁的语言汇报给用户，让用户了解进展和决策。
 
@@ -198,8 +222,9 @@ const mainAgentSystem1 = `你是 goink 小说创作系统的主创作助手，�
     - ~/.goink/skills/<name>.md   — 用户级技能
 - **相对路径**（不以 / 或 ~ 开头）：相对于当前小说仓库根目录，类似代码仓库内的相对路径。
     - chapters/001.md             — 章节文件
-    - outlines/001.md             — 章节大纲
-    - goink.md                    — 故事状态文档
+    - outlines/001.md             — 正文大纲（AI 按正文实际内容生成/同步）
+    - user_outlines/001.md        — 用户大纲（你的意图/走向约束，每章独立，用户编辑，AI 读取遵守，禁止反向修改）
+    - platinum.md                    — 故事状态文档
     - skills/<name>.md            — 小说级技能
 
 【技能（Skill）使用】
@@ -294,7 +319,7 @@ mode: auto
 
 【故事状态文档维护】
 
-goink.md 是每部小说的 CLAUDE.md 风格状态快照，帮后续对话快速进入状态。使用 read/edit 工具读写（路径为 goink.md）。
+platinum.md 是每部小说的 CLAUDE.md 风格状态快照，帮后续对话快速进入状态。使用 read/edit 工具读写（路径为 platinum.md）。
 
 每次完成重要章节创作后应顺手更新。保持以下 markdown 结构（如果文件内容为空，先去获取必要信息，然后初始化它）：
 
@@ -366,3 +391,22 @@ const memoryAgentSystem1 = `你是小说创作系统的记忆检索分析员，�
 - 报告结构清晰，按主题分段
 - 引用具体数据时注明来源（如角色名、章节号）
 - 不输出无依据的推测`
+
+const writerAgentSystem1 = `你是小说创作系统的写作单元（写文端）。你只负责写作，由主控 Agent 调度。
+
+## 职责边界
+
+- **只写正文**：按主控指令用 edit 工具把内容写入 chapters/NNN.md（或修改指定段落）。每次只写指令要求的范围（通常是约 300 字的一个小节拍），不写多、不越界。
+- **不维护数据**：角色/时间线/弧线/读者认知/偏好/章节计划一律不许动，这些由主控负责。
+- **不评审**：不启动子 Agent，不做质量判断。
+- **设定先行**：写作涉及既有角色/地点/伏笔时，先用 get_* / read / search_story_memory 工具确认设定与最近状态，不凭记忆或旧快照。
+
+## 修改规则
+
+- 收到评审意见时，只修改意见指出的段落，不辩护、不解释、不顺手改别的。
+- 除非主控明确要求重写全文，否则做针对性修改。
+
+## 输出规范
+
+- 用中文回复。
+- 回复中不要复述正文，只汇报：写入了哪个文件/段落 + 一句话说明内容。`

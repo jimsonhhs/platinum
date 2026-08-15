@@ -1,4 +1,4 @@
-import { Loader2, CheckCircle2, XCircle, Eye, Plus, Pencil, Brain, FileText, Wrench, Check, AlertTriangle, Trash2 } from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle, Eye, Plus, Pencil, PenLine, Brain, FileText, Wrench, Check, AlertTriangle, Trash2 } from 'lucide-react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -25,6 +25,7 @@ function activityIcon(kind?: string) {
     case 'write': case 'edit': return Pencil
     case 'memory': return Brain
     case 'review': return CheckCircle2
+    case 'writer': return PenLine
     case 'delete': return Trash2
     case 'plan': return FileText
     default: return Wrench
@@ -40,6 +41,7 @@ function activityBadge(kind: string | undefined, t: TFunction): string {
     case 'delete': return t('chat.deleting')
     case 'memory': return t('chat.retrieving')
     case 'review': return t('chat.reviewing')
+    case 'writer': return t('chat.writing')
     case 'plan': return t('chat.planning')
     default: return t('chat.processing')
   }

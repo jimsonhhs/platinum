@@ -81,7 +81,7 @@ func (a *Agent) Compress(ctx context.Context, opts *RunOptions, runningTokens ma
 	}
 
 	// 重建系统消息（顺序与 writeSystemMessages 一致）
-	identity := agentcfg.AgentIdentity(agentcfg.MainAgent)
+	identity := agentcfg.MainSystemPrompt(a.db, opts.NovelID)
 	var always string
 	var catalog string
 	if a.skillStore != nil {

@@ -9,6 +9,14 @@ type Novel struct {
 	Title       string    `gorm:"column:title;not null;index"        json:"title"`
 	Genre       string    `gorm:"column:genre;index"                 json:"genre"`
 	Description string    `gorm:"column:description"                 json:"description"`
+	BreakWords  string    `gorm:"column:break_words"                 json:"break_words"` // 旧字段（兼容，视为第 1 轮）
+	BreakWords1 string    `gorm:"column:break_words_1"               json:"break_words_1"` // 破甲词第 1 轮
+	BreakWords2 string    `gorm:"column:break_words_2"               json:"break_words_2"` // 破甲词第 2 轮（空则不进入下一轮）
+	BreakWords3 string    `gorm:"column:break_words_3"               json:"break_words_3"` // 破甲词第 3 轮（空则不进入下一轮）
+	AIConfig    string    `gorm:"column:ai_config"                   json:"ai_config"`     // JSON：{"inject_world":true,"inject_goink":true,"maint":["outline",...]}，空=全开
+	ChapterSeq  int       `gorm:"column:chapter_seq;default:0"       json:"chapter_seq"`   // 章节号单调计数器（删除不回退，保证编号永不复用）
+	Volumes     string    `gorm:"column:volumes"                     json:"volumes"`       // JSON 卷定义：[{"name":"第一卷"},...]，空=默认第一卷
+	EnabledStyle string   `gorm:"column:enabled_style"               json:"enabled_style"` // 当前书启用的文风（styles/ 下的文件名，空=未启用）
 	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime"   json:"created_at"`
 	UpdatedAt   time.Time `gorm:"column:updated_at;autoUpdateTime"   json:"updated_at"`
 }

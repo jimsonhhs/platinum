@@ -10,11 +10,13 @@ import (
 
 // Store 在内存中管理三层 skill（内置、用户、小说），支持热重载。
 type Store struct {
-	mu      sync.RWMutex
-	logger  *slog.Logger
-	builtin []Skill
-	user    []Skill
-	novel   map[int64][]Skill
+	mu          sync.RWMutex
+	logger      *slog.Logger
+	builtin     []Skill
+	user        []Skill
+	novel       map[int64][]Skill
+	userIssues  []ScanIssue
+	novelIssues map[int64][]ScanIssue
 }
 
 // NewStore 创建 Store 并初始加载内置和用户级 skill。
@@ -26,9 +28,10 @@ func NewStore(logger *slog.Logger, userSkillsDir string) (*Store, error) {
 	}
 
 	s := &Store{
-		logger:  logger,
-		builtin: builtin,
-		novel:   make(map[int64][]Skill),
+		logger:      logger,
+		builtin:     builtin,
+		novel:       make(map[int64][]Skill),
+		novelIssues: make(map[int64][]ScanIssue),
 	}
 	if err := s.loadUser(userSkillsDir); err != nil {
 		logger.Warn("初始加载用户 skill 失败，将以空列表继续", "err", err)
@@ -55,6 +58,16 @@ func (s *Store) Get(novelID int64, name string) (*Skill, bool) {
 	return nil, false
 }
 
+// GetBuiltin 按名称返回内置 skill（不受用户/小说同名覆盖影响）。
+func (s *Store) GetBuiltin(name string) (*Skill, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if sk := findByName(s.builtin, name); sk != nil {
+		return sk, true
+	}
+	return nil, false
+}
+
 // ListMeta 返回所有可用 skill 的元数据，按 name 去重（novel > user > builtin）。
 // 每次调用自动刷新磁盘数据。
 func (s *Store) ListMeta(novelID int64) []SkillMeta {
@@ -74,6 +87,16 @@ func (s *Store) ListMeta(novelID int64) []SkillMeta {
 			result = append(result, skills[i].Meta("novel"))
 		}
 	}
+	// novel 级解析失败的文件也要可见（便于修复）
+	if issues, ok := s.novelIssues[novelID]; ok {
+		for i := range issues {
+			if seen[issues[i].Name] {
+				continue
+			}
+			seen[issues[i].Name] = true
+			result = append(result, SkillMeta{Name: issues[i].Name, Source: "novel", Error: issues[i].Err})
+		}
+	}
 	// user 级，跳过已出现的
 	for i := range s.user {
 		if seen[s.user[i].Name] {
@@ -81,6 +104,14 @@ func (s *Store) ListMeta(novelID int64) []SkillMeta {
 		}
 		seen[s.user[i].Name] = true
 		result = append(result, s.user[i].Meta("user"))
+	}
+	// user 级解析失败的文件也要可见
+	for i := range s.userIssues {
+		if seen[s.userIssues[i].Name] {
+			continue
+		}
+		seen[s.userIssues[i].Name] = true
+		result = append(result, SkillMeta{Name: s.userIssues[i].Name, Source: "user", Error: s.userIssues[i].Err})
 	}
 	// builtin，跳过已出现的
 	for i := range s.builtin {
@@ -116,7 +147,7 @@ func (s *Store) ReloadUser(userSkillsDir string) error {
 
 // ReloadNovel 重新扫描指定小说的 skill 目录。
 func (s *Store) ReloadNovel(novelID int64, novelSkillsDir string) error {
-	skills, err := scanDir(s.logger, novelSkillsDir)
+	skills, issues, err := scanDirWithIssues(s.logger, novelSkillsDir)
 	if err != nil {
 		return fmt.Errorf("skill: reload novel %d: %w", novelID, err)
 	}
@@ -126,17 +157,23 @@ func (s *Store) ReloadNovel(novelID int64, novelSkillsDir string) error {
 	} else {
 		s.novel[novelID] = skills
 	}
+	if len(issues) == 0 {
+		delete(s.novelIssues, novelID)
+	} else {
+		s.novelIssues[novelID] = issues
+	}
 	s.mu.Unlock()
 	return nil
 }
 
 // loadUser 需在持有锁时调用。
 func (s *Store) loadUser(dir string) error {
-	skills, err := scanDir(s.logger, dir)
+	skills, issues, err := scanDirWithIssues(s.logger, dir)
 	if err != nil {
 		return err
 	}
 	s.user = skills
+	s.userIssues = issues
 	return nil
 }
 

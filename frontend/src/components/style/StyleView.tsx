@@ -6,6 +6,8 @@ import { useApp } from '@/hooks/useApp'
 import type { novel } from '@/lib/wailsjs/go/models'
 import type { style } from '@/lib/wailsjs/go/models'
 import StyleSampleCard from './StyleSampleCard'
+import MaterialExtractCard from './MaterialExtractCard'
+import StyleLibraryPanel from './StyleLibraryPanel'
 import Markdown from '@/components/Markdown'
 import { splitFrontmatter } from '@/components/content/types'
 import PopSelect from '@/components/chat/PopSelect'
@@ -276,7 +278,16 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false, n
   const { meta, body } = result ? splitFrontmatter(result.rawContent) : { meta: {}, body: '' }
 
   return (
-    <div className={`flex-1 flex flex-col min-h-0 ${embedded ? '' : 'bg-background'}`}>
+    <div className={`flex-1 flex flex-col min-h-0 overflow-y-auto overscroll-contain ${embedded ? '' : 'bg-background'}`}>
+      {/* 从文件提取文风（简洁入口） */}
+      {phase !== 'preview' && (
+        <div className="shrink-0 px-6 pt-4">
+          <MaterialExtractCard />
+          <div className="mt-3">
+            <StyleLibraryPanel novelId={novelId || null} />
+          </div>
+        </div>
+      )}
       {/* 顶部工具栏 */}
       <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
         {phase === 'preview' && result ? (
@@ -443,10 +454,10 @@ export default function StyleView({ focusId, onFocusHandled, embedded = false, n
 
       {/* 素材卡片网格 */}
       {(phase === 'browse' || phase === 'extracting') && (
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-6">
+        <div className="shrink-0 flex flex-col">
+          <div className="px-6 py-6">
             {samples.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-3">
                 <BarChart3 className="w-12 h-12 opacity-20" />
                 <p className="text-sm">{t('styleSample.noStyleSamples')}</p>
               </div>

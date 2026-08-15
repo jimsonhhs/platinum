@@ -42,6 +42,14 @@ type SkillMeta struct {
 	Author      string `json:"author"`
 	Version     int    `json:"version"`
 	Source      string `json:"source"` // "builtin" | "user" | "novel"
+	Error       string `json:"error,omitempty"` // 解析失败时填充，前端据此展示损坏的 skill
+}
+
+// ScanIssue 描述一个解析失败的 skill 文件（用于把损坏的 skill 暴露给用户修复，而不是静默消失）。
+type ScanIssue struct {
+	File string `json:"file"`
+	Name string `json:"name"`
+	Err  string `json:"err"`
 }
 
 // Meta 返回去除正文的元数据视图。

@@ -4,6 +4,7 @@ import type { novel, chapter } from '@/hooks/useApp'
 import NovelList from './NovelList'
 import ChapterList from './ChapterList'
 import CharacterList from '@/components/character/CharacterList'
+import SettingList from '@/components/setting/SettingList'
 import LocationList from '@/components/location/LocationList'
 import SkillList from '@/components/skill/SkillList'
 import SearchPanel from '@/components/search/SearchPanel'
@@ -12,6 +13,7 @@ import ArcList from '@/components/storyarc/ArcList'
 import ReaderList from '@/components/reader/ReaderList'
 import PreferenceList from '@/components/preference/PreferenceList'
 import StyleSampleList from '@/components/style/StyleSampleList'
+import SandboxList from '@/components/sandbox/SandboxList'
 import type { SearchResult } from '@/components/search/SearchPanel'
 import GitHistoryList from '@/components/git/GitHistoryList'
 import type { git } from '@/lib/wailsjs/go/models'
@@ -21,8 +23,12 @@ interface Props {
   novels: novel.Novel[]
   novelId: number
   onSelectNovel: (n: novel.Novel) => void
-  onSelectChapter: (ch: chapter.Chapter) => void
+  onSelectChapter: (ch: chapter.Chapter, viewMode?: string) => void
   onSelectGoink: () => void
+  onEditNovelSettings?: () => void
+  onEditAISettings?: () => void
+  onDeleteChapter?: (novelId: number, chapterNumber: number) => void
+  onMaintainChanges?: (files: git.FileChange[], parts: string[]) => void
   onExportNovel: (novelId: number) => void
   target: { path: string; title: string } | null
   showCreate: boolean
@@ -43,6 +49,10 @@ interface Props {
   onSearchChange: (query: string, results: SearchResult[]) => void
   onSelectGitFile: (file: git.FileDiff) => void
   onSelectStyleSample: (id: number) => void
+  sandboxId?: string
+  onSelectSandbox?: (id: string) => void
+  activeSettingId: number | null
+  onSelectSetting: (id: number) => void
   sidePanelWidth: number
   onSidePanelResize: (w: number) => void
 }
@@ -50,14 +60,16 @@ interface Props {
 export default function SidePanel({
   activePanel,
   novels, novelId, onSelectNovel,
-  onSelectChapter, onSelectGoink, onExportNovel, target,
+  onSelectChapter, onSelectGoink, onEditNovelSettings, onEditAISettings, onExportNovel, target,
+  onDeleteChapter, onMaintainChanges,
   showCreate, setShowCreate, title, setTitle, description, setDescription,
   onCreateNovel,
   activeSkillName, onSelectSkill, onEditSkill, onNewSkill,
   onSearchNavigateEntity, onSearchNavigateChapter,
   searchQuery, searchResults, onSearchChange,
   onSelectGitFile,
-  onSelectStyleSample,
+  onSelectStyleSample, onSelectSetting, activeSettingId,
+  sandboxId, onSelectSandbox,
   sidePanelWidth,
   onSidePanelResize,
 }: Props) {
@@ -127,10 +139,16 @@ export default function SidePanel({
           target={target}
           onSelectChapter={onSelectChapter}
           onSelectGoink={onSelectGoink}
+          onEditNovelSettings={onEditNovelSettings}
+          onEditAISettings={onEditAISettings}
           onExportNovel={() => onExportNovel(novelId)}
+          onDeleteChapter={onDeleteChapter}
+          onMaintainChanges={onMaintainChanges}
         />
       ) : activePanel === 'characters' ? (
         <CharacterList novelId={novelId} />
+      ) : activePanel === 'setting' ? (
+        <SettingList novelId={novelId} activeSettingId={activeSettingId} onSelect={onSelectSetting} />
       ) : activePanel === 'locations' ? (
         <LocationList novelId={novelId} />
       ) : activePanel === 'storyarcs' ? (
@@ -150,6 +168,12 @@ export default function SidePanel({
         <StyleSampleList
           onSelectSample={onSelectStyleSample}
           novelId={novelId}
+        />
+      ) : activePanel === 'sandbox' ? (
+        <SandboxList
+          novelId={novelId}
+          currentId={sandboxId || ''}
+          onSelect={(id) => onSelectSandbox?.(id)}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center">

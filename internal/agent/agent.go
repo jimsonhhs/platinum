@@ -90,7 +90,12 @@ func (a *Agent) Cancel(sessionID string) {
 // RunSubAgent 启动子 Agent 并返回最终报告文本。
 func (a *Agent) RunSubAgent(ctx context.Context, parentOpts RunOptions, req mcp_tools.SubAgentRequest) (string, error) {
 	at := agentTypeFromString(req.AgentType)
-	sysPrompt := agentcfg.AgentIdentity(at)
+	bw := agentcfg.BreakWords(a.db, req.NovelID)
+	sysPrompt := bw
+	if sysPrompt != "" {
+		sysPrompt += "\n\n"
+	}
+	sysPrompt += agentcfg.AgentIdentity(at)
 	allowed := agentcfg.Allowlist(at)
 
 	msgs := []map[string]any{
@@ -111,7 +116,7 @@ func (a *Agent) RunSubAgent(ctx context.Context, parentOpts RunOptions, req mcp_
 		AgentType:       req.AgentType,
 		SubTaskID:       req.ToolID,
 		EventSeq:        parentOpts.EventSeq,
-		MaxTurns:        50,
+		MaxTurns:        150,
 		Model:           parentOpts.Model,
 		ProviderName:    parentOpts.ProviderName,
 		ReasoningEffort: parentOpts.ReasoningEffort,
@@ -127,6 +132,8 @@ func agentTypeFromString(s string) agentcfg.AgentType {
 		return agentcfg.ReviewAgent
 	case "memory":
 		return agentcfg.MemoryAgent
+	case "writer":
+		return agentcfg.WriterAgent
 	default:
 		return agentcfg.MainAgent
 	}
@@ -135,7 +142,7 @@ func agentTypeFromString(s string) agentcfg.AgentType {
 // Run 执行 Agent 循环，返回最终文本和轮数。
 func (a *Agent) Run(ctx context.Context, opts RunOptions) (AgentLoopResult, error) {
 	if opts.MaxTurns <= 0 {
-		opts.MaxTurns = 50
+		opts.MaxTurns = 150
 	}
 	if opts.Model == nil {
 		return AgentLoopResult{}, errors.New("agent: Model is required in RunOptions")
@@ -411,6 +418,15 @@ func (a *Agent) Run(ctx context.Context, opts RunOptions) (AgentLoopResult, erro
 		responseBuffer = ""
 		fullResponse = ""
 		loopCount++
+	}
+
+	// 触顶提示：任务可能未完成，写入历史供下一轮感知，并推送事件
+	if !interrupted && loopCount >= opts.MaxTurns {
+		content := fmt.Sprintf("<system-reminder>\n已达到本轮工具调用上限（%d 轮），任务可能未全部完成。如需继续，请回复“继续”。\n</system-reminder>", opts.MaxTurns)
+		a.appendMsg("user", content, "", nil, &opts, runningTokens)
+		emit(AgentEvent{
+			TurnID: opts.TurnID, Type: EventToolCall, Phase: "max_turns_reached", Timestamp: time.Now(),
+		})
 	}
 
 	if interrupted {

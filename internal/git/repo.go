@@ -26,15 +26,15 @@ type Repo struct {
 
 // CommitInfo 是 git log 的单条记录。
 type CommitInfo struct {
-	Hash         string    `json:"hash"`
-	ShortHash    string    `json:"shortHash"`
-	Message      string    `json:"message"`
-	Time         time.Time `json:"time"`
-	AuthorName   string    `json:"authorName"`
-	AuthorEmail  string    `json:"authorEmail"`
-	FilesChanged int       `json:"filesChanged"`
-	Insertions   int       `json:"insertions"`
-	Deletions    int       `json:"deletions"`
+	Hash         string `json:"hash"`
+	ShortHash    string `json:"shortHash"`
+	Message      string `json:"message"`
+	Time         string `json:"time"` // RFC3339 字符串（Wails 绑定不支持 time.Time 字段，前端 new Date() 直接解析）
+	AuthorName   string `json:"authorName"`
+	AuthorEmail  string `json:"authorEmail"`
+	FilesChanged int    `json:"filesChanged"`
+	Insertions   int    `json:"insertions"`
+	Deletions    int    `json:"deletions"`
 }
 
 // FileDiff 表示一次 commit 中单个文件的变更。
@@ -43,6 +43,95 @@ type FileDiff struct {
 	ChangeType      string `json:"changeType"`
 	OriginalContent string `json:"original"`
 	ModifiedContent string `json:"modified"`
+}
+
+// FileChange 描述工作区相对 HEAD 的单个文件改动（用于纯本地改动检测）。
+type FileChange struct {
+	Path       string `json:"path"`
+	Status     string `json:"status"` // "modified" | "added" | "deleted"
+	Insertions int    `json:"insertions"`
+	Deletions  int    `json:"deletions"`
+}
+
+// ChangedFiles 返回工作区相对 HEAD 的全部改动。纯本地 git 操作，不消耗 token。
+// 中文文件名通过 -c core.quotepath=false 以原始 UTF-8 输出。
+func (r *Repo) ChangedFiles() ([]FileChange, error) {
+	out, _, err := r.runInDir("-c", "core.quotepath=false", "status", "--porcelain", "-uall")
+	if err != nil {
+		return nil, fmt.Errorf("git: status: %w", err)
+	}
+	if strings.TrimSpace(out) == "" {
+		return nil, nil
+	}
+
+	// numstat 提供已跟踪文件的增删行数
+	stats := make(map[string][2]int)
+	if numOut, _, err := r.runInDir("diff", "--numstat", "HEAD"); err == nil {
+		for _, line := range strings.Split(strings.TrimSpace(numOut), "\n") {
+			parts := strings.Fields(line)
+			if len(parts) < 3 {
+				continue
+			}
+			ins, _ := strconv.Atoi(parts[0])
+			del, _ := strconv.Atoi(parts[1])
+			stats[parts[2]] = [2]int{ins, del}
+		}
+	}
+
+	var changes []FileChange
+	for _, line := range strings.Split(strings.TrimRight(out, "\r\n"), "\n") {
+		if line == "" {
+			continue
+		}
+		code := strings.TrimSpace(line[:2])
+		path := strings.TrimSpace(line[3:])
+		if path == "" {
+			continue
+		}
+
+		fc := FileChange{Path: path}
+		switch {
+		case strings.HasPrefix(code, "??"):
+			// 未跟踪文件：本地数行数
+			fc.Status = "added"
+			fc.Insertions = r.countLocalLines(path)
+		case strings.HasPrefix(code, "D"):
+			fc.Status = "deleted"
+			if s, ok := stats[path]; ok {
+				fc.Insertions, fc.Deletions = s[0], s[1]
+			}
+		case strings.HasPrefix(code, "R"):
+			// 重命名："old -> new"，统一按新路径的修改处理
+			if arrow := strings.Index(path, " -> "); arrow > 0 {
+				fc.Path = path[arrow+4:]
+			}
+			fc.Status = "modified"
+			if s, ok := stats[fc.Path]; ok {
+				fc.Insertions, fc.Deletions = s[0], s[1]
+			}
+		case strings.HasPrefix(code, "A"):
+			fc.Status = "added"
+			if s, ok := stats[path]; ok {
+				fc.Insertions, fc.Deletions = s[0], s[1]
+			}
+		default: // M 等
+			fc.Status = "modified"
+			if s, ok := stats[path]; ok {
+				fc.Insertions, fc.Deletions = s[0], s[1]
+			}
+		}
+		changes = append(changes, fc)
+	}
+	return changes, nil
+}
+
+// countLocalLines 本地统计文件行数（用于未跟踪文件）。
+func (r *Repo) countLocalLines(rel string) int {
+	data, err := os.ReadFile(filepath.Join(r.dir, rel))
+	if err != nil {
+		return 0
+	}
+	return strings.Count(string(data), "\n")
 }
 
 // New 为指定小说打开已有仓库，不存在则 git init + 首次空 commit。
@@ -248,11 +337,11 @@ func parseLog(out string) []CommitInfo {
 		commits = append(commits, CommitInfo{
 			Hash:    parts[0],
 			Message: strings.SplitN(parts[1], "\n", 2)[0],
-			Time:    time.Unix(ts, 0),
+			Time:    time.Unix(ts, 0).Format(time.RFC3339),
 		})
 	}
 	sort.Slice(commits, func(i, j int) bool {
-		return commits[i].Time.Before(commits[j].Time)
+		return commits[i].Time < commits[j].Time
 	})
 	return commits
 }
@@ -340,7 +429,7 @@ func parseDetailedLog(out string) []CommitInfo {
 			Hash:         hash,
 			ShortHash:    shortHash,
 			Message:      subject,
-			Time:         time.Unix(ts, 0),
+			Time:         time.Unix(ts, 0).Format(time.RFC3339),
 			AuthorName:   authorName,
 			AuthorEmail:  authorEmail,
 			FilesChanged: filesChanged,
@@ -348,9 +437,9 @@ func parseDetailedLog(out string) []CommitInfo {
 			Deletions:    deletions,
 		})
 	}
-	// 降序：最新在前
+	// 降序：最新在前（RFC3339 字符串可字典序比较）
 	sort.Slice(commits, func(i, j int) bool {
-		return commits[i].Time.After(commits[j].Time)
+		return commits[i].Time > commits[j].Time
 	})
 	return commits
 }

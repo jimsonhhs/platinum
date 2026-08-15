@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Folder, RefreshCw, GitFork, Languages, Download, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Folder, RefreshCw, GitFork, Languages, Download, Loader2, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { SaveGitConfig, GetVersion, CheckUpdate } from '@/lib/wailsjs/go/app/App'
 import type { update as updateModels } from '@/lib/wailsjs/go/models'
@@ -9,7 +9,9 @@ import UpdateDialog from '@/components/update/UpdateDialog'
 export default function GeneralConfigTab() {
   const app = useApp()
   const { t, i18n } = useTranslation()
-  const [dataDir, setDataDir] = useState('')
+  const [dataDirInput, setDataDirInput] = useState('')
+  const [dataDirSaving, setDataDirSaving] = useState(false)
+  const [dataDirSaved, setDataDirSaved] = useState(false)
   const [novels, setNovels] = useState<novel.Novel[]>([])
   const [selectedID, setSelectedID] = useState<number>(0)
   const [rebuilding, setRebuilding] = useState(false)
@@ -23,10 +25,19 @@ export default function GeneralConfigTab() {
   const [updateResult, setUpdateResult] = useState<updateModels.CheckResult | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
   const [showUpdateDialog, setShowUpdateDialog] = useState(false)
+  const [reminderMinutes, setReminderMinutes] = useState(10)
+  const [reminderSaving, setReminderSaving] = useState(false)
+  const [reminderSaved, setReminderSaved] = useState(false)
+  const [archiveMinutes, setArchiveMinutes] = useState(30)
+  const [archiveSaving, setArchiveSaving] = useState(false)
+  const [archiveSaved, setArchiveSaved] = useState(false)
+  const [historyLimit, setHistoryLimit] = useState(50)
+  const [historyLimitSaving, setHistoryLimitSaving] = useState(false)
+  const [historyLimitSaved, setHistoryLimitSaved] = useState(false)
 
   useEffect(() => {
     app.GetAppConfig().then(cfg => {
-      setDataDir((cfg?.data_dir as string) || '')
+      setDataDirInput((cfg?.data_dir as string) || '')
     }).catch(() => {})
     app.GetNovels().then(list => {
       setNovels(list || [])
@@ -35,6 +46,9 @@ export default function GeneralConfigTab() {
       if (s?.last_novel_id) setSelectedID(s.last_novel_id)
       if (s?.git_name) setGitName(s.git_name)
       if (s?.git_email) setGitEmail(s.git_email)
+      if (typeof s?.maintain_reminder_minutes === 'number') setReminderMinutes(s.maintain_reminder_minutes)
+      if (typeof s?.archive_interval_minutes === 'number') setArchiveMinutes(s.archive_interval_minutes)
+      if (typeof s?.history_limit === 'number' && s.history_limit > 0) setHistoryLimit(s.history_limit)
     }).catch(() => {})
     GetVersion().then(v => setAppVersion(v || 'dev')).catch(() => {})
   }, [app])
@@ -83,6 +97,62 @@ export default function GeneralConfigTab() {
     }
   }
 
+  async function handleSaveDataDir() {
+    setDataDirSaving(true)
+    setDataDirSaved(false)
+    try {
+      await app.SetDataDir(dataDirInput.trim())
+      setDataDirSaved(true)
+      setTimeout(() => setDataDirSaved(false), 3000)
+    } catch (err) {
+      console.error('save data dir failed:', err)
+    } finally {
+      setDataDirSaving(false)
+    }
+  }
+
+  async function handleSaveReminder() {
+    setReminderSaving(true)
+    setReminderSaved(false)
+    try {
+      await app.SaveMaintainReminderMinutes(reminderMinutes)
+      setReminderSaved(true)
+      setTimeout(() => setReminderSaved(false), 2000)
+    } catch (err) {
+      console.error('save reminder failed:', err)
+    } finally {
+      setReminderSaving(false)
+    }
+  }
+
+  async function handleSaveArchive() {
+    setArchiveSaving(true)
+    setArchiveSaved(false)
+    try {
+      await app.SaveArchiveInterval(archiveMinutes)
+      setArchiveSaved(true)
+      setTimeout(() => setArchiveSaved(false), 2000)
+    } catch (err) {
+      console.error('save archive interval failed:', err)
+    } finally {
+      setArchiveSaving(false)
+    }
+  }
+
+  async function handleSaveHistoryLimit() {
+    setHistoryLimitSaving(true)
+    setHistoryLimitSaved(false)
+    try {
+      await app.SaveHistoryLimit(historyLimit)
+      setHistoryLimitSaved(true)
+      setTimeout(() => setHistoryLimitSaved(false), 2000)
+    } catch (err) {
+      console.error('save history limit failed:', err)
+    } finally {
+      setHistoryLimitSaving(false)
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col">
       <h3 className="text-sm font-medium mb-5">{t('settings.basicConfig')}</h3>
@@ -94,11 +164,20 @@ export default function GeneralConfigTab() {
         </label>
         <div className="flex items-center gap-2">
           <input
-            value={dataDir}
-            readOnly
-            className="flex-1 h-8 rounded-md border bg-muted/50 px-3 text-xs font-mono focus:outline-none cursor-default"
+            value={dataDirInput}
+            onChange={e => setDataDirInput(e.target.value)}
+            placeholder="C:/path/to/platinum"
+            className="flex-1 h-8 rounded-md border bg-background px-3 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
           />
+          <button
+            onClick={handleSaveDataDir}
+            disabled={dataDirSaving || !dataDirInput.trim()}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs border hover:bg-muted transition-colors disabled:opacity-50 shrink-0"
+          >
+            {dataDirSaving ? t('common.saving') : dataDirSaved ? t('common.saved') : t('settings.saveDataDir')}
+          </button>
         </div>
+        <p className="text-[11px] text-muted-foreground">{t('settings.dataDirHint')}</p>
       </div>
 
       <div className="mt-6 space-y-3">
@@ -113,7 +192,7 @@ export default function GeneralConfigTab() {
             <input
               value={gitName}
               onChange={e => setGitName(e.target.value)}
-              placeholder="Goink"
+              placeholder="Platinum"
               className="flex-1 h-8 rounded-md border bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
@@ -122,7 +201,7 @@ export default function GeneralConfigTab() {
             <input
               value={gitEmail}
               onChange={e => setGitEmail(e.target.value)}
-              placeholder="goink@local"
+              placeholder="platinum@local"
               className="flex-1 h-8 rounded-md border bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
@@ -162,6 +241,84 @@ export default function GeneralConfigTab() {
             }`}
           >
             English
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+          <RefreshCw className="w-3.5 h-3.5" />
+          {t('settings.maintainReminder')}
+        </label>
+        <p className="text-[11px] text-muted-foreground">{t('settings.maintainReminderDesc')}</p>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            max={240}
+            value={reminderMinutes}
+            onChange={e => setReminderMinutes(Number(e.target.value))}
+            className="w-24 h-8 rounded-md border bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="text-xs text-muted-foreground">{t('settings.maintainReminderUnit')}</span>
+          <button
+            onClick={handleSaveReminder}
+            disabled={reminderSaving}
+            className="inline-flex items-center gap-1.5 h-8 px-4 rounded-md text-xs border hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {reminderSaving ? t('common.saving') : reminderSaved ? t('common.saved') : t('common.save')}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+          <Download className="w-3.5 h-3.5" />
+          {t('settings.archiveInterval')}
+        </label>
+        <p className="text-[11px] text-muted-foreground">{t('settings.archiveIntervalDesc')}</p>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            max={1440}
+            value={archiveMinutes}
+            onChange={e => setArchiveMinutes(Number(e.target.value))}
+            className="w-24 h-8 rounded-md border bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="text-xs text-muted-foreground">{t('settings.archiveIntervalUnit')}</span>
+          <button
+            onClick={handleSaveArchive}
+            disabled={archiveSaving}
+            className="inline-flex items-center gap-1.5 h-8 px-4 rounded-md text-xs border hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {archiveSaving ? t('common.saving') : archiveSaved ? t('common.saved') : t('common.save')}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5" />
+          {t('settings.historyLimit')}
+        </label>
+        <p className="text-[11px] text-muted-foreground">{t('settings.historyLimitDesc')}</p>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={200}
+            value={historyLimit}
+            onChange={e => setHistoryLimit(Number(e.target.value))}
+            className="w-24 h-8 rounded-md border bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="text-xs text-muted-foreground">{t('settings.historyLimitUnit')}</span>
+          <button
+            onClick={handleSaveHistoryLimit}
+            disabled={historyLimitSaving}
+            className="inline-flex items-center gap-1.5 h-8 px-4 rounded-md text-xs border hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {historyLimitSaving ? t('common.saving') : historyLimitSaved ? t('common.saved') : t('common.save')}
           </button>
         </div>
       </div>

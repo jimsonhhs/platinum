@@ -1,4 +1,4 @@
-package app
+﻿package app
 
 import (
 	"context"
@@ -157,7 +157,7 @@ func (a *App) Chat(input ChatInput) (*ChatResult, error) {
 		Model:         model,
 		ProviderName:  input.ProviderName,
 		AgentType:     "main",
-		MaxTurns:        50,
+		MaxTurns:        150,
 		ReasoningEffort: input.ReasoningEffort,
 	})
 
@@ -228,7 +228,7 @@ func (a *App) writeSystemMessages(tx *gorm.DB, sessionID string, novelID int64, 
 		}
 	}
 
-	identity := agentcfg.AgentIdentity(agentcfg.MainAgent)
+	identity := agentcfg.MainSystemPrompt(tx, novelID)
 
 	var always string
 	var catalog string
@@ -383,7 +383,7 @@ func (a *App) CompressContext(input CompressInput) (*CompressResult, error) {
 		Model:         model,
 		ProviderName:  input.ProviderName,
 		AgentType:     "main",
-		MaxTurns:      50,
+		MaxTurns:        150,
 	}
 
 	if err := a.agent.Compress(ctx, &opts, runningTokens); err != nil {

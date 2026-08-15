@@ -7,8 +7,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"path/filepath"
 
 	"novel/internal/chapter"
+	"novel/internal/draft"
 	"novel/internal/git"
 	"novel/internal/rag"
 	"novel/internal/skill"
@@ -23,8 +25,22 @@ type SaveContentInput struct {
 }
 
 // GetContent 返回小说仓库中指定路径的文件内容。文件不存在时返回空字符串。
-// 内置 skill 路径（/builtin/skills/）从内存读取。
+// 内置 skill 路径（/builtin/skills/）从内存读取；history://<relPath>|<fileName> 读取历史版本（只读）。
 func (a *App) GetContent(novelID int64, path string) (string, error) {
+	if strings.HasPrefix(path, "history://") {
+		rest := strings.TrimPrefix(path, "history://")
+		parts := strings.SplitN(rest, "|", 2)
+		if len(parts) != 2 || parts[1] == "" || strings.ContainsAny(parts[1], `\/`) {
+			return "", fmt.Errorf("历史路径无效")
+		}
+		dir := draft.HistoryDir(novelID, parts[0])
+		data, err := os.ReadFile(filepath.Join(dir, parts[1]))
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	}
+
 	if strings.HasPrefix(path, "/builtin/skills/") {
 		name := strings.TrimSuffix(strings.TrimPrefix(path, "/builtin/skills/"), ".md")
 		if a.skill == nil {

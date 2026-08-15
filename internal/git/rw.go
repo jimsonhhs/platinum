@@ -17,8 +17,8 @@ func ChapterPath(num int) string {
 	return fmt.Sprintf("chapters/%03d.md", num)
 }
 
-func GoinkPath() string {
-	return "goink.md"
+func PlatinumPath() string {
+	return "platinum.md"
 }
 
 func CoverPath() string {
@@ -33,8 +33,18 @@ func OutlinePath(num int) string {
 	return fmt.Sprintf("outlines/%03d.md", num)
 }
 
+// DraftPath 返回草稿文件路径（润色暂存区，不进入 RAG/维护）。
+func DraftPath(num int) string {
+	return fmt.Sprintf("drafts/%03d.md", num)
+}
+
+// DraftDir 返回草稿目录。
+func DraftDir(novelID int64) string {
+	return filepath.Join(novelDir(novelID), "drafts")
+}
+
 // ── 文件读写 ──────────────────────────────────────────────
-// path 为相对于小说仓库根目录的路径，如 "chapters/001.md"、"goink.md"。
+// path 为相对于小说仓库根目录的路径，如 "chapters/001.md"、"platinum.md"。
 
 func ReadFile(novelID int64, path string) (string, error) {
 	fullPath, err := ResolvePath(path, novelID)
@@ -49,6 +59,21 @@ func ReadFile(novelID int64, path string) (string, error) {
 		return "", fmt.Errorf("git: read %s: %w", path, err)
 	}
 	return string(data), nil
+}
+
+// DeleteFile 删除小说仓库中的文件。文件不存在时视为删除成功（幂等）。
+func DeleteFile(novelID int64, path string) error {
+	fullPath, err := ResolvePath(path, novelID)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(fullPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("git: delete %s: %w", path, err)
+	}
+	return nil
 }
 
 func WriteFile(novelID int64, path, content string) error {
@@ -71,17 +96,29 @@ func novelDir(novelID int64) string {
 	return config.NovelDirPath(novelID)
 }
 
+// NovelDir 返回小说的 Git 仓库根目录（导出）。
+func NovelDir(novelID int64) string {
+	return config.NovelDirPath(novelID)
+}
+
 // ResolvePath 将用户输入路径解析为真实文件系统路径。
-// ~/.goink/ 展开到用户目录；其他相对路径基于小说目录。
+// ~/.goink/ 前缀：skills/ 与 rules/ 映射到数据目录（便携、随数据走）；其他映射到用户目录。
+// 其他相对路径基于小说目录。
 func ResolvePath(path string, novelID int64) (string, error) {
 	if strings.HasPrefix(path, "~/.goink/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("git: 获取用户目录失败: %w", err)
-		}
-		base := filepath.Join(home, ".goink")
 		rel := strings.TrimPrefix(path, "~/.goink/")
-		return SafePath(base, rel)
+		switch {
+		case strings.HasPrefix(rel, "skills/"):
+			return SafePath(config.UserSkillsDir(), strings.TrimPrefix(rel, "skills/"))
+		case strings.HasPrefix(rel, "rules/"):
+			return SafePath(config.RulesDir(), strings.TrimPrefix(rel, "rules/"))
+		default:
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", fmt.Errorf("git: 获取用户目录失败: %w", err)
+			}
+			return SafePath(filepath.Join(home, ".goink"), rel)
+		}
 	}
 
 	dir := novelDir(novelID)

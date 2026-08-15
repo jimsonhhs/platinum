@@ -10,7 +10,7 @@ import (
 
 // RunSubagentArgs 是 run_subagent 的参数。
 type RunSubagentArgs struct {
-	AgentType   string `json:"agent_type" jsonschema:"required,enum=memory,enum=review,description=子 Agent 类型。memory：记忆检索分析员，探索故事数据并整理报告；review：章节审稿人，全面质量审查" validate:"required,oneof=memory review"`
+	AgentType   string `json:"agent_type" jsonschema:"required,enum=memory,enum=review,enum=writer,description=子 Agent 类型。memory：记忆检索分析员，探索故事数据并整理报告；review：章节审稿人，全面质量审查；writer：写作单元，独立上下文按指令写正文" validate:"required,oneof=memory review writer"`
 	Instruction string `json:"instruction" jsonschema:"required,description=给子 Agent 的任务指令，描述需要完成的具体工作" validate:"required"`
 }
 
@@ -56,6 +56,7 @@ const runSubagentDescription = `启动专项子 Agent 执行任务，子 Agent �
 Agent 类型：
 - memory：记忆检索分析员。可以搜索故事记忆、查询角色/时间线/弧线/地点/读者认知等所有数据，将分散的信息整合为连贯报告。用于需要多维度检索和深度分析的场景。
 - review：章节审稿人。可以读取章节内容、查询角色设定/伏笔/弧线等参考数据，逐项检查角色一致性、情节逻辑、伏笔管理、读者认知和弧线推进，输出审稿意见。
+- writer：写作单元。拥有独立上下文窗口，只负责按指令写正文（用 edit 工具写入章节文件），不维护数据、不评审。用于三段独立模式：主控拆解任务→writer 写作→review 评审，循环迭代。
 
 instruction 应清晰描述任务目标和期望输出。`
 
@@ -64,4 +65,11 @@ instruction 应清晰描述任务目标和期望输出。`
 // RegisterSubagentTools 注册子 Agent 工具。
 func RegisterSubagentTools(r *Registry) {
 	r.Register(&RunSubagentTool{})
+	r.Register(&UpdatePrevChapterTool{})
+	r.Register(&UpsertSettingTool{})
+	r.Register(&CopyToDraftTool{})
+	r.Register(&ImportDraftTool{})
+	r.Register(&AnalyzeMaterialTool{})
+	r.Register(&SetEnabledStyleTool{})
+	r.Register(&ListStylesTool{})
 }

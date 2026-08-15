@@ -30,12 +30,23 @@ type ProgressCallback func(stage, message string, current, total, percent int, n
 
 // Import 执行完整的小说导入流程：解析文件 → 创建 Novel → 写入章节 → git 提交。
 func Import(ctx context.Context, logger *slog.Logger, db *gorm.DB, filePath string, gitName, gitEmail string, onProgress ProgressCallback) (*ImportResult, error) {
+	return ImportWithLimit(ctx, logger, db, filePath, 0, gitName, gitEmail, onProgress)
+}
+
+// ImportWithLimit 支持最大导入章数限制（maxChapters>0 时只导入前 N 章，防止超长文本撑爆上下文/失忆）。
+func ImportWithLimit(ctx context.Context, logger *slog.Logger, db *gorm.DB, filePath string, maxChapters int, gitName, gitEmail string, onProgress ProgressCallback) (*ImportResult, error) {
 	onProgress("parse", "正在解析文件", 0, 0, 0, 0)
 
 	result, err := Parse(filePath, logger)
 	if err != nil {
 		onProgress("error", "导入解析失败，已停止导入", 0, 0, 0, 0)
 		return nil, fmt.Errorf("导入解析失败: %w", err)
+	}
+
+	// 上限截断：只保留前 maxChapters 章
+	if maxChapters > 0 && len(result.Chapters) > maxChapters {
+		logger.Info("导入上限截断", "total", len(result.Chapters), "keep", maxChapters)
+		result.Chapters = result.Chapters[:maxChapters]
 	}
 
 	// 正则分割结果不合理，直接返回 NeedsLLM 标记，不创建 Novel
@@ -100,10 +111,10 @@ func doImport(ctx context.Context, logger *slog.Logger, db *gorm.DB, result *Res
 		return nil, fmt.Errorf("初始化小说仓库失败: %w", err)
 	}
 
-	if err := git.WriteFile(n.ID, git.GoinkPath(), ""); err != nil {
+	if err := git.WriteFile(n.ID, git.PlatinumPath(), ""); err != nil {
 		cleanupImport(db, ctx, logger, n.ID)
-		onProgress("error", "创建 goink.md 失败", 0, chapterCount, 0, n.ID)
-		return nil, fmt.Errorf("创建 goink.md 失败: %w", err)
+		onProgress("error", "创建 platinum.md 失败", 0, chapterCount, 0, n.ID)
+		return nil, fmt.Errorf("创建 platinum.md 失败: %w", err)
 	}
 
 	onProgress("write_chapters", "正在写入章节", 0, chapterCount, 15, n.ID)
@@ -141,6 +152,8 @@ func doImport(ctx context.Context, logger *slog.Logger, db *gorm.DB, result *Res
 				ChapterNumber: chapNum,
 				Title:         ch.Title,
 				WordCount:     text.ComputeStats(ch.Content).WordCount,
+				Volume:        1,          // 默认第一卷
+				SortOrder:     float64(i + 1), // 按导入顺序排列
 			}
 			if err := tx.Create(&chap).Error; err != nil {
 				return fmt.Errorf("创建第%d章元数据失败: %w", chapNum, err)
@@ -152,6 +165,12 @@ func doImport(ctx context.Context, logger *slog.Logger, db *gorm.DB, result *Res
 		cleanupImport(db, ctx, logger, n.ID)
 		onProgress("error", "导入失败，已撤销本次导入产生的数据和文件", 0, chapterCount, 0, n.ID)
 		return nil, err
+	}
+
+	// 导入后同步单调计数器，避免新建章号与导入章节冲突（删除不回退）
+	if err := db.WithContext(ctx).Model(&novel.Novel{}).
+		Where("id = ?", n.ID).Update("chapter_seq", chapterCount).Error; err != nil {
+		logger.Error("导入后更新 chapter_seq 失败", "novel_id", n.ID, "err", err)
 	}
 
 	// ── Step 3: git commit（不可逆但极低失败率） ──

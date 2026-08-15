@@ -162,7 +162,8 @@ func (a *App) ExtractStyle(input ExtractStyleInput) (*style.ExtractResult, error
 	}()
 
 	return style.Extract(ctx, a.llmClient, samples,
-		input.ProviderName, input.ModelID, input.ReasoningEffort)
+		input.ProviderName, input.ModelID, input.ReasoningEffort,
+		a.emitStyleExtractProgress(input.TaskID))
 }
 
 // CancelExtract 取消指定 taskID 的风格提取任务。

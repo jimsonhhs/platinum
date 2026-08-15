@@ -97,6 +97,11 @@ export function useEditorTabs(novelId: number) {
     setActiveTabId(null)
   }, [])
 
+  const closeOtherTabs = useCallback((keepId: string) => {
+    setTabs(prev => prev.filter(t => t.id === keepId))
+    setActiveTabId(keepId)
+  }, [])
+
   const closeTab = useCallback((id: string) => {
     setTabs(prev => {
       if (prev.length <= 1) {
@@ -129,7 +134,7 @@ export function useEditorTabs(novelId: number) {
 
   return {
     tabs, activeTab, activeTabId,
-    openTab, closeTab, closeAllTabs, setActiveTabId,
+    openTab, closeTab, closeAllTabs, closeOtherTabs, setActiveTabId,
     updateTab, openDiffTab,
     initRef,
   }

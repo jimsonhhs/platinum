@@ -149,8 +149,8 @@ func (a *Agent) buildDisplay(name string, args map[string]any, phase mcp_tools.D
 			}
 		}
 
-		// rw 工具的 goink.md 路径特殊处理
-		if path, ok := args["path"].(string); ok && path == "goink.md" {
+		// rw 工具的 platinum.md 路径特殊处理
+		if path, ok := args["path"].(string); ok && path == "platinum.md" {
 			switch name {
 			case "edit":
 				baseText = "编辑 故事状态"

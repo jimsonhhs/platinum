@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"gorm.io/gorm"
@@ -45,6 +46,11 @@ type CreateNovelInput struct {
 	Title       string `json:"title"`
 	Description string `json:"description,omitempty"`
 	Genre       string `json:"genre,omitempty"`
+	BreakWords  string `json:"break_words,omitempty"`
+	BreakWords1 string `json:"break_words_1,omitempty"`
+	BreakWords2 string `json:"break_words_2,omitempty"`
+	BreakWords3 string `json:"break_words_3,omitempty"`
+	AIConfig    string `json:"ai_config,omitempty"`
 }
 
 // CreateNovel 创建一部新小说。
@@ -53,6 +59,11 @@ func (a *App) CreateNovel(input CreateNovelInput) (*novel.Novel, error) {
 		Title:       input.Title,
 		Description: input.Description,
 		Genre:       input.Genre,
+		BreakWords:  input.BreakWords,
+		BreakWords1: input.BreakWords1,
+		BreakWords2: input.BreakWords2,
+		BreakWords3: input.BreakWords3,
+		AIConfig:    input.AIConfig,
 	}
 	if err := a.novel.DB.WithContext(a.ctx).Create(&n).Error; err != nil {
 		return nil, fmt.Errorf("failed to create novel: %w", err)
@@ -64,10 +75,29 @@ func (a *App) CreateNovel(input CreateNovelInput) (*novel.Novel, error) {
 		return nil, fmt.Errorf("failed to init novel repo: %w", err)
 	}
 
-	// 为新小说创建 goink.md 空文件
-	if err := git.WriteFile(n.ID, git.GoinkPath(), ""); err != nil {
-		a.logger.Error("创建小说失败: goink.md 写入失败", "novelID", n.ID, "error", err)
-		return nil, fmt.Errorf("failed to create goink.md: %w", err)
+	// 新书自带第 1 章（编号 001，第一卷）——点击即可写，无需手动新建
+	if err := a.chapter.DB.WithContext(a.ctx).Create(&chapter.Chapter{
+		NovelID:       n.ID,
+		ChapterNumber: 1,
+		Title:         "001",
+		SortOrder:     1,
+		Volume:        1,
+	}).Error; err != nil {
+		a.logger.Error("创建小说失败: 创建初始章节失败", "novelID", n.ID, "error", err)
+		a.novel.DB.WithContext(a.ctx).Delete(&n)
+		return nil, fmt.Errorf("failed to create initial chapter: %w", err)
+	}
+	if err := git.WriteFile(n.ID, git.ChapterPath(1), ""); err != nil {
+		a.logger.Error("创建小说失败: 写入初始章节文件失败", "novelID", n.ID, "error", err)
+		a.novel.DB.WithContext(a.ctx).Delete(&n)
+		return nil, fmt.Errorf("failed to write initial chapter: %w", err)
+	}
+	_ = a.novel.DB.WithContext(a.ctx).Model(&novel.Novel{}).Where("id = ?", n.ID).Update("chapter_seq", 1)
+
+	// 为新小说创建 platinum.md 空文件
+	if err := git.WriteFile(n.ID, git.PlatinumPath(), ""); err != nil {
+		a.logger.Error("创建小说失败: platinum.md 写入失败", "novelID", n.ID, "error", err)
+		return nil, fmt.Errorf("failed to create platinum.md: %w", err)
 	}
 
 	a.logger.Info("小说创建成功", "novelID", n.ID, "title", n.Title)
@@ -85,6 +115,11 @@ type UpdateNovelInput struct {
 	Title       string `json:"title,omitempty"`
 	Description string `json:"description,omitempty"`
 	Genre       string `json:"genre,omitempty"`
+	BreakWords  string `json:"break_words,omitempty"`
+	BreakWords1 string `json:"break_words_1,omitempty"`
+	BreakWords2 string `json:"break_words_2,omitempty"`
+	BreakWords3 string `json:"break_words_3,omitempty"`
+	AIConfig    string `json:"ai_config,omitempty"`
 }
 
 // UpdateNovel 更新小说信息。
@@ -101,6 +136,21 @@ func (a *App) UpdateNovel(novelID int64, input UpdateNovelInput) (*novel.Novel, 
 	}
 	if input.Genre != "" {
 		n.Genre = input.Genre
+	}
+	if input.BreakWords != "" {
+		n.BreakWords = input.BreakWords
+	}
+	if input.BreakWords1 != "" {
+		n.BreakWords1 = input.BreakWords1
+	}
+	if input.BreakWords2 != "" {
+		n.BreakWords2 = input.BreakWords2
+	}
+	if input.BreakWords3 != "" {
+		n.BreakWords3 = input.BreakWords3
+	}
+	if input.AIConfig != "" {
+		n.AIConfig = input.AIConfig
 	}
 	if err := a.novel.DB.WithContext(a.ctx).Save(&n).Error; err != nil {
 		return nil, fmt.Errorf("update novel: %w", err)
@@ -280,8 +330,13 @@ func (a *App) SaveCover(novelID int64, data []byte) error {
 
 // ── 导出 ──────────────────────────────────────────────────
 
-// ExportNovel 将小说导出为指定格式，弹出保存对话框让用户选择保存位置。
-func (a *App) ExportNovel(novelID int64, format string) error {
+// ExportNovel 将小说导出为指定格式（selected 为空=全部章节，否则只导出选中的章节号，按叙事顺序），弹出保存对话框。
+func (a *App) ExportNovel(novelID int64, format string, selected []int) error {
+	// 导出前规整所有卷的序号（分数 → 连续整数，副作用最小）
+	if err := a.NormalizeVolumeOrders(novelID, 0); err != nil {
+		a.logger.Warn("导出前规整序号失败", "err", err)
+	}
+
 	var n novel.Novel
 	if err := a.novel.DB.WithContext(a.ctx).First(&n, novelID).Error; err != nil {
 		return fmt.Errorf("export novel: %w", err)
@@ -291,6 +346,37 @@ func (a *App) ExportNovel(novelID int64, format string) error {
 	if err != nil {
 		return fmt.Errorf("export novel: %w", err)
 	}
+	// 按卷顺序 → 卷内 sort_order 排序（sort_order 是卷内序号，不能全局排，否则跨卷交错）
+	volCount := len(novel.ParseVolumes(n.Volumes))
+	if volCount < 1 {
+		volCount = 1
+	}
+	sort.SliceStable(chapters, func(i, j int) bool {
+		vi, vj := chapters[i].Volume, chapters[j].Volume
+		if vi < 1 || vi > volCount {
+			vi = volCount + 1 // 未归属卷的章节放最后
+		}
+		if vj < 1 || vj > volCount {
+			vj = volCount + 1
+		}
+		if vi != vj {
+			return vi < vj
+		}
+		return chapters[i].SortOrder < chapters[j].SortOrder
+	})
+	if len(selected) > 0 {
+		want := map[int]bool{}
+		for _, num := range selected {
+			want[num] = true
+		}
+		var filtered []chapter.Chapter
+		for _, ch := range chapters {
+			if want[ch.ChapterNumber] {
+				filtered = append(filtered, ch)
+			}
+		}
+		chapters = filtered
+	}
 	if len(chapters) == 0 {
 		return fmt.Errorf("export novel: 没有可导出的章节")
 	}
@@ -299,7 +385,9 @@ func (a *App) ExportNovel(novelID int64, format string) error {
 	for _, ch := range chapters {
 		content, err := git.ReadFile(novelID, git.ChapterPath(ch.ChapterNumber))
 		if err != nil {
-			return fmt.Errorf("export novel: 读取第%d章失败: %w", ch.ChapterNumber, err)
+			// 章节文件缺失（如 DB 记录残留）：按空内容导出并告警，不中断整个导出
+			a.logger.Warn("导出时第%d章文件缺失，按空内容处理", "novel_id", novelID, "chapter", ch.ChapterNumber, "err", err)
+			content = ""
 		}
 		cc = append(cc, export.ChapterWithContent{Chapter: ch, Content: content})
 	}

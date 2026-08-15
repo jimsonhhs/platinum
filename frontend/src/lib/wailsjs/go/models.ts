@@ -1,5 +1,19 @@
 export namespace app {
 	
+	export class ArchiveRestoreInput {
+	    snapshot_id: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ArchiveRestoreInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.snapshot_id = source["snapshot_id"];
+	        this.path = source["path"];
+	    }
+	}
 	export class ChatInput {
 	    session_id: string;
 	    novel_id: number;
@@ -131,6 +145,7 @@ export namespace app {
 	export class CreateChapterInput {
 	    novel_id: number;
 	    title: string;
+	    volume: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateChapterInput(source);
@@ -140,6 +155,7 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.novel_id = source["novel_id"];
 	        this.title = source["title"];
+	        this.volume = source["volume"];
 	    }
 	}
 	export class CreateCharacterInput {
@@ -186,6 +202,11 @@ export namespace app {
 	    title: string;
 	    description?: string;
 	    genre?: string;
+	    break_words?: string;
+	    break_words_1?: string;
+	    break_words_2?: string;
+	    break_words_3?: string;
+	    ai_config?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateNovelInput(source);
@@ -196,6 +217,11 @@ export namespace app {
 	        this.title = source["title"];
 	        this.description = source["description"];
 	        this.genre = source["genre"];
+	        this.break_words = source["break_words"];
+	        this.break_words_1 = source["break_words_1"];
+	        this.break_words_2 = source["break_words_2"];
+	        this.break_words_3 = source["break_words_3"];
+	        this.ai_config = source["ai_config"];
 	    }
 	}
 	export class CreatePreferenceInput {
@@ -298,6 +324,20 @@ export namespace app {
 	        this.source = source["source"];
 	    }
 	}
+	export class DeleteChapterInput {
+	    novel_id: number;
+	    chapter_number: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeleteChapterInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.novel_id = source["novel_id"];
+	        this.chapter_number = source["chapter_number"];
+	    }
+	}
 	export class DeleteSkillInput {
 	    novel_id: number;
 	    name: string;
@@ -324,6 +364,48 @@ export namespace app {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	    }
+	}
+	export class DuplicateSkillInput {
+	    novel_id: number;
+	    source: string;
+	    name: string;
+	    target_source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DuplicateSkillInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.novel_id = source["novel_id"];
+	        this.source = source["source"];
+	        this.name = source["name"];
+	        this.target_source = source["target_source"];
+	    }
+	}
+	export class ExtractMaterialStyleInput {
+	    task_id: string;
+	    file_path: string;
+	    start_index: number;
+	    end_index: number;
+	    provider_name: string;
+	    model_id: string;
+	    reasoning_effort: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExtractMaterialStyleInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.task_id = source["task_id"];
+	        this.file_path = source["file_path"];
+	        this.start_index = source["start_index"];
+	        this.end_index = source["end_index"];
+	        this.provider_name = source["provider_name"];
+	        this.model_id = source["model_id"];
+	        this.reasoning_effort = source["reasoning_effort"];
 	    }
 	}
 	export class ExtractStyleInput {
@@ -366,6 +448,7 @@ export namespace app {
 	}
 	export class ImportNovelInput {
 	    file_path: string;
+	    max_chapters: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ImportNovelInput(source);
@@ -374,6 +457,7 @@ export namespace app {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.file_path = source["file_path"];
+	        this.max_chapters = source["max_chapters"];
 	    }
 	}
 	export class ImportWithLLMInput {
@@ -434,6 +518,54 @@ export namespace app {
 	        this.search = source["search"];
 	    }
 	}
+	export class MaterialChapter {
+	    index: number;
+	    title: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MaterialChapter(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.index = source["index"];
+	        this.title = source["title"];
+	    }
+	}
+	export class MaterialMeta {
+	    file_path: string;
+	    file_name: string;
+	    chapters: MaterialChapter[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MaterialMeta(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.file_path = source["file_path"];
+	        this.file_name = source["file_name"];
+	        this.chapters = this.convertValues(source["chapters"], MaterialChapter);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PreferenceResult {
 	    global: novel.PreferenceItem[];
 	    novel: novel.PreferenceItem[];
@@ -466,6 +598,121 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class RenameSkillInput {
+	    novel_id: number;
+	    source: string;
+	    name: string;
+	    new_name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RenameSkillInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.novel_id = source["novel_id"];
+	        this.source = source["source"];
+	        this.name = source["name"];
+	        this.new_name = source["new_name"];
+	    }
+	}
+	export class SandboxShape {
+	    id: string;
+	    type: string;
+	    x: number;
+	    y: number;
+	    w: number;
+	    h: number;
+	    rotation: number;
+	    fill: string;
+	    fillOpacity: number;
+	    stroke: string;
+	    strokeWidth: number;
+	    label: string;
+	    entityType: string;
+	    entityId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SandboxShape(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.type = source["type"];
+	        this.x = source["x"];
+	        this.y = source["y"];
+	        this.w = source["w"];
+	        this.h = source["h"];
+	        this.rotation = source["rotation"];
+	        this.fill = source["fill"];
+	        this.fillOpacity = source["fillOpacity"];
+	        this.stroke = source["stroke"];
+	        this.strokeWidth = source["strokeWidth"];
+	        this.label = source["label"];
+	        this.entityType = source["entityType"];
+	        this.entityId = source["entityId"];
+	    }
+	}
+	export class SandboxData {
+	    name: string;
+	    description: string;
+	    shapes: SandboxShape[];
+	    viewX: number;
+	    viewY: number;
+	    scale: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SandboxData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.shapes = this.convertValues(source["shapes"], SandboxShape);
+	        this.viewX = source["viewX"];
+	        this.viewY = source["viewY"];
+	        this.scale = source["scale"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SandboxMeta {
+	    id: string;
+	    name: string;
+	    description: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SandboxMeta(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	
 	export class SaveContentInput {
 	    novel_id: number;
 	    path: string;
@@ -479,6 +726,24 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.novel_id = source["novel_id"];
 	        this.path = source["path"];
+	        this.content = source["content"];
+	    }
+	}
+	export class SaveSettingInput {
+	    novel_id: number;
+	    id: number;
+	    category: string;
+	    content: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveSettingInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.novel_id = source["novel_id"];
+	        this.id = source["id"];
+	        this.category = source["category"];
 	        this.content = source["content"];
 	    }
 	}
@@ -568,6 +833,20 @@ export namespace app {
 	        this.type = source["type"];
 	    }
 	}
+	export class StyleEntry {
+	    name: string;
+	    size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StyleEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.size = source["size"];
+	    }
+	}
 	export class TestConnectionInput {
 	    provider_name: string;
 	    chat_url: string;
@@ -584,6 +863,20 @@ export namespace app {
 	        this.chat_url = source["chat_url"];
 	        this.api_key = source["api_key"];
 	        this.model_id = source["model_id"];
+	    }
+	}
+	export class TrashItemInput {
+	    type: string;
+	    id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TrashItemInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.id = source["id"];
 	    }
 	}
 	export class UpdateArcNodeInput {
@@ -666,6 +959,11 @@ export namespace app {
 	    title?: string;
 	    description?: string;
 	    genre?: string;
+	    break_words?: string;
+	    break_words_1?: string;
+	    break_words_2?: string;
+	    break_words_3?: string;
+	    ai_config?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateNovelInput(source);
@@ -676,6 +974,11 @@ export namespace app {
 	        this.title = source["title"];
 	        this.description = source["description"];
 	        this.genre = source["genre"];
+	        this.break_words = source["break_words"];
+	        this.break_words_1 = source["break_words_1"];
+	        this.break_words_2 = source["break_words_2"];
+	        this.break_words_3 = source["break_words_3"];
+	        this.ai_config = source["ai_config"];
 	    }
 	}
 	export class UpdatePreferenceInput {
@@ -785,6 +1088,31 @@ export namespace app {
 
 }
 
+export namespace archive {
+	
+	export class SnapshotMeta {
+	    id: string;
+	    created_at: string;
+	    size: number;
+	    files: number;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SnapshotMeta(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.created_at = source["created_at"];
+	        this.size = source["size"];
+	        this.files = source["files"];
+	        this.path = source["path"];
+	    }
+	}
+
+}
+
 export namespace chapter {
 	
 	export class Chapter {
@@ -792,6 +1120,9 @@ export namespace chapter {
 	    novel_id: number;
 	    chapter_number: number;
 	    title: string;
+	    prev_chapter_number: number;
+	    sort_order: number;
+	    volume: number;
 	    summary: string;
 	    word_count: number;
 	    // Go type: time
@@ -810,6 +1141,9 @@ export namespace chapter {
 	        this.novel_id = source["novel_id"];
 	        this.chapter_number = source["chapter_number"];
 	        this.title = source["title"];
+	        this.prev_chapter_number = source["prev_chapter_number"];
+	        this.sort_order = source["sort_order"];
+	        this.volume = source["volume"];
 	        this.summary = source["summary"];
 	        this.word_count = source["word_count"];
 	        this.created_at = this.convertValues(source["created_at"], null);
@@ -948,6 +1282,9 @@ export namespace config {
 	    user_name: string;
 	    git_name: string;
 	    git_email: string;
+	    maintain_reminder_minutes: number;
+	    archive_interval_minutes: number;
+	    history_limit: number;
 	    dismissed_version: string;
 	
 	    static createFrom(source: any = {}) {
@@ -965,7 +1302,33 @@ export namespace config {
 	        this.user_name = source["user_name"];
 	        this.git_name = source["git_name"];
 	        this.git_email = source["git_email"];
+	        this.maintain_reminder_minutes = source["maintain_reminder_minutes"];
+	        this.archive_interval_minutes = source["archive_interval_minutes"];
+	        this.history_limit = source["history_limit"];
 	        this.dismissed_version = source["dismissed_version"];
+	    }
+	}
+
+}
+
+export namespace draft {
+	
+	export class HistoryEntry {
+	    name: string;
+	    size: number;
+	    mtime: string;
+	    words: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new HistoryEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.mtime = source["mtime"];
+	        this.words = source["words"];
 	    }
 	}
 
@@ -977,8 +1340,7 @@ export namespace git {
 	    hash: string;
 	    shortHash: string;
 	    message: string;
-	    // Go type: time
-	    time: any;
+	    time: string;
 	    authorName: string;
 	    authorEmail: string;
 	    filesChanged: number;
@@ -994,31 +1356,31 @@ export namespace git {
 	        this.hash = source["hash"];
 	        this.shortHash = source["shortHash"];
 	        this.message = source["message"];
-	        this.time = this.convertValues(source["time"], null);
+	        this.time = source["time"];
 	        this.authorName = source["authorName"];
 	        this.authorEmail = source["authorEmail"];
 	        this.filesChanged = source["filesChanged"];
 	        this.insertions = source["insertions"];
 	        this.deletions = source["deletions"];
 	    }
+	}
+	export class FileChange {
+	    path: string;
+	    status: string;
+	    insertions: number;
+	    deletions: number;
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
+	    static createFrom(source: any = {}) {
+	        return new FileChange(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.status = source["status"];
+	        this.insertions = source["insertions"];
+	        this.deletions = source["deletions"];
+	    }
 	}
 	export class FileDiff {
 	    path: string;
@@ -1358,6 +1720,14 @@ export namespace novel {
 	    title: string;
 	    genre: string;
 	    description: string;
+	    break_words: string;
+	    break_words_1: string;
+	    break_words_2: string;
+	    break_words_3: string;
+	    ai_config: string;
+	    chapter_seq: number;
+	    volumes: string;
+	    enabled_style: string;
 	    // Go type: time
 	    created_at: any;
 	    // Go type: time
@@ -1373,6 +1743,14 @@ export namespace novel {
 	        this.title = source["title"];
 	        this.genre = source["genre"];
 	        this.description = source["description"];
+	        this.break_words = source["break_words"];
+	        this.break_words_1 = source["break_words_1"];
+	        this.break_words_2 = source["break_words_2"];
+	        this.break_words_3 = source["break_words_3"];
+	        this.ai_config = source["ai_config"];
+	        this.chapter_seq = source["chapter_seq"];
+	        this.volumes = source["volumes"];
+	        this.enabled_style = source["enabled_style"];
 	        this.created_at = this.convertValues(source["created_at"], null);
 	        this.updated_at = this.convertValues(source["updated_at"], null);
 	    }
@@ -1435,6 +1813,18 @@ export namespace novel {
 		    }
 		    return a;
 		}
+	}
+	export class Volume {
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Volume(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	    }
 	}
 
 }
@@ -1813,6 +2203,53 @@ export namespace session {
 
 }
 
+export namespace setting {
+	
+	export class SettingItem {
+	    id: number;
+	    novel_id: number;
+	    category: string;
+	    content: string;
+	    // Go type: time
+	    created_at: any;
+	    // Go type: time
+	    updated_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new SettingItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.novel_id = source["novel_id"];
+	        this.category = source["category"];
+	        this.content = source["content"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.updated_at = this.convertValues(source["updated_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace skill {
 	
 	export class SkillMeta {
@@ -1823,6 +2260,7 @@ export namespace skill {
 	    author: string;
 	    version: number;
 	    source: string;
+	    error?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SkillMeta(source);
@@ -1837,6 +2275,7 @@ export namespace skill {
 	        this.author = source["author"];
 	        this.version = source["version"];
 	        this.source = source["source"];
+	        this.error = source["error"];
 	    }
 	}
 
@@ -2216,6 +2655,41 @@ export namespace timeline {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace trash {
+	
+	export class Item {
+	    id: string;
+	    type: string;
+	    source: string;
+	    novel_id: number;
+	    original_path: string;
+	    name: string;
+	    title: string;
+	    word_count: number;
+	    size: number;
+	    trashed_at: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Item(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.type = source["type"];
+	        this.source = source["source"];
+	        this.novel_id = source["novel_id"];
+	        this.original_path = source["original_path"];
+	        this.name = source["name"];
+	        this.title = source["title"];
+	        this.word_count = source["word_count"];
+	        this.size = source["size"];
+	        this.trashed_at = source["trashed_at"];
+	    }
 	}
 
 }
