@@ -68,16 +68,13 @@ func (a *App) SaveHistoryLimit(limit int) error {
 	return config.SaveSettings(a.db, a.settings)
 }
 
-// SetDataDir 修改数据根目录（写入指针文件 ~/.goink/config.json，重启后完整生效）。
+// SetDataDir 修改数据根目录并立即生效（写入 exe 目录/data_dir.txt + 重新初始化）。
 func (a *App) SetDataDir(dir string) error {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
 		return fmt.Errorf("数据目录不能为空")
 	}
-	if err := config.Save(dir); err != nil {
-		return fmt.Errorf("保存数据目录失败: %w", err)
-	}
-	return nil
+	return a.UpdateDataDir(dir)
 }
 
 // SaveMaintainReminderMinutes 保存维护提醒弹窗间隔（分钟，0=关闭）。

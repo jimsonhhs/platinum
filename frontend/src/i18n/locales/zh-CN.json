@@ -380,7 +380,11 @@
     "themeSyncSuggest": "💡 建议：仅切换主题，保持当前字体/背景设定（如需同步请点白色「确定」）。",
     "themeSyncConfirmBtn": "确定（同步）",
     "themeSyncCancelBtn": "取消（仅主题）",
-    "presetDeleteConfirm": "确定删除该配色方案？删除后不可恢复。"
+    "presetDeleteConfirm": "确定删除该配色方案？删除后不可恢复。",
+    "dataDirFixed": "数据目录固定为程序所在文件夹（便携设计，随 exe 移动），不可更改",
+    "chooseDataDir": "选择数据目录",
+    "dataDirDesc": "默认使用程序所在文件夹；点击文件夹图标可选择其他目录，选择记录在程序文件夹内（便携，随程序移动），修改立即生效",
+    "dataDirChanged": "数据目录已更改并立即生效"
   },
   "novel": {
     "totalWorks": "共 {{count}} 部作品",
@@ -466,14 +470,16 @@
     "aiSettingsDesc": "破甲词 / 注入 / 维护配置",
     "importMaxChapters": "最多导入章数",
     "importMaxChaptersHint": "（0=全部；建议 100 内防止超长失忆）",
-    "maint_platinum": "故事状态文档",
+    "maint_platinum": "故事状态文档（AI 可更新）",
     "maint_outline_desc": "AI 总结每章正文大纲（outlines/），用于回顾剧情与查错",
     "maint_character_desc": "角色及其关系表，保持人名、性格、关系一致",
     "maint_timeline_desc": "时间线、伏笔与用户指令，追踪剧情进度与埋设",
-    "maint_platinum_desc": "故事状态文档（platinum.md）：全书总览、当前进展、遗留问题",
+    "maint_platinum_desc": "允许 AI 在每章完成后更新 platinum.md：进度、遗留问题（与上方\"注入\"不同：注入=AI 读取，维护=AI 写入）",
     "maint_reader_desc": "读者认知：已知、悬念、误解，控制信息释放节奏",
     "maint_arc_desc": "叙事弧线：主线、支线、角色线的节点与完成状态",
-    "injectPlatinum": "故事状态文档（platinum.md）"
+    "injectPlatinum": "故事状态文档（每轮注入 AI 上下文）",
+    "platinumUnified": "故事状态文档",
+    "platinumUnifiedDesc": "一个开关同时控制两项：① 每轮注入 AI 上下文（AI 读取全书状态）；② 允许 AI 每章后维护更新（进度/遗留问题）"
   },
   "character": {
     "character": "角色",

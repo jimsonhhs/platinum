@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"runtime"
 
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"novel/internal/config"
 	"novel/internal/storage"
 )
@@ -19,16 +21,13 @@ func (a *App) GetAppConfig() map[string]any {
 	}
 }
 
-// UpdateDataDir 更改数据目录并重新初始化所有运行时模块。
-//
-// TODO: 实现数据迁移——更改目录时自动将旧目录中的数据文件移动到新目录。
-// 同盘用 os.Rename（原子），跨盘用递归拷贝+进度回调，目标非空时弹确认框。
+// UpdateDataDir 更改数据目录并立即重新初始化所有运行时模块（无需重启）。
 func (a *App) UpdateDataDir(newPath string) error {
 	if newPath == "" {
 		return fmt.Errorf("数据目录路径不能为空")
 	}
 
-	// 先保存新配置，失败时旧 DB 仍可用
+	// 先保存新配置（写入 exe 目录/data_dir.txt），失败时旧 DB 仍可用
 	if err := config.Save(newPath); err != nil {
 		return fmt.Errorf("保存配置失败: %w", err)
 	}
@@ -50,6 +49,21 @@ func (a *App) UpdateDataDir(newPath string) error {
 	a.initWithConfig(cfg)
 	a.logger.Info("数据目录已更改", "data_dir", config.DataDirPath())
 	return nil
+}
+
+// PickDataDir 弹出目录选择对话框，返回用户选择的目录路径（取消返回空串）。
+func (a *App) PickDataDir() (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("应用尚未初始化")
+	}
+	selected, err := wailsruntime.OpenDirectoryDialog(a.ctx, wailsruntime.OpenDialogOptions{
+		Title:            "选择数据目录",
+		DefaultDirectory: config.DataDirPath(),
+	})
+	if err != nil {
+		return "", fmt.Errorf("打开目录选择失败: %w", err)
+	}
+	return selected, nil // 空串 = 用户取消
 }
 
 // GetPlatform 返回平台信息，供前端决定默认路径等行为。

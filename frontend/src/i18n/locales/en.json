@@ -390,7 +390,11 @@
     "themeSyncSuggest": "💡 Recommended: switch theme only, keep current font/background (click white \"OK\" only if you want to sync).",
     "themeSyncConfirmBtn": "OK (sync)",
     "themeSyncCancelBtn": "Cancel (theme only)",
-    "presetDeleteConfirm": "Delete this color preset? This cannot be undone."
+    "presetDeleteConfirm": "Delete this color preset? This cannot be undone.",
+    "dataDirFixed": "Data directory is fixed to the program folder (portable, moves with the exe) and cannot be changed",
+    "chooseDataDir": "Choose data directory",
+    "dataDirDesc": "Defaults to the program folder; click the folder icon to choose another. The choice is stored inside the program folder (portable) and takes effect immediately.",
+    "dataDirChanged": "Data directory changed and applied immediately"
   },
   "novel": {
     "totalWorks_one": "{{count}} work",
@@ -479,14 +483,16 @@
     "aiSettingsDesc": "Break words / injection / maintenance",
     "importMaxChapters": "Max chapters to import",
     "importMaxChaptersHint": "(0 = all; keep under 100 to avoid context loss)",
-    "maint_platinum": "Story state doc",
+    "maint_platinum": "Story state doc (AI may update)",
     "maint_outline_desc": "AI summarizes per-chapter outlines (outlines/) for review",
     "maint_character_desc": "Characters & relations; keeps names and arcs consistent",
     "maint_timeline_desc": "Timeline, foreshadowing & user directives",
-    "maint_platinum_desc": "Story state doc (platinum.md): overview, progress, open threads",
+    "maint_platinum_desc": "Let AI update platinum.md after each chapter: progress, open threads (differs from \"inject\" above: inject=AI reads it, maintain=AI writes it)",
     "maint_reader_desc": "Reader knowledge: known/suspense/misconception",
     "maint_arc_desc": "Story arcs: main/sub/character lines and node status",
-    "injectPlatinum": "Story state doc (platinum.md)"
+    "injectPlatinum": "Story state doc (injected every turn)",
+    "platinumUnified": "Story state doc",
+    "platinumUnifiedDesc": "One switch controls both: ① inject into AI context every turn (AI reads); ② allow AI to maintain/update it after each chapter (AI writes)"
   },
   "character": {
     "character": "Character",

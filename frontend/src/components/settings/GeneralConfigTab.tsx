@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Folder, RefreshCw, GitFork, Languages, Download, Loader2, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
+import { Folder, FolderOpen, RefreshCw, GitFork, Languages, Download, Loader2, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { SaveGitConfig, GetVersion, CheckUpdate } from '@/lib/wailsjs/go/app/App'
 import type { update as updateModels } from '@/lib/wailsjs/go/models'
@@ -11,7 +11,7 @@ export default function GeneralConfigTab() {
   const { t, i18n } = useTranslation()
   const [dataDirInput, setDataDirInput] = useState('')
   const [dataDirSaving, setDataDirSaving] = useState(false)
-  const [dataDirSaved, setDataDirSaved] = useState(false)
+  const [dataDirMsg, setDataDirMsg] = useState('')
   const [novels, setNovels] = useState<novel.Novel[]>([])
   const [selectedID, setSelectedID] = useState<number>(0)
   const [rebuilding, setRebuilding] = useState(false)
@@ -97,15 +97,20 @@ export default function GeneralConfigTab() {
     }
   }
 
-  async function handleSaveDataDir() {
+  // 选择数据目录：弹目录选择框 → 立即生效（无需重启）
+  async function handlePickDataDir() {
     setDataDirSaving(true)
-    setDataDirSaved(false)
+    setDataDirMsg('')
     try {
-      await app.SetDataDir(dataDirInput.trim())
-      setDataDirSaved(true)
-      setTimeout(() => setDataDirSaved(false), 3000)
+      const picked = await app.PickDataDir()
+      if (!picked) return // 用户取消
+      await app.UpdateDataDir(picked)
+      setDataDirInput(picked)
+      setDataDirMsg(t('settings.dataDirChanged'))
+      setTimeout(() => setDataDirMsg(''), 4000)
     } catch (err) {
-      console.error('save data dir failed:', err)
+      console.error('pick data dir failed:', err)
+      setDataDirMsg(err instanceof Error ? err.message : String(err))
     } finally {
       setDataDirSaving(false)
     }
@@ -165,19 +170,22 @@ export default function GeneralConfigTab() {
         <div className="flex items-center gap-2">
           <input
             value={dataDirInput}
-            onChange={e => setDataDirInput(e.target.value)}
+            readOnly
             placeholder="C:/path/to/platinum"
-            className="flex-1 h-8 rounded-md border bg-background px-3 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+            className="flex-1 h-8 rounded-md border bg-muted/30 px-3 text-xs font-mono focus:outline-none cursor-default"
+            title={dataDirInput}
           />
           <button
-            onClick={handleSaveDataDir}
-            disabled={dataDirSaving || !dataDirInput.trim()}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs border hover:bg-muted transition-colors disabled:opacity-50 shrink-0"
+            onClick={handlePickDataDir}
+            disabled={dataDirSaving}
+            className="inline-flex items-center justify-center w-8 h-8 rounded-md border hover:bg-muted transition-colors shrink-0"
+            title={t('settings.chooseDataDir')}
           >
-            {dataDirSaving ? t('common.saving') : dataDirSaved ? t('common.saved') : t('settings.saveDataDir')}
+            <FolderOpen className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-[11px] text-muted-foreground">{t('settings.dataDirHint')}</p>
+        <p className="text-[11px] text-muted-foreground">{t('settings.dataDirDesc')}</p>
+        {dataDirMsg && <p className="text-[11px] text-primary">{dataDirMsg}</p>}
       </div>
 
       <div className="mt-6 space-y-3">

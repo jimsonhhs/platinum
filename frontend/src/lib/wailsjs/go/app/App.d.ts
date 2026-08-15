@@ -223,6 +223,8 @@ export function NormalizeVolumeOrders(arg1:number,arg2:number):Promise<void>;
 
 export function PickAndImportNovel(arg1:number):Promise<imp.ImportResult>;
 
+export function PickDataDir():Promise<string>;
+
 export function PurgeTrashItem(arg1:app.TrashItemInput):Promise<void>;
 
 export function RebuildNovelIndex(arg1:number):Promise<void>;

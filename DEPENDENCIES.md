@@ -34,9 +34,19 @@ turn_commits / style_samples / writing_logs
 ```
 chapters/%03d.md（正文，AI 禁直接写） / drafts/%03d.md（草稿+_history/）
 outlines/%03d.md（AI 总结大纲） / user_outlines/%03d.md / platinum.md（故事状态文档）
-plans/{scope}.md / skills/ / cover.jpg / rules/rules.md（全局，AI 只读）
+plans/{scope}.md / skills/ / cover.jpg / rules/rules.md（全局，AI 只读） / sandboxs/*.json（沙盘，多份）
 ```
 - **改路径 → git 包函数 + 前端 path 判断 + 技能/rules 文档 + edit 工具白名单正则 四处同步。**
+
+### 1.4 数据目录（便携）
+
+```
+默认 = exe 所在文件夹；用户选择记录在 exe 目录/data_dir.txt（一行路径，便携）
+优先级：GOINK_DATA_DIR 环境变量（测试）> data_dir.txt > exe 目录
+旧 ~/.goink/config.json 的 data_dir 仅做一次性迁移（config.Load 自动写入 data_dir.txt 后不再读取）
+设置页改目录 → UpdateDataDir（保存+关旧DB+重新初始化，立即生效）；PickDataDir 弹目录选择框
+```
+- **改数据目录逻辑 → config.go（DataDirPath/Load/Save/readLocalDataDir/readLegacyConfigDir）+ app_config.go（UpdateDataDir/PickDataDir）+ settings.go（SetDataDir）+ 前端 GeneralConfigTab 三处同步。**
 
 ### 1.3 包依赖面（数据/存储层：16 包）
 
@@ -227,6 +237,7 @@ wails build（Go 1.26.5 + mingw + CGO_CFLAGS=-IC:\Users\haoha\go\goink-cgo-inclu
 | 新增 MCP 工具 | RegisterAllTools + identity.go Allowlist + HelpDialog + useApp（如前端直调） |
 | i18n 键 | zh-CN + en + audit_i18n.cjs |
 | 文件路径/文件名 | internal/git/rw.go + 前端 path 判断 + edit 工具白名单 + 技能/rules + README |
+| 沙盘（sandboxs/*.json） | app/sandbox_api.go（List/Get/Save/Create/Update/Delete）+ useApp 6 方法 + SandboxView/SandboxList + i18n；形状/实体关联字段（entityType/entityId）变更需同步前端类型 |
 | 后端新方法 | wails build 重新生成绑定 + useApp 导出 + 组件调用 |
 | 注入链内容 | agentcfg（MainSystemPrompt/NovelState）+ app/chat.go writeSystemMessages + AISettingsDialog |
 | 拖拽/排序 | dnd.log 快照验证 + prev 重算 + 导出顺序 |

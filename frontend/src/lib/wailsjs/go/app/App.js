@@ -398,6 +398,10 @@ export function PickAndImportNovel(arg1) {
   return window['go']['app']['App']['PickAndImportNovel'](arg1);
 }
 
+export function PickDataDir() {
+  return window['go']['app']['App']['PickDataDir']();
+}
+
 export function PurgeTrashItem(arg1) {
   return window['go']['app']['App']['PurgeTrashItem'](arg1);
 }

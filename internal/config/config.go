@@ -34,25 +34,51 @@ func Get() *AppConfig {
 	return globalCfg
 }
 
-// AppConfig 是启动指针文件 ~/.goink/config.json 的内容。
-// DataDir 为数据根目录：非空时生效（优先级：GOINK_DATA_DIR 环境变量 > 此字段 > 平台默认）。
+// AppConfig 是启动指针文件的内容。
+// 数据目录记录在 exe 所在文件夹的 data_dir.txt（便携，随程序移动），不再写 ~/.goink/config.json。
 type AppConfig struct {
-	DataDir string `json:"data_dir"` // 用户选择的数据根目录
+	DataDir string `json:"data_dir,omitempty"` // 兼容旧字段，实际以 data_dir.txt 为准
 }
 
 // DataDirPath 返回数据根目录（绝对路径）。
-// 优先级：GOINK_DATA_DIR 环境变量 > ~/.goink/config.json 的 data_dir > 平台默认（Windows 为 exe 所在目录）。
+// 优先级：GOINK_DATA_DIR 环境变量（仅集成测试）> exe 目录/data_dir.txt（用户选择）> exe 所在目录（默认）。
 func DataDirPath() string {
 	if dir := os.Getenv("GOINK_DATA_DIR"); dir != "" {
 		return dir
 	}
-	cfgMu.RLock()
-	cfg := globalCfg
-	cfgMu.RUnlock()
-	if cfg != nil && cfg.DataDir != "" {
-		return cfg.DataDir
+	if dir := readLocalDataDir(); dir != "" {
+		return dir
 	}
 	return platform.DataDir()
+}
+
+// localDataDirFile 返回记录数据目录的文件路径（exe 所在文件夹/data_dir.txt，便携）。
+func localDataDirFile() string {
+	dir, err := platform.AppDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(dir, "data_dir.txt")
+}
+
+// readLocalDataDir 读取 exe 目录/data_dir.txt 中记录的数据目录（不存在或为空返回 ""）。
+func readLocalDataDir() string {
+	path := localDataDirFile()
+	if path == "" {
+		return ""
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	dir := strings.TrimSpace(string(data))
+	// 兼容 UTF-8 BOM（某些编辑器/PowerShell 写入会带）
+	dir = strings.TrimPrefix(dir, "\ufeff")
+	// 目录不存在则忽略（可能被移动/删除）
+	if _, err := os.Stat(dir); err != nil {
+		return ""
+	}
+	return dir
 }
 
 // GlobalDBPath 返回全局数据库路径。
@@ -112,7 +138,30 @@ func ModelsDir() string {
 	return filepath.Join(DataDirPath(), "models")
 }
 
-// configDir 返回指针文件所在的目录 ~/.goink。
+// readLegacyConfigDir 读取旧版 ~/.goink/config.json 中的 data_dir（迁移用）。
+func readLegacyConfigDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	path := filepath.Join(home, ".goink", "config.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	cfg := &AppConfig{}
+	if json.Unmarshal(data, cfg) != nil {
+		return ""
+	}
+	dir := strings.TrimSpace(cfg.DataDir)
+	if dir == "" {
+		return ""
+	}
+	if _, err := os.Stat(dir); err != nil {
+		return ""
+	}
+	return dir
+}
 func configDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -121,45 +170,41 @@ func configDir() (string, error) {
 	return filepath.Join(home, ".goink"), nil
 }
 
-// configPath 返回指针文件的完整路径。
-func configPath() (string, error) {
-	dir, err := configDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "config.json"), nil
-}
+// configPath 已废弃：数据目录记录改为 exe 目录/data_dir.txt，不再使用 ~/.goink/config.json。
 
-// Load 读取启动指针文件，返回 AppConfig。
+// Load 读取启动指针文件（exe 目录/data_dir.txt），返回 AppConfig。
 // 文件不存在时返回错误，调用方应引导用户完成初始化。
 func Load() (*AppConfig, error) {
-	path, err := configPath()
-	if err != nil {
-		return nil, err
+	path := localDataDirFile()
+	if path == "" {
+		return nil, fmt.Errorf("%w: 无法定位程序目录", ErrNotInitialized)
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
+		// 迁移兼容：旧版把数据目录写在 ~/.goink/config.json，读到则自动迁移到 data_dir.txt
+		if legacy := readLegacyConfigDir(); legacy != "" {
+			_ = Save(legacy)
+			if err := os.MkdirAll(legacy, 0700); err == nil {
+				return &AppConfig{DataDir: legacy}, nil
+			}
+		}
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("%w: %s", ErrNotInitialized, path)
 		}
 		return nil, fmt.Errorf("读取配置文件失败: %w", err)
 	}
 
-	cfg := &AppConfig{}
-	if err := json.Unmarshal(data, cfg); err != nil {
-		return nil, fmt.Errorf("解析配置文件失败: %w", err)
-	}
-
-	// 确保数据目录存在（优先用配置里的 data_dir，其次平台默认）
-	dataDir := cfg.DataDir
+	// 数据目录固定 = exe 所在文件夹（便携）；data_dir.txt 里记录用户选择，可覆盖默认。
+	dataDir := strings.TrimSpace(string(data))
+	dataDir = strings.TrimPrefix(dataDir, "\ufeff") // 兼容 UTF-8 BOM
 	if dataDir == "" {
 		dataDir = platform.DataDir()
 	}
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return nil, fmt.Errorf("创建数据目录 %s 失败: %w", dataDir, err)
 	}
-	return cfg, nil
+	return &AppConfig{DataDir: dataDir}, nil
 }
 
 // expandTilde 将路径开头的 ~ 替换为当前用户主目录。
@@ -175,8 +220,8 @@ func expandTilde(path string) string {
 	return path
 }
 
-// Save 将数据目录路径写入指针文件。自动展开 ~ 并转为绝对路径。
-// 如果 ~/.goink/ 目录不存在则自动创建。
+// Save 将用户选择的数据目录写入 exe 目录/data_dir.txt（便携：整个文件夹拷走，选择跟随）。
+// 自动展开 ~ 并转为绝对路径。
 func Save(dataDir string) error {
 	dataDir = expandTilde(dataDir)
 	var err error
@@ -185,22 +230,15 @@ func Save(dataDir string) error {
 		return fmt.Errorf("解析数据目录绝对路径失败: %w", err)
 	}
 
-	dir, err := configDir()
-	if err != nil {
-		return err
+	path := localDataDirFile()
+	if path == "" {
+		return fmt.Errorf("无法定位程序目录")
 	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return fmt.Errorf("创建配置目录失败: %w", err)
 	}
-
-	path := filepath.Join(dir, "config.json")
-	cfg := AppConfig{DataDir: dataDir}
-	raw, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return fmt.Errorf("序列化配置失败: %w", err)
-	}
-	if err := os.WriteFile(path, raw, 0600); err != nil {
-		return fmt.Errorf("写入配置文件失败: %w", err)
+	if err := os.WriteFile(path, []byte(dataDir), 0600); err != nil {
+		return fmt.Errorf("写入数据目录记录失败: %w", err)
 	}
 	return nil
 }

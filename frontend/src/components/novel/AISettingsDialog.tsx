@@ -16,7 +16,7 @@ interface Props {
   }) => Promise<void>
 }
 
-const CORE_MODULES = ['outline', 'character', 'timeline', 'platinum'] as const
+const CORE_MODULES = ['outline', 'character', 'timeline'] as const
 const OPT_MODULES = ['reader', 'arc'] as const
 
 export default function AISettingsDialog({ open, novel, onClose, onSave }: Props) {
@@ -54,9 +54,13 @@ export default function AISettingsDialog({ open, novel, onClose, onSave }: Props
   }
 
   function buildAIConfig(): string {
-    const allOn = injectWorld && injectPlatinum && maint.length === CORE_MODULES.length + OPT_MODULES.length
+    // 统一勾选「故事状态文档」= 注入 + 维护 两个权限一起控制
+    const maintWithPlatinum = injectPlatinum
+      ? (maint.includes('platinum') ? maint : [...maint, 'platinum'])
+      : maint.filter(m => m !== 'platinum')
+    const allOn = injectWorld && injectPlatinum && maintWithPlatinum.length === CORE_MODULES.length + OPT_MODULES.length + 1
     if (allOn) return ''
-    return JSON.stringify({ inject_world: injectWorld, inject_goink: injectPlatinum, maint })
+    return JSON.stringify({ inject_world: injectWorld, inject_goink: injectPlatinum, maint: maintWithPlatinum })
   }
 
   async function handleSave() {
@@ -147,11 +151,14 @@ export default function AISettingsDialog({ open, novel, onClose, onSave }: Props
                 }} className="accent-primary" />
                 {t('novel.injectWorld')}
               </label>
-              <label className="flex items-center gap-2 text-xs">
+              <label className="flex items-start gap-2 text-xs py-0.5">
                 <input type="checkbox" checked={injectPlatinum} onChange={e => {
-                  if (e.target.checked || confirm(t('novel.coreModuleWarn', { name: t('novel.injectPlatinum') }))) setInjectGoink(e.target.checked)
-                }} className="accent-primary" />
-                {t('novel.injectPlatinum')}
+                  if (e.target.checked || confirm(t('novel.coreModuleWarn', { name: t('novel.platinumUnified') }))) setInjectGoink(e.target.checked)
+                }} className="accent-primary mt-0.5" />
+                <span className="min-w-0">
+                  <span className="block">{t('novel.platinumUnified')}</span>
+                  <span className="block text-[10px] text-muted-foreground/80 leading-snug">{t('novel.platinumUnifiedDesc')}</span>
+                </span>
               </label>
             </div>
 
