@@ -40,7 +40,17 @@ if (-not (Test-Path "$inc\sqlite3.h")) {
 $env:CGO_CFLAGS = "-I$inc"
 
 # 3. 构建（如遇 ld manifest 冲突可加 -tags native_webview2loader）
-Write-Host "[3/3] wails build ..."
+# 版本号：VERSION 文件为唯一真源（如 v1.0.1），未创建时回退 git describe，再回退 dev
+$versionFile = Join-Path $root "VERSION"
+if (Test-Path $versionFile) {
+  $version = (Get-Content $versionFile -Raw).Trim()
+  Write-Host "[3/3] 版本号（VERSION 文件）: $version"
+} else {
+  $version = git describe --tags --always --dirty 2>$null
+  if (-not $version) { $version = "dev" }
+  Write-Host "[3/3] 版本号（git describe）: $version"
+}
+Write-Host "[4/4] wails build ..."
 Set-Location $root
-wails build
-Write-Host "完成: build\bin\platinum.exe"
+wails build -ldflags "-X internal/version.Version=$version"
+Write-Host "完成: build\bin\platinum.exe (版本 $version)"

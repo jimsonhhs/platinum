@@ -2,6 +2,8 @@
 
 > 桌面端 AI 小说写作助手——**作者主导**，AI 协作，正文永远由你掌控。
 
+**当前版本：`v1.0.1`**（版本号唯一真源：[VERSION](VERSION)，发布时修改该文件，构建自动注入 exe）
+
 基于 [goink](https://github.com/sigpanic/goink)（AGPL-3.0）二次开发，保留上游历史与版权声明。
 
 ---

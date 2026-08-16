@@ -48,6 +48,15 @@ plans/{scope}.md / skills/ / cover.jpg / rules/rules.md（全局，AI 只读） 
 ```
 - **改数据目录逻辑 → config.go（DataDirPath/Load/Save/readLocalDataDir/readLegacyConfigDir）+ app_config.go（UpdateDataDir/PickDataDir）+ settings.go（SetDataDir）+ 前端 GeneralConfigTab 三处同步。**
 
+### 1.5 版本号（VERSION 文件为唯一真源）
+
+```
+VERSION 文件（仓库根目录，如 v1.0.1）→ scripts/build_windows.ps1 读取 → wails build -ldflags "-X internal/version.Version=<版本>" 注入 exe
+未创建 VERSION 时回退 git describe --tags --always --dirty，再回退 dev
+```
+- **发布新版本 → ① 改 VERSION 文件 → ② build_windows.ps1 构建（自动注入）→ ③ README.md 顶部版本行同步 → ④ zip 命名带版本 → ⑤ git 提交 + release 上传。**
+- 应用内 `GetVersion`（app/update.go）→ 前端 UpdateDialog 显示；更新检测对比 GitHub release tag（internal/update/checker.go）。
+
 ### 1.3 包依赖面（数据/存储层：16 包）
 
 | 包 | 公开 API（依赖面） | 依赖他人 | 被谁依赖（反向索引） |
