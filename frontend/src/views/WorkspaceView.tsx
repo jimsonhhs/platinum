@@ -36,7 +36,7 @@ import ErrorBoundary from '@/components/shared/ErrorBoundary'
 import { search } from '@/lib/wailsjs/go/models'
 import type { update as updateModels } from '@/lib/wailsjs/go/models'
 import { CheckUpdate } from '@/lib/wailsjs/go/app/App'
-import { Settings, User, HelpCircle, Moon, Sun, Leaf, Contrast } from 'lucide-react'
+import { Settings, User, HelpCircle, Moon, Sun, Leaf, Contrast, Flower2, Palette, CloudSun, SunMedium } from 'lucide-react'
 import { WindowMinimise, WindowToggleMaximise, Quit } from '@/lib/wailsjs/runtime/runtime'
 import Logo from '@/components/Logo'
 import { useTheme, type Theme } from '@/hooks/useTheme'
@@ -46,10 +46,14 @@ import { useImportNovel } from '@/hooks/useImportNovel'
 import { toastError } from '@/lib/utils'
 
 const THEME_ICON: Record<Theme, React.ReactNode> = {
-  light: <Moon className="w-5 h-5" />,
-  dark: <Sun className="w-5 h-5" />,
+  light: <Sun className="w-5 h-5" />,
+  dark: <Moon className="w-5 h-5" />,
   'eye-care': <Leaf className="w-5 h-5" />,
   'black-yellow': <Contrast className="w-5 h-5" />,
+  'pink-soft': <Flower2 className="w-5 h-5" />,
+  'warm-gray': <Palette className="w-5 h-5" />,
+  'cool-gray-blue': <CloudSun className="w-5 h-5" />,
+  'soft-yellow': <SunMedium className="w-5 h-5" />,
 }
 
 interface Props {
@@ -64,6 +68,10 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
   dark: t('workspace.lightMode'),
   'eye-care': t('theme.eyeCare'),
   'black-yellow': t('theme.blackYellow'),
+  'pink-soft': t('theme.pinkSoft'),
+  'warm-gray': t('theme.warmGray'),
+  'cool-gray-blue': t('theme.coolGrayBlue'),
+  'soft-yellow': t('theme.softYellow'),
 }
   const app = useApp()
   const contentRef = useRef<ContentPanelHandle>(null)
@@ -196,6 +204,19 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
     window.addEventListener('sandbox:open-entity', handler)
     return () => window.removeEventListener('sandbox:open-entity', handler)
   }, [])
+
+  // 数据目录切换完成：立即读取新目录的书籍并弹回书架
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        setActiveNovelId(0)
+        setActivePanel('novels')
+        await loadNovels()
+      } catch (err) { console.error('reload after data dir change failed:', err) }
+    }
+    window.addEventListener('app:data-dir-changed', handler)
+    return () => window.removeEventListener('app:data-dir-changed', handler)
+  }, [loadNovels])
 
   // 进入沙盘面板或切换书籍时：自动选中第一份沙盘（若无当前选择）
   useEffect(() => {

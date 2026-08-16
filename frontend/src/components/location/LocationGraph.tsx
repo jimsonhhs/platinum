@@ -241,7 +241,7 @@ export default function LocationGraph({ novelId, focusId }: Props) {
             type="button"
             onClick={() => graphRef.current?.fitView({ when: 'always' }, { duration: 360, easing: 'ease-in-out' })}
             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title={t('location.fitView')}
+            title={t('location.place')}
           >
             <LocateFixed className="h-3.5 w-3.5" />
           </button>

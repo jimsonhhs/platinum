@@ -9,6 +9,10 @@ const MONACO_THEME: Record<Theme, string> = {
   dark: 'vs-dark',
   'eye-care': 'platinum-eye-care',
   'black-yellow': 'platinum-black-yellow',
+  'pink-soft': 'vs',
+  'warm-gray': 'vs',
+  'cool-gray-blue': 'vs',
+  'soft-yellow': 'vs',
 }
 
 const DIFF_OPTIONS = {

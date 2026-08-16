@@ -106,6 +106,8 @@ export default function GeneralConfigTab() {
       if (!picked) return // 用户取消
       await app.UpdateDataDir(picked)
       setDataDirInput(picked)
+      // 通知主界面：立即重新读取该目录的书籍并弹回书架
+      window.dispatchEvent(new CustomEvent('app:data-dir-changed'))
       setDataDirMsg(t('settings.dataDirChanged'))
       setTimeout(() => setDataDirMsg(''), 4000)
     } catch (err) {

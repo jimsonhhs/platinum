@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Circle, Square, Waves, Diamond, Triangle, Spline, Trash2, Save, MousePointer2, ExternalLink, Move, PlusCircle, BoxSelect, History, MoveRight, Sparkles, Loader2, Globe2 } from 'lucide-react'
+import { Circle, Square, Waves, Diamond, Triangle, Spline, Trash2, Save, MousePointer2, ExternalLink, Move, PlusCircle, BoxSelect, History, MoveRight, Sparkles, Loader2, Globe2, X } from 'lucide-react'
 import { useApp } from '@/hooks/useApp'
-import { toastError, toastSuccess } from '@/lib/utils'
+import { toastError, toastSuccess, toastInfo } from '@/lib/utils'
 
 // ── 类型 ────────────────────────────────────────────────
 
@@ -116,6 +116,15 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
   const [dragMode, setDragMode] = useState<'move' | 'resize' | 'rotate' | 'pan' | 'draw' | 'marquee' | null>(null)
   const [dragData, setDragData] = useState<any>(null)
   const svgRef = useRef<SVGSVGElement>(null)
+  const [onboardOpen, setOnboardOpen] = useState(false)
+
+  // 首次进入沙盘：弹引导窗（localStorage 标记，只看一次）
+  useEffect(() => {
+    if (!localStorage.getItem('sandbox_onboarded')) {
+      setOnboardOpen(true)
+      localStorage.setItem('sandbox_onboarded', '1')
+    }
+  }, [])
 
   const load = useCallback(async () => {
     if (!sandboxId) {
@@ -318,9 +327,31 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
       await load()
       window.dispatchEvent(new CustomEvent('sandbox:list-changed'))
     } catch (err) {
-      toastError(String(err))
+      const msg = String(err)
+      // 用户主动取消：静默提示，不报错
+      if (msg.includes('cancel') || msg.includes('context canceled') || msg.includes('已取消')) {
+        toastInfo(t('sandbox.arrangeCancelled'))
+      } else {
+        toastError(msg)
+      }
     } finally {
       setArranging(false)
+    }
+  }
+
+  // 取消 AI 布局（仅布局进行中时）
+  async function handleCancelArrange() {
+    try { await app.CancelArrange() } catch { /* ignore */ }
+    setArranging(false)
+    setArrangeOpen(false)
+    toastInfo(t('sandbox.arrangeCancelled'))
+  }
+
+  // 点 X / 遮罩关闭弹窗：布局中时提示后台继续
+  function closeArrangeDialog() {
+    setArrangeOpen(false)
+    if (arranging) {
+      toastInfo(t('sandbox.arrangeBackgroundHint'))
     }
   }
 
@@ -981,46 +1012,95 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
         {/* AI 布局弹窗 */}
         {arrangeOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setArrangeOpen(false)} />
+            <div className="absolute inset-0 bg-black/40" onClick={closeArrangeDialog} />
             <div className="relative bg-background rounded-xl shadow-2xl border w-[440px] max-w-[92vw] flex flex-col">
               <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
                 <h3 className="text-sm font-semibold flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-primary" />
                   {t('sandbox.arrange')}
                 </h3>
-                <button onClick={() => setArrangeOpen(false)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">✕</button>
+                <button onClick={closeArrangeDialog} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">✕</button>
               </div>
               <div className="p-4 space-y-3">
-                <textarea
-                  value={arrangePrompt}
-                  onChange={e => setArrangePrompt(e.target.value)}
-                  placeholder={t('sandbox.arrangePlaceholder')}
-                  rows={3}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                />
-                <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                  <label className="flex items-center gap-1.5">
-                    <input type="radio" checked={!arrangePrompt.trim()} readOnly className="accent-primary" />
-                    {t('sandbox.arrangeFull')}
-                  </label>
-                  <label className="flex items-center gap-1.5">
-                    <input type="radio" checked={!!arrangePrompt.trim()} readOnly className="accent-primary" />
-                    {t('sandbox.arrangeIncremental')}
-                  </label>
-                </div>
-                <p className="text-[11px] text-muted-foreground">{t('sandbox.arrangeHint')}</p>
+                {arranging ? (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      {t('sandbox.arranging')}…
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">{t('sandbox.arrangeBackgroundHint')}</p>
+                  </div>
+                ) : (
+                  <>
+                    <textarea
+                      value={arrangePrompt}
+                      onChange={e => setArrangePrompt(e.target.value)}
+                      placeholder={t('sandbox.arrangePlaceholder')}
+                      rows={3}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                    />
+                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                      <label className="flex items-center gap-1.5">
+                        <input type="radio" checked={!arrangePrompt.trim()} readOnly className="accent-primary" />
+                        {t('sandbox.arrangeFull')}
+                      </label>
+                      <label className="flex items-center gap-1.5">
+                        <input type="radio" checked={!!arrangePrompt.trim()} readOnly className="accent-primary" />
+                        {t('sandbox.arrangeIncremental')}
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">{t('sandbox.arrangeHint')}</p>
+                    <div className="rounded-md border border-primary/20 bg-primary/5 px-2.5 py-2 text-[11px] leading-relaxed text-muted-foreground">
+                      <p className="font-medium text-foreground mb-0.5">{t('sandbox.arrangeBgNoticeTitle')}</p>
+                      {t('sandbox.arrangeBgNotice')}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="px-4 py-3 border-t flex justify-end gap-2 shrink-0">
-                <button onClick={() => setArrangeOpen(false)} className="h-8 px-3 rounded-md text-xs border hover:bg-muted transition-colors">
-                  {t('common.cancel')}
-                </button>
-                <button
-                  onClick={handleArrange}
-                  disabled={arranging}
-                  className="inline-flex items-center gap-1.5 h-8 px-4 rounded-md text-xs bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {arranging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                  {arranging ? t('sandbox.arranging') : t('sandbox.arrange')}
+                {arranging ? (
+                  <button onClick={handleCancelArrange} className="inline-flex items-center gap-1.5 h-8 px-4 rounded-md text-xs bg-destructive text-white hover:opacity-90 transition-opacity">
+                    <X className="w-3.5 h-3.5" />
+                    {t('sandbox.cancelArrange')}
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => setArrangeOpen(false)} className="h-8 px-3 rounded-md text-xs border hover:bg-muted transition-colors">
+                      {t('common.cancel')}
+                    </button>
+                    <button
+                      onClick={handleArrange}
+                      disabled={arranging}
+                      className="inline-flex items-center gap-1.5 h-8 px-4 rounded-md text-xs bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {t('sandbox.arrange')}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 首次使用引导弹窗 */}
+        {onboardOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setOnboardOpen(false)} />
+            <div className="relative bg-background rounded-xl shadow-2xl border w-[480px] max-w-[92vw] flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+                <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                  <Globe2 className="w-4 h-4 text-primary" />
+                  {t('sandbox.onboardTitle')}
+                </h3>
+                <button onClick={() => setOnboardOpen(false)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">✕</button>
+              </div>
+              <div className="p-4 max-h-[60vh] overflow-y-auto">
+                <p className="text-xs leading-relaxed text-foreground whitespace-pre-line">{t('sandbox.onboardBody')}</p>
+              </div>
+              <div className="px-4 py-3 border-t flex justify-end shrink-0">
+                <button onClick={() => setOnboardOpen(false)} className="h-8 px-4 rounded-md text-xs bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
+                  {t('sandbox.onboardGotIt')}
                 </button>
               </div>
             </div>

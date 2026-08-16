@@ -28,3 +28,8 @@ export function toastError(msg: string) {
 export function toastSuccess(msg: string) {
   return toast.success(msg)
 }
+
+/** 显示信息 toast。 */
+export function toastInfo(msg: string) {
+  return toast.info(msg)
+}

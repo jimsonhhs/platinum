@@ -6,6 +6,10 @@ export const MONACO_THEME: Record<Theme, string> = {
   dark: 'platinum-dark',
   'eye-care': 'platinum-eye-care',
   'black-yellow': 'platinum-black-yellow',
+  'pink-soft': 'platinum-pink-soft',
+  'warm-gray': 'platinum-warm-gray',
+  'cool-gray-blue': 'platinum-cool-gray-blue',
+  'soft-yellow': 'platinum-soft-yellow',
 }
 
 let defined = false
@@ -288,6 +292,10 @@ export const THEME_SCHEMES: Record<Theme, ThemeScheme> = {
   dark: { bg: '#1e1f24', fg: '#e8e8ea', fontFamily: DEFAULT_FONT },
   'eye-care': { bg: '#d5fbe6', fg: '#2b3a2b', fontFamily: DEFAULT_FONT },
   'black-yellow': { bg: '#000000', fg: '#ffd700', fontFamily: DEFAULT_FONT },
+  'pink-soft': { bg: '#fdeef2', fg: '#4a2d35', fontFamily: DEFAULT_FONT },
+  'warm-gray': { bg: '#f5f0e8', fg: '#3d3833', fontFamily: DEFAULT_FONT },
+  'cool-gray-blue': { bg: '#eef2f6', fg: '#33404d', fontFamily: DEFAULT_FONT },
+  'soft-yellow': { bg: '#faf6e3', fg: '#4a4428', fontFamily: DEFAULT_FONT },
 }
 
 // ── 用户配色方案（最多 10 个，可命名）────────────────────

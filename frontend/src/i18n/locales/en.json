@@ -369,7 +369,7 @@
     "customBg": "Background color",
     "notCustom": "(not set)",
     "restoreDefault": "Restore default",
-    "customColorsDesc": "Custom colors apply to the editor area only; the rest of the UI follows the selected theme.",
+    "customColorsDesc": "Editor text/background colors (take effect after save); \"Theme bg\" is the whole UI background (immediate)",
     "previewTitle": "Preview",
     "previewPlaceholder": "Type text to preview (optional)",
     "previewSample": "Welcome to platinum — may you attain the Dao soon.\nFor suggestions, UX feedback, or bug reports, contact the author: hehaosen0611@163.com",
@@ -395,7 +395,25 @@
     "dataDirFixed": "Data directory is fixed to the program folder (portable, moves with the exe) and cannot be changed",
     "chooseDataDir": "Choose data directory",
     "dataDirDesc": "Defaults to the program folder; click the folder icon to choose another. The choice is stored inside the program folder (portable) and takes effect immediately.",
-    "dataDirChanged": "Data directory changed and applied immediately"
+    "dataDirChanged": "Data directory changed and applied immediately",
+    "themeBg": "Theme bg",
+    "themeBgDesc": "Whole UI background (applies immediately, persists across themes); use \"Background\" for the editor canvas",
+    "customThemeSection": "Custom theme (whole UI)",
+    "customThemeDesc": "Border / UI text / background / global font & size. Applies immediately, persists across themes.",
+    "themeBorder": "Border",
+    "themeBorderDesc": "Whole UI border color",
+    "themeFg": "UI text",
+    "themeFgDesc": "Whole UI text color",
+    "themeFont": "Global font",
+    "themeFontDefault": "Default",
+    "themeFontSize": "Global size",
+    "customEditorSection": "Custom editor (writing area)",
+    "customEditorDesc": "Text/background of the writing area (with font/size/spacing above). Applied on save.",
+    "resetAll": "Reset",
+    "themePresets": "Theme presets",
+    "themePresetNamePlaceholder": "Preset name…",
+    "saveThemePreset": "Save preset",
+    "themePresetDesc": "Save current theme customization (bg/text/border/font/size) as a preset (max 10)"
   },
   "novel": {
     "totalWorks_one": "{{count}} work",
@@ -493,7 +511,8 @@
     "maint_arc_desc": "Story arcs: main/sub/character lines and node status",
     "injectPlatinum": "Story state doc (injected every turn)",
     "platinumUnified": "Story state doc",
-    "platinumUnifiedDesc": "One switch controls both: ① inject into AI context every turn (AI reads); ② allow AI to maintain/update it after each chapter (AI writes)"
+    "platinumUnifiedDesc": "One switch controls both: ① inject into AI context every turn (AI reads); ② allow AI to maintain/update it after each chapter (AI writes)",
+    "titleRequiredHint": "Please enter a title"
   },
   "character": {
     "character": "Character",
@@ -1340,7 +1359,11 @@
     "quickStart_conceptSandbox": "Sandbox",
     "quickStart_conceptSandboxDesc": "Visual world map: multiple named sandboxes (managed in the left bar), free-form shapes (move/rotate/scale/color/text/box-select groups). \"Add entity\" imports from settings/locations/characters/events (setting=grid-map container, location=drop, character=head, event=question+stars). Chat commands let AI arrange (\"put the settings on the sandbox\", \"add Y north of X\", \"put A,B next to C\") with delete/move/batch/ambiguity-asking. AI layout scales by described size, arranges people/events in non-overlapping pyramids. Auto-saves after idle; force-saves on app close with history archiving (zero loss).",
     "quickStart_conceptAiTrace": "AI trace",
-    "quickStart_conceptAiTraceDesc": "Style extraction shows the AI reasoning live (stats → thinking → generated content, read-only); empty results raise a clear error instead of saving empty files."
+    "quickStart_conceptAiTraceDesc": "Style extraction shows the AI reasoning live (stats → thinking → generated content, read-only); empty results raise a clear error instead of saving empty files.",
+    "quickStart_conceptAiLayout": "AI Layout (background)",
+    "quickStart_conceptAiLayoutDesc": "After starting \"AI Layout\", the task runs in the background: you may close the dialog and switch pages; a notification appears when done, and you can stop it anytime via \"Cancel layout\". You can also adjust the sandbox via natural language in the associated chat.",
+    "quickStart_conceptAppearance": "Appearance customization",
+    "quickStart_conceptAppearanceDesc": "Eight themes (quick-switch cycles the first four from the top-right). \"Custom Theme\" changes the whole UI (border/text/background/font/size, instant). \"Custom Editor\" changes editor colors and fonts (applied on save). Both areas save independent presets (max 10). The reset button is always black-on-white; if text and background become low-contrast, a rescue reset button appears at the bottom-right."
   },
   "profile": {
     "loadFailed": "Load failed",
@@ -1453,7 +1476,11 @@
   },
   "theme": {
     "eyeCare": "Eye-care",
-    "blackYellow": "Black & Yellow"
+    "blackYellow": "Black & Yellow",
+    "pinkSoft": "Soft pink",
+    "warmGray": "Warm gray",
+    "coolGrayBlue": "Cool gray-blue",
+    "softYellow": "Soft yellow"
   },
   "styleLib": {
     "title": "My style library",
@@ -1535,6 +1562,15 @@
     "shapeWorld": "World",
     "worldDefault": "World map",
     "tabWorld": "Settings",
-    "noWorld": "No settings yet — create some in the Settings page (geography/magic/factions)"
+    "noWorld": "No settings yet — create some in the Settings page (geography/magic/factions)",
+    "arranging": "Arranging…",
+    "arrangeBackgroundHint": "Layout is running in the background: you can close this dialog and switch to other pages; a notification will pop up when done.",
+    "cancelArrange": "Cancel layout",
+    "arrangeCancelled": "Layout cancelled",
+    "arrangeBgNotice": "Note: after starting the layout, the task runs in the background. You may close this dialog and continue using other features; a notification will appear when finished. You can stop it anytime via \"Cancel layout\". You can also describe adjustments in the chat associated with this sandbox.",
+    "arrangeBgNoticeTitle": "Background notice",
+    "onboardTitle": "Sandbox Guide",
+    "onboardBody": "The sandbox is a visual story-setting board: arrange locations, characters, and events as shapes to see their spatial relations.\n\n· Left toolbar: the pointer is \"Move\", next is \"Box select\", then the \"shape\" tools (rect, circle, wave, arrow, person, event, etc.) — pick one and draw on the canvas.\n· Top \"Add from settings\": place existing locations/characters/events onto the sandbox in one click; select a shape to change color, opacity, label, or delete it.\n· \"AI Layout\": AI generates or adjusts the layout from your settings; it runs in the background and notifies you when done.\n· \"Chat adjustments\": describe needs in natural language in the sandbox’s associated chat (e.g. \"move the forest north\"), and the AI will adjust it for you.\n· \"Save / History\": save the current layout or restore from history.",
+    "onboardGotIt": "Got it"
   }
 }

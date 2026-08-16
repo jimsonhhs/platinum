@@ -359,7 +359,7 @@
     "customBg": "背景色",
     "notCustom": "（未自定义）",
     "restoreDefault": "恢复默认",
-    "customColorsDesc": "设置后仅编辑器区域使用自定义颜色，界面其余部分跟随所选主题。",
+    "customColorsDesc": "编辑器文字/背景色（保存后生效）；「主题背景」为整个界面背景（立即生效）",
     "previewTitle": "预览",
     "previewPlaceholder": "输入你想预览的文本（可选）",
     "previewSample": "欢迎使用 platinum，祝您早日证道。\n如有建议、反馈用户体验，或发现 bug，请联系作者：hehaosen0611@163.com",
@@ -385,7 +385,25 @@
     "dataDirFixed": "数据目录固定为程序所在文件夹（便携设计，随 exe 移动），不可更改",
     "chooseDataDir": "选择数据目录",
     "dataDirDesc": "默认使用程序所在文件夹；点击文件夹图标可选择其他目录，选择记录在程序文件夹内（便携，随程序移动），修改立即生效",
-    "dataDirChanged": "数据目录已更改并立即生效"
+    "dataDirChanged": "数据目录已更改并立即生效",
+    "themeBg": "主题背景",
+    "themeBgDesc": "整个界面背景色（立即生效，随主题切换保持）；如需调编辑器文字背景请用「背景」",
+    "customThemeSection": "自定义主题（整个界面）",
+    "customThemeDesc": "边框/系统文字/背景/全局字体字号，立即生效，随主题切换保持",
+    "themeBorder": "边框",
+    "themeBorderDesc": "整个界面的边框颜色",
+    "themeFg": "系统文字",
+    "themeFgDesc": "整个界面的文字颜色",
+    "themeFont": "全局字体",
+    "themeFontDefault": "默认",
+    "themeFontSize": "全局字号",
+    "customEditorSection": "自定义编辑器（正文区）",
+    "customEditorDesc": "正文编辑区的文字/背景色（配合上方字体字号行距），点保存生效",
+    "resetAll": "重置",
+    "themePresets": "主题配色方案",
+    "themePresetNamePlaceholder": "方案名称…",
+    "saveThemePreset": "保存方案",
+    "themePresetDesc": "保存当前主题自定义（背景/文字/边框/字体/字号）为一套方案，可随时应用（最多 10 套）"
   },
   "novel": {
     "totalWorks": "共 {{count}} 部作品",
@@ -480,7 +498,8 @@
     "maint_arc_desc": "叙事弧线：主线、支线、角色线的节点与完成状态",
     "injectPlatinum": "故事状态文档（每轮注入 AI 上下文）",
     "platinumUnified": "故事状态文档",
-    "platinumUnifiedDesc": "一个开关同时控制两项：① 每轮注入 AI 上下文（AI 读取全书状态）；② 允许 AI 每章后维护更新（进度/遗留问题）"
+    "platinumUnifiedDesc": "一个开关同时控制两项：① 每轮注入 AI 上下文（AI 读取全书状态）；② 允许 AI 每章后维护更新（进度/遗留问题）",
+    "titleRequiredHint": "请输入书名"
   },
   "character": {
     "character": "角色",
@@ -1301,7 +1320,11 @@
     "quickStart_conceptSandbox": "沙盘",
     "quickStart_conceptSandboxDesc": "视觉化世界地图：多份命名沙盘（左侧栏管理），形状自由摆放（移动/旋转/缩放/颜色/文字/框选整组）。「添加实体」可从小说设定/地点/角色/事件导入（设定=井字地图容器、地点=倒水滴、角色=人头、事件=问号+星级）。聊天直接发指令即可让 AI 布局（\"把设定摆到沙盘上\"\"在X北边新建Y\"\"把A、B放到C旁边\"），支持删除/移动/批量/歧义反问。AI 布局按描述尺寸等比缩放、人物事件金字塔排列不重叠。停止操作自动保存，关进程强制落盘+历史归档（零丢失）。",
     "quickStart_conceptAiTrace": "AI 推导过程",
-    "quickStart_conceptAiTraceDesc": "文风提取时实时显示 AI 推演（统计→思考→生成内容流，只读观看）；提取产物为空会明确报错，不会保存空文件。"
+    "quickStart_conceptAiTraceDesc": "文风提取时实时显示 AI 推演（统计→思考→生成内容流，只读观看）；提取产物为空会明确报错，不会保存空文件。",
+    "quickStart_conceptAiLayout": "AI 布局（后台运行）",
+    "quickStart_conceptAiLayoutDesc": "点「AI 布局」后任务在后台执行：可关闭弹窗切换到其他页面，完成后弹窗通知；可点「取消布局」随时中止；也可在关联对话中用自然语言调整沙盘。",
+    "quickStart_conceptAppearance": "外观自定义",
+    "quickStart_conceptAppearanceDesc": "八套主题（右上角快速切换前四套）；「自定义主题」改整个界面的边框/文字/背景/字体/字号（立即生效）；「自定义编辑器」改正文区颜色与字体（保存生效）；两区配色方案各自独立保存，最多 10 套；恢复默认按钮常驻黑底白字，文字背景同色时右下角自动浮现救援按钮。"
   },
   "profile": {
     "loadFailed": "加载失败",
@@ -1411,7 +1434,11 @@
   },
   "theme": {
     "eyeCare": "护眼",
-    "blackYellow": "黑黄高对比"
+    "blackYellow": "黑黄高对比",
+    "pinkSoft": "浅粉",
+    "warmGray": "暖灰",
+    "coolGrayBlue": "淡蓝灰",
+    "softYellow": "浅黄"
   },
   "styleLib": {
     "title": "我的文风库",
@@ -1493,6 +1520,14 @@
     "shapeWorld": "世界观",
     "worldDefault": "世界地图",
     "tabWorld": "小说设定",
-    "noWorld": "暂无小说设定，先去「设定」页创建（如地理/魔法体系/势力）"
+    "noWorld": "暂无小说设定，先去「设定」页创建（如地理/魔法体系/势力）",
+    "arrangeBackgroundHint": "后台布局进行中：可以点击 ✕ 关闭弹窗并切换到其他页面，布局完成后会弹窗提示。",
+    "cancelArrange": "取消布局",
+    "arrangeCancelled": "已取消布局",
+    "arrangeBgNotice": "说明：点击「开始布局」后，任务将在后台执行，您可以关闭本窗口并继续使用其他功能，完成后会弹出提示；如需中止，可随时点击「取消布局」。此外，您也可以在与本沙盘关联的对话中描述调整需求，通过对话对沙盘进行修改。",
+    "arrangeBgNoticeTitle": "后台运行说明",
+    "onboardTitle": "沙盘使用指南",
+    "onboardBody": "沙盘是一个可视化故事设定板，把地点、角色、事件摆成图形，方便你梳理故事空间关系。\n\n· 左侧工具栏：第一个指针是「移动」，旁边是「框选」，再往右是各种「图形」工具（矩形、圆形、波浪、箭头、人物、事件等），点一个再到画布上画即可。\n· 顶部「添加设定」：把已有的地点/角色/事件一键摆上沙盘；选中图形后可改颜色、透明度、文字，或删除。\n· 「AI 布局」：让 AI 根据设定自动生成或调整布局，在后台运行，完成后会提示。\n· 「对话调整」：在本沙盘关联的对话里用自然语言描述需求（如\"把森林移到北方\"），AI 会帮你调整。\n· 「保存/历史」：保存当前布局，或从历史版本恢复。",
+    "onboardGotIt": "知道了"
   }
 }

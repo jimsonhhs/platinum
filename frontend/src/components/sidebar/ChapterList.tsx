@@ -581,10 +581,10 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
           )}
         </button>
         <div className="flex items-center gap-0.5 pr-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button onClick={() => startEdit(ch)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('sidebar.rename')}>
+          <button onClick={() => startEdit(ch)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('sidebar.renameChapter')}>
             <Pencil className="w-3 h-3" />
           </button>
-          <button onClick={() => handleDelete(ch)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('sidebar.delete')}>
+          <button onClick={() => handleDelete(ch)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('sidebar.deleteChapter')}>
             <Trash2 className="w-3 h-3" />
           </button>
         </div>
@@ -821,10 +821,10 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
                   <span className="text-xs font-medium truncate">{vol.name}</span>
                   <span className="text-[10px] text-muted-foreground/60 ml-auto shrink-0">{list.length}</span>
                   <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => handleRenameVolume(vNum)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('sidebar.rename')}>
+                    <button onClick={() => handleRenameVolume(vNum)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('sidebar.renameChapter')}>
                       <Pencil className="w-3 h-3" />
                     </button>
-                    <button onClick={() => handleDeleteVolume(vNum)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('sidebar.delete')}>
+                    <button onClick={() => handleDeleteVolume(vNum)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('sidebar.deleteChapter')}>
                       <Trash2 className="w-3 h-3" />
                     </button>
                     <button

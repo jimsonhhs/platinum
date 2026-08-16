@@ -31,6 +31,8 @@ export function ArchiveHistory(arg1:number,arg2:string):Promise<void>;
 
 export function ArrangeSandbox(arg1:app.ArrangeSandboxInput):Promise<app.SandboxData>;
 
+export function CancelArrange():Promise<void>;
+
 export function CancelChat(arg1:string):Promise<void>;
 
 export function CancelExtract(arg1:string):Promise<void>;

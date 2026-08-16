@@ -52,6 +52,8 @@ type App struct {
 	vectorStore   *rag.VectorStore
 	searchService atomic.Pointer[search.Service]
 
+	arrangeCancel context.CancelFunc // 沙盘 AI 布局取消句柄（可空）
+
 	novel      *novel.Store
 	chapter    *chapter.Store
 	character  *character.Store

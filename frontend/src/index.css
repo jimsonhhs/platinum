@@ -19,6 +19,29 @@
 
 /* ── 浅色主题 ────────────────────────────────────────────── */
 
+/* Tailwind v4 @theme 静态烘焙 --color-*，此处 :root 动态重定义使按钮/边框跟随运行时主题变量 */
+:root {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+}
+
 :root,
 [data-theme="light"] {
   --background: oklch(1 0 0);
@@ -468,3 +491,304 @@ body {
 /* 卷拖拽插入线（inset：画在卷头框内边缘，列表顶端/底端也可见，不被容器裁剪） */
 .drag-vol-before { box-shadow: inset 0 3px 0 0 #3b82f6; }
 .drag-vol-after { box-shadow: inset 0 -3px 0 0 #3b82f6; }
+
+/* ── 浅粉主题 ─────────────────────────────────── */
+
+[data-theme="pink-soft"] {
+  --background: #fdeef2;
+  --foreground: #4a2d35;
+  --card: #fff5f8;
+  --card-foreground: #4a2d35;
+  --popover: #fff5f8;
+  --popover-foreground: #4a2d35;
+  --primary: #c2647e;
+  --primary-foreground: #fff5f8;
+  --secondary: #f9dfe7;
+  --secondary-foreground: #4a2d35;
+  --muted: #f9dfe7;
+  --muted-foreground: #8a6a74;
+  --accent: #f9dfe7;
+  --accent-foreground: #4a2d35;
+  --destructive: #b3543f;
+  --destructive-foreground: #fdf3f0;
+  --border: #f0c9d4;
+  --input: #f0c9d4;
+  --ring: #c2647e;
+  --chart-1: #c2647e;
+  --chart-2: #c2647e;
+  --chart-3: #f0c9d4;
+  --chart-4: #c2647e;
+  --chart-5: #8a6a74;
+  --sidebar: #fff5f8;
+  --sidebar-foreground: #4a2d35;
+  --sidebar-primary: #c2647e;
+  --sidebar-primary-foreground: #fff5f8;
+  --sidebar-accent: #f9dfe7;
+  --sidebar-accent-foreground: #4a2d35;
+  --sidebar-border: #f0c9d4;
+  --sidebar-ring: #c2647e;
+  --tag-blue: rgba(90, 140, 220, 0.15);
+  --tag-blue-foreground: #33558a;
+  --tag-green: rgba(70, 160, 110, 0.15);
+  --tag-green-foreground: #2f6b4a;
+  --tag-amber: rgba(200, 150, 60, 0.18);
+  --tag-amber-foreground: #8a6420;
+  --tag-rose: rgba(200, 90, 90, 0.15);
+  --tag-rose-foreground: #8a3535;
+  --tag-teal: rgba(60, 160, 160, 0.15);
+  --tag-teal-foreground: #2f6b6b;
+  --tag-purple: rgba(130, 110, 200, 0.15);
+  --tag-purple-foreground: #5a4a8a;
+  --tool-blue: rgba(90, 140, 220, 0.12);
+  --tool-blue-border: #5a8cdc;
+  --tool-amber: rgba(200, 150, 60, 0.12);
+  --tool-amber-border: #c8963c;
+  --tool-green: rgba(70, 160, 110, 0.12);
+  --tool-green-border: #46a06e;
+  --tool-red: rgba(200, 90, 90, 0.12);
+  --tool-red-border: #c85a5a;
+  --danger-bg: rgba(200, 90, 90, 0.14);
+  --danger-border: rgba(200, 90, 90, 0.3);
+  --bubble-user: rgba(160, 120, 90, 0.18);
+  --bubble-user-foreground: var(--foreground);
+  --action-extract: #8a7a30;
+  --action-extract-foreground: #fdfbe8;
+  --action-save: #c2647e;
+  --action-save-foreground: #fff5f8;
+  --success: rgba(70, 160, 110, 0.16);
+  --success-foreground: #2f6b4a;
+  --success-border: rgba(70, 160, 110, 0.3);
+  --status-warning: #8a6420;
+  --status-ok: #c2647e;
+  --contribution-0: rgba(120, 110, 90, 0.1);
+  --contribution-1: rgba(120, 110, 90, 0.3);
+  --contribution-2: rgba(120, 110, 90, 0.55);
+  --contribution-3: rgba(120, 110, 90, 0.75);
+  --contribution-4: #c2647e;
+}
+
+/* ── 暖灰主题 ─────────────────────────────────── */
+
+[data-theme="warm-gray"] {
+  --background: #f5f0e8;
+  --foreground: #3d3833;
+  --card: #faf6ef;
+  --card-foreground: #3d3833;
+  --popover: #faf6ef;
+  --popover-foreground: #3d3833;
+  --primary: #8a6f4d;
+  --primary-foreground: #faf6ef;
+  --secondary: #ede5d8;
+  --secondary-foreground: #3d3833;
+  --muted: #ede5d8;
+  --muted-foreground: #7d746a;
+  --accent: #ede5d8;
+  --accent-foreground: #3d3833;
+  --destructive: #a3543f;
+  --destructive-foreground: #fdf3f0;
+  --border: #e2d8ca;
+  --input: #e2d8ca;
+  --ring: #8a6f4d;
+  --chart-1: #8a6f4d;
+  --chart-2: #8a6f4d;
+  --chart-3: #e2d8ca;
+  --chart-4: #8a6f4d;
+  --chart-5: #7d746a;
+  --sidebar: #faf6ef;
+  --sidebar-foreground: #3d3833;
+  --sidebar-primary: #8a6f4d;
+  --sidebar-primary-foreground: #faf6ef;
+  --sidebar-accent: #ede5d8;
+  --sidebar-accent-foreground: #3d3833;
+  --sidebar-border: #e2d8ca;
+  --sidebar-ring: #8a6f4d;
+  --tag-blue: rgba(90, 140, 220, 0.15);
+  --tag-blue-foreground: #33558a;
+  --tag-green: rgba(70, 160, 110, 0.15);
+  --tag-green-foreground: #2f6b4a;
+  --tag-amber: rgba(200, 150, 60, 0.18);
+  --tag-amber-foreground: #8a6420;
+  --tag-rose: rgba(200, 90, 90, 0.15);
+  --tag-rose-foreground: #8a3535;
+  --tag-teal: rgba(60, 160, 160, 0.15);
+  --tag-teal-foreground: #2f6b6b;
+  --tag-purple: rgba(130, 110, 200, 0.15);
+  --tag-purple-foreground: #5a4a8a;
+  --tool-blue: rgba(90, 140, 220, 0.12);
+  --tool-blue-border: #5a8cdc;
+  --tool-amber: rgba(200, 150, 60, 0.12);
+  --tool-amber-border: #c8963c;
+  --tool-green: rgba(70, 160, 110, 0.12);
+  --tool-green-border: #46a06e;
+  --tool-red: rgba(200, 90, 90, 0.12);
+  --tool-red-border: #c85a5a;
+  --danger-bg: rgba(200, 90, 90, 0.14);
+  --danger-border: rgba(200, 90, 90, 0.3);
+  --bubble-user: rgba(160, 120, 90, 0.18);
+  --bubble-user-foreground: var(--foreground);
+  --action-extract: #8a7a30;
+  --action-extract-foreground: #fdfbe8;
+  --action-save: #8a6f4d;
+  --action-save-foreground: #faf6ef;
+  --success: rgba(70, 160, 110, 0.16);
+  --success-foreground: #2f6b4a;
+  --success-border: rgba(70, 160, 110, 0.3);
+  --status-warning: #8a6420;
+  --status-ok: #8a6f4d;
+  --contribution-0: rgba(120, 110, 90, 0.1);
+  --contribution-1: rgba(120, 110, 90, 0.3);
+  --contribution-2: rgba(120, 110, 90, 0.55);
+  --contribution-3: rgba(120, 110, 90, 0.75);
+  --contribution-4: #8a6f4d;
+}
+
+/* ── 淡蓝灰主题 ─────────────────────────────────── */
+
+[data-theme="cool-gray-blue"] {
+  --background: #eef2f6;
+  --foreground: #33404d;
+  --card: #f4f7fa;
+  --card-foreground: #33404d;
+  --popover: #f4f7fa;
+  --popover-foreground: #33404d;
+  --primary: #5a7d9a;
+  --primary-foreground: #f4f7fa;
+  --secondary: #e0e7ee;
+  --secondary-foreground: #33404d;
+  --muted: #e0e7ee;
+  --muted-foreground: #6a7a89;
+  --accent: #e0e7ee;
+  --accent-foreground: #33404d;
+  --destructive: #a3543f;
+  --destructive-foreground: #fdf3f0;
+  --border: #d4dde6;
+  --input: #d4dde6;
+  --ring: #5a7d9a;
+  --chart-1: #5a7d9a;
+  --chart-2: #5a7d9a;
+  --chart-3: #d4dde6;
+  --chart-4: #5a7d9a;
+  --chart-5: #6a7a89;
+  --sidebar: #f4f7fa;
+  --sidebar-foreground: #33404d;
+  --sidebar-primary: #5a7d9a;
+  --sidebar-primary-foreground: #f4f7fa;
+  --sidebar-accent: #e0e7ee;
+  --sidebar-accent-foreground: #33404d;
+  --sidebar-border: #d4dde6;
+  --sidebar-ring: #5a7d9a;
+  --tag-blue: rgba(90, 140, 220, 0.15);
+  --tag-blue-foreground: #33558a;
+  --tag-green: rgba(70, 160, 110, 0.15);
+  --tag-green-foreground: #2f6b4a;
+  --tag-amber: rgba(200, 150, 60, 0.18);
+  --tag-amber-foreground: #8a6420;
+  --tag-rose: rgba(200, 90, 90, 0.15);
+  --tag-rose-foreground: #8a3535;
+  --tag-teal: rgba(60, 160, 160, 0.15);
+  --tag-teal-foreground: #2f6b6b;
+  --tag-purple: rgba(130, 110, 200, 0.15);
+  --tag-purple-foreground: #5a4a8a;
+  --tool-blue: rgba(90, 140, 220, 0.12);
+  --tool-blue-border: #5a8cdc;
+  --tool-amber: rgba(200, 150, 60, 0.12);
+  --tool-amber-border: #c8963c;
+  --tool-green: rgba(70, 160, 110, 0.12);
+  --tool-green-border: #46a06e;
+  --tool-red: rgba(200, 90, 90, 0.12);
+  --tool-red-border: #c85a5a;
+  --danger-bg: rgba(200, 90, 90, 0.14);
+  --danger-border: rgba(200, 90, 90, 0.3);
+  --bubble-user: rgba(160, 120, 90, 0.18);
+  --bubble-user-foreground: var(--foreground);
+  --action-extract: #8a7a30;
+  --action-extract-foreground: #fdfbe8;
+  --action-save: #5a7d9a;
+  --action-save-foreground: #f4f7fa;
+  --success: rgba(70, 160, 110, 0.16);
+  --success-foreground: #2f6b4a;
+  --success-border: rgba(70, 160, 110, 0.3);
+  --status-warning: #8a6420;
+  --status-ok: #5a7d9a;
+  --contribution-0: rgba(120, 110, 90, 0.1);
+  --contribution-1: rgba(120, 110, 90, 0.3);
+  --contribution-2: rgba(120, 110, 90, 0.55);
+  --contribution-3: rgba(120, 110, 90, 0.75);
+  --contribution-4: #5a7d9a;
+}
+
+/* ── 浅黄主题 ─────────────────────────────────── */
+
+[data-theme="soft-yellow"] {
+  --background: #faf6e3;
+  --foreground: #4a4428;
+  --card: #fdf9ea;
+  --card-foreground: #4a4428;
+  --popover: #fdf9ea;
+  --popover-foreground: #4a4428;
+  --primary: #a08c3a;
+  --primary-foreground: #fdf9ea;
+  --secondary: #f1e9c8;
+  --secondary-foreground: #4a4428;
+  --muted: #f1e9c8;
+  --muted-foreground: #8a8158;
+  --accent: #f1e9c8;
+  --accent-foreground: #4a4428;
+  --destructive: #a3543f;
+  --destructive-foreground: #fdf3f0;
+  --border: #e8dfb8;
+  --input: #e8dfb8;
+  --ring: #a08c3a;
+  --chart-1: #a08c3a;
+  --chart-2: #a08c3a;
+  --chart-3: #e8dfb8;
+  --chart-4: #a08c3a;
+  --chart-5: #8a8158;
+  --sidebar: #fdf9ea;
+  --sidebar-foreground: #4a4428;
+  --sidebar-primary: #a08c3a;
+  --sidebar-primary-foreground: #fdf9ea;
+  --sidebar-accent: #f1e9c8;
+  --sidebar-accent-foreground: #4a4428;
+  --sidebar-border: #e8dfb8;
+  --sidebar-ring: #a08c3a;
+  --tag-blue: rgba(90, 140, 220, 0.15);
+  --tag-blue-foreground: #33558a;
+  --tag-green: rgba(70, 160, 110, 0.15);
+  --tag-green-foreground: #2f6b4a;
+  --tag-amber: rgba(200, 150, 60, 0.18);
+  --tag-amber-foreground: #8a6420;
+  --tag-rose: rgba(200, 90, 90, 0.15);
+  --tag-rose-foreground: #8a3535;
+  --tag-teal: rgba(60, 160, 160, 0.15);
+  --tag-teal-foreground: #2f6b6b;
+  --tag-purple: rgba(130, 110, 200, 0.15);
+  --tag-purple-foreground: #5a4a8a;
+  --tool-blue: rgba(90, 140, 220, 0.12);
+  --tool-blue-border: #5a8cdc;
+  --tool-amber: rgba(200, 150, 60, 0.12);
+  --tool-amber-border: #c8963c;
+  --tool-green: rgba(70, 160, 110, 0.12);
+  --tool-green-border: #46a06e;
+  --tool-red: rgba(200, 90, 90, 0.12);
+  --tool-red-border: #c85a5a;
+  --danger-bg: rgba(200, 90, 90, 0.14);
+  --danger-border: rgba(200, 90, 90, 0.3);
+  --bubble-user: rgba(160, 120, 90, 0.18);
+  --bubble-user-foreground: var(--foreground);
+  --action-extract: #8a7a30;
+  --action-extract-foreground: #fdfbe8;
+  --action-save: #a08c3a;
+  --action-save-foreground: #fdf9ea;
+  --success: rgba(70, 160, 110, 0.16);
+  --success-foreground: #2f6b4a;
+  --success-border: rgba(70, 160, 110, 0.3);
+  --status-warning: #8a6420;
+  --status-ok: #a08c3a;
+  --contribution-0: rgba(120, 110, 90, 0.1);
+  --contribution-1: rgba(120, 110, 90, 0.3);
+  --contribution-2: rgba(120, 110, 90, 0.55);
+  --contribution-3: rgba(120, 110, 90, 0.75);
+  --contribution-4: #a08c3a;
+}
+

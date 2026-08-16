@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -34,8 +35,17 @@ const arrangeSystemPrompt = `你是小说沙盘布局师。根据给定的小说
 5. 增量模式：提示词是"在XXX旁边新建YYY"时，只输出新增项，并参照已给出的现有形状坐标合理放置（相邻/方向）。
 6. 不要输出任何解释文字，只要 JSON 数组。`
 
+// CancelArrange 取消正在进行的沙盘 AI 布局（若存在）。
+// 布局中调用后：LLM 流被中止，ArrangeSandbox 返回错误，前端据此提示已取消。
+func (a *App) CancelArrange() {
+	if a.arrangeCancel != nil {
+		a.arrangeCancel()
+	}
+}
+
 // ArrangeSandbox 调用 LLM 生成沙盘布局并保存。
 // prompt 为空=全量布局；非空=增量布局（按指令新增，保留现有形状）。
+// 使用请求级可取消 ctx：用户可随时调用 CancelArrange 中止本次布局。
 func (a *App) ArrangeSandbox(input ArrangeSandboxInput) (*SandboxData, error) {
 	if a.llmClient == nil {
 		return nil, fmt.Errorf("LLM 客户端未初始化")
@@ -44,18 +54,23 @@ func (a *App) ArrangeSandbox(input ArrangeSandboxInput) (*SandboxData, error) {
 		return nil, fmt.Errorf("请先在设置中选择模型")
 	}
 
+	// 请求级可取消上下文
+	ctx, cancel := context.WithCancel(a.ctx)
+	a.arrangeCancel = cancel
+	defer func() { a.arrangeCancel = nil; cancel() }()
+
 	// 1. 收集设定数据
-	locsRes, err := a.location.ListByNovel(a.ctx, input.NovelID, location.ListByNovelOptions{})
+	locsRes, err := a.location.ListByNovel(ctx, input.NovelID, location.ListByNovelOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("读取地点失败: %w", err)
 	}
 	locs := locsRes.Items
-	charsRes, err := a.character.ListByNovel(a.ctx, input.NovelID, character.ListByNovelOptions{})
+	charsRes, err := a.character.ListByNovel(ctx, input.NovelID, character.ListByNovelOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("读取角色失败: %w", err)
 	}
 	chars := charsRes.Items
-	tlsRes, err := a.timeline.ListByNovel(a.ctx, input.NovelID, timeline.ListByNovelOptions{})
+	tlsRes, err := a.timeline.ListByNovel(ctx, input.NovelID, timeline.ListByNovelOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("读取事件失败: %w", err)
 	}
@@ -102,7 +117,7 @@ func (a *App) ArrangeSandbox(input ArrangeSandboxInput) (*SandboxData, error) {
 	}
 	opts := &llm.CallOptions{}
 	var raw strings.Builder
-	for evt := range a.llmClient.ChatStream(a.ctx, input.ProviderName, msgs, nil, input.ModelID, opts) {
+	for evt := range a.llmClient.ChatStream(ctx, input.ProviderName, msgs, nil, input.ModelID, opts) {
 		if evt.Type == llm.EventError {
 			return nil, fmt.Errorf("LLM 调用失败: %w", evt.Error)
 		}

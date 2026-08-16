@@ -14,6 +14,10 @@ export function ArrangeSandbox(arg1) {
   return window['go']['app']['App']['ArrangeSandbox'](arg1);
 }
 
+export function CancelArrange() {
+  return window['go']['app']['App']['CancelArrange']();
+}
+
 export function CancelChat(arg1) {
   return window['go']['app']['App']['CancelChat'](arg1);
 }

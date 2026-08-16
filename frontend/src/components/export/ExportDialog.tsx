@@ -97,7 +97,7 @@ export default function ExportDialog({ open, novelId, novelTitle, onClose, onExp
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-background rounded-xl shadow-2xl border w-[560px] max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
-          <h3 className="text-base font-semibold">{t('export.title')}：{novelTitle}</h3>
+          <h3 className="text-base font-semibold">{t('export.exportWork')}：{novelTitle}</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none px-1">✕</button>
         </div>
 

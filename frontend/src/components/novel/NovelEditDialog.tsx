@@ -39,7 +39,7 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
 
   async function handleSave() {
     if (!title.trim()) {
-      setError(t('novel.titleRequired'))
+      setError(t('novel.titleRequiredHint'))
       return
     }
     setSaving(true)
@@ -61,7 +61,7 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-background rounded-xl shadow-2xl border w-[560px] max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
-          <h3 className="text-base font-semibold">{novel ? t('novel.editNovel') : t('novel.createNovel')}</h3>
+          <h3 className="text-base font-semibold">{novel ? t('novel.edit') : t('novel.newWork')}</h3>
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="h-8 px-4 rounded-md text-xs border hover:bg-muted transition-colors">
               {t('common.cancel')}
@@ -80,7 +80,7 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
           <div className="space-y-3">
             <label className="block text-xs text-muted-foreground">
-              {t('novel.title')} *
+              {t('novel.bookTitle')} *
               <input
                 value={title}
                 onChange={e => setTitle(e.target.value)}
@@ -107,7 +107,7 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
             </label>
 
             <label className="block text-xs text-muted-foreground">
-              {t('novel.description')}
+              {t('novel.summary')}
               <textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}

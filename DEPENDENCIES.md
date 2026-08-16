@@ -135,10 +135,10 @@ AllowedTools = agentcfg.Allowlist(类型)：main=44 工具 / review=10 只读 / 
 
 ---
 
-## 4. 前端 ↔ 后端契约（useApp 133 方法集中绑定）
+## 4. 前端 ↔ 后端契约（useApp 134 方法集中绑定）
 
 ### 4.1 绑定规则
-- 全部经 `useApp()`（useMemo 封装 133 个 Wails 方法），**CheckUpdate 与 Wails runtime 窗口方法、SearchAll/GetCommitLog/GetCommitFileList/GetFileDiff 例外直接 import**。
+- 全部经 `useApp()`（useMemo 封装 134 个 Wails 方法），**CheckUpdate 与 Wails runtime 窗口方法、SearchAll/GetCommitLog/GetCommitFileList/GetFileDiff 例外直接 import**。
 - 方法名与 Go 方法名一一对应（Wails 生成 `@/lib/wailsjs/go/app/App`）。
 - **新增后端方法 → 重新生成绑定（wails build 自动）+ useApp 导出 + 组件调用。**
 
@@ -166,7 +166,7 @@ AllowedTools = agentcfg.Allowlist(类型)：main=44 工具 / review=10 只读 / 
 `file:changed`（edit 工具写文件）、`chat:started`、`agent:<turn_id>`（ChatPanel）、`import:progress`（useImportNovel）、`pattern:progress`（usePatternProgress）。
 
 ### 4.4 localStorage 键
-`theme`、`i18nextLng`、`goink_tabs_all`、`goink_sidepanel_width`、`goink_chatpanel_width`、`goink_window_{w,h,x,y,maximised}`、`editor_prefs`、`platinum_color_presets`。
+`theme`、`themeBg`、`themeBorder`、`themeFg`、`themeFont`、`themeFontSize`（主题自定义，立即生效）、`themePresets`（主题配色方案）、`i18nextLng`、`goink_tabs_all`、`goink_sidepanel_width`、`goink_chatpanel_width`、`goink_window_{w,h,x,y,maximised}`、`editor_prefs`、`platinum_color_presets`（编辑器配色方案）、`sandbox_onboarded`（沙盘首次引导标记）。
 
 ---
 
@@ -238,7 +238,7 @@ wails build（Go 1.26.5 + mingw + CGO_CFLAGS=-IC:\Users\haoha\go\goink-cgo-inclu
 | i18n 键 | zh-CN + en + audit_i18n.cjs |
 | 文件路径/文件名 | internal/git/rw.go + 前端 path 判断 + edit 工具白名单 + 技能/rules + README |
 | 沙盘（sandboxs/*.json） | app/sandbox_api.go（List/Get/Save/Create/Update/Delete）+ useApp 6 方法 + SandboxView/SandboxList + i18n；形状/实体关联字段（entityType/entityId）变更需同步前端类型 |
-| 沙盘 AI 布局 | internal/mcp_tools/sandbox_tools.go（arrange_sandbox：ops 结构化 move/delete/add + 全量/增量 + 比例尺 + 金字塔 + 嵌套 + 批量拆分）+ agentcfg/identity.go allowlist + app/sandbox_arrange.go（LLM 版按钮）+ 前端 ArrangeSandbox + 自动刷新轮询 + beforeunload 兜底；world/setting 实体关联需同步 entityTarget 与 WorkspaceView focus |
+| 沙盘 AI 布局 | internal/mcp_tools/sandbox_tools.go（arrange_sandbox：ops 结构化 move/delete/add + 全量/增量 + 比例尺 + 金字塔 + 嵌套 + 批量拆分）+ agentcfg/identity.go allowlist + app/sandbox_arrange.go（LLM 版按钮，请求级可取消 ctx）+ 前端 ArrangeSandbox/CancelArrange + 后台运行（可关弹窗切页、完成 toast、取消按钮）+ 首次引导弹窗（localStorage sandbox_onboarded） |
 | 后端新方法 | wails build 重新生成绑定 + useApp 导出 + 组件调用 |
 | 注入链内容 | agentcfg（MainSystemPrompt/NovelState）+ app/chat.go writeSystemMessages + AISettingsDialog |
 | 拖拽/排序 | dnd.log 快照验证 + prev 重算 + 导出顺序 |
