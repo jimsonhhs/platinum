@@ -252,6 +252,13 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
     }, 500)
   }, [tabs, updateTab, app, t])
 
+  // 应用关闭前强制保存（beforeunload 触发，防 500ms 窗口内关闭丢数据）
+  useEffect(() => {
+    const handler = () => { flushPendingSaves() }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  })
+
   async function flushPendingSaves() {
     if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null }
     if (draftSaveTimerRef.current) { clearTimeout(draftSaveTimerRef.current); draftSaveTimerRef.current = null }
@@ -516,7 +523,7 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
   const titleFromPath = useCallback((p: string): string => {
     if (p.startsWith('chapters/')) {
       const num = parseInt(p.replace('chapters/', '').replace('.md', ''))
-      return t('sidebar.aiIndex', { n: num })
+      return t('sidebar.aiIndex', { n: String(num).padStart(3, '0') })
     }
     if (p === 'platinum.md') return t('content.storyStatus')
     if (isSkillPath(p)) return `${t('content.skillLabel')}${skillNameFromPath(p)}`

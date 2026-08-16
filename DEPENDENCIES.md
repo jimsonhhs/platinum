@@ -238,6 +238,7 @@ wails build（Go 1.26.5 + mingw + CGO_CFLAGS=-IC:\Users\haoha\go\goink-cgo-inclu
 | i18n 键 | zh-CN + en + audit_i18n.cjs |
 | 文件路径/文件名 | internal/git/rw.go + 前端 path 判断 + edit 工具白名单 + 技能/rules + README |
 | 沙盘（sandboxs/*.json） | app/sandbox_api.go（List/Get/Save/Create/Update/Delete）+ useApp 6 方法 + SandboxView/SandboxList + i18n；形状/实体关联字段（entityType/entityId）变更需同步前端类型 |
+| 沙盘 AI 布局 | internal/mcp_tools/sandbox_tools.go（arrange_sandbox：ops 结构化 move/delete/add + 全量/增量 + 比例尺 + 金字塔 + 嵌套 + 批量拆分）+ agentcfg/identity.go allowlist + app/sandbox_arrange.go（LLM 版按钮）+ 前端 ArrangeSandbox + 自动刷新轮询 + beforeunload 兜底；world/setting 实体关联需同步 entityTarget 与 WorkspaceView focus |
 | 后端新方法 | wails build 重新生成绑定 + useApp 导出 + 组件调用 |
 | 注入链内容 | agentcfg（MainSystemPrompt/NovelState）+ app/chat.go writeSystemMessages + AISettingsDialog |
 | 拖拽/排序 | dnd.log 快照验证 + prev 重算 + 导出顺序 |

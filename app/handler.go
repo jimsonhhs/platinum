@@ -188,6 +188,11 @@ func (a *App) initWithConfig(cfg *config.AppConfig) {
 		a.skill = s
 	}
 
+	// 首次安装：把内置的三个基础 skill 复制到用户技能目录（用户可编辑；仅首次，删除不自动补）
+	if err := skill.EnsureBaseSkills(config.UserSkillsDir()); err != nil {
+		a.logger.Warn("写入基础 skill 失败", "err", err)
+	}
+
 	// 7. 初始化 MCP 工具注册表
 	a.registry = mcp_tools.NewRegistry(a.logger)
 	mcp_tools.RegisterAllTools(a.registry)

@@ -616,26 +616,37 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
         </div>
       </div>
 
-      {/* 章节打开视图选择 */}
-      <div className="flex items-center gap-0.5 px-3 py-1.5 border-b bg-muted/20">
-        {([
-          { id: 'content', label: t('content.body') },
-          { id: 'outline', label: t('content.bodyOutline') },
-          { id: 'userOutline', label: t('content.userOutline') },
-          { id: 'draft', label: t('content.draft') },
-        ] as const).map(v => (
-          <button
-            key={v.id}
-            onClick={() => setChapterViewMode(v.id)}
-            className={`flex-1 px-2 py-1 text-[11px] rounded transition-colors ${
-              chapterViewMode === v.id
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {v.label}
-          </button>
-        ))}
+      {/* 章节打开视图选择（全局默认：新打开的章节用此视图；点击时当前章节立即切换） */}
+      <div className="px-3 pt-1.5 pb-1 border-b bg-muted/20">
+        <div className="flex items-center gap-0.5">
+          {([
+            { id: 'content', label: t('content.body') },
+            { id: 'draft', label: t('content.draft') },
+            { id: 'userOutline', label: t('content.userOutline') },
+            { id: 'outline', label: t('content.bodyOutline') },
+          ] as const).map(v => (
+            <button
+              key={v.id}
+              onClick={() => {
+                setChapterViewMode(v.id)
+                // 若当前正打开某章，立即以新视图重开，右侧同步切换
+                if (target?.path?.startsWith('chapters/')) {
+                  const num = parseInt(target.path.replace('chapters/', '').replace('.md', ''))
+                  const ch = chapters.find(c => c.chapter_number === num)
+                  if (ch) onSelectChapter(ch, v.id)
+                }
+              }}
+              className={`flex-1 px-2 py-1 text-[11px] rounded transition-colors ${
+                chapterViewMode === v.id
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground/70 mt-1 px-0.5">{t('sidebar.viewModeGlobal')}</p>
       </div>
 
       {fileChanges !== null && (

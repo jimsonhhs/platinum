@@ -83,13 +83,14 @@ export default function SandboxList({ novelId, currentId, onSelect }: Props) {
             <LayoutGrid className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
             <p className="text-[11px] text-muted-foreground">{t('sandbox.listEmpty')}</p>
           </div>
-        ) : items.map(item => (
+        ) : items.map((item, idx) => (
           <div
             key={item.id}
             onClick={() => onSelect(item.id)}
             className={`group w-full px-3 py-2 text-left cursor-pointer transition-colors border-b border-border/40 ${currentId === item.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}
           >
             <div className="flex items-center gap-1.5">
+              <span className="shrink-0 text-[10px] font-mono text-muted-foreground/70">{String(idx + 1).padStart(2, '0')}</span>
               <span className="flex-1 text-xs font-medium truncate">{item.name}</span>
               <button
                 onClick={e => { e.stopPropagation(); handleRename(item) }}

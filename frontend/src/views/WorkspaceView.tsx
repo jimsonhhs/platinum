@@ -83,6 +83,15 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
   const [preferenceFocusId, setPreferenceFocusId] = useState<number>(0)
   const [styleSampleFocusId, setStyleSampleFocusId] = useState<number | null>(null)
   const [sandboxId, setSandboxId] = useState('')
+  const prevPanelRef = useRef(activePanel)
+
+  // 从沙盘界面切走 → 自动保存当前沙盘
+  useEffect(() => {
+    if (prevPanelRef.current === 'sandbox' && activePanel !== 'sandbox') {
+      window.dispatchEvent(new CustomEvent('sandbox:auto-save'))
+    }
+    prevPanelRef.current = activePanel
+  }, [activePanel])
   const [settingFocusId, setSettingFocusId] = useState<number | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
@@ -182,6 +191,7 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
       if (d.panel === 'characters') setCharacterFocusId(d.entityId)
       else if (d.panel === 'locations') setLocationFocusId(d.entityId)
       else if (d.panel === 'timeline') setTimelineFocusId(d.entityId)
+      else if (d.panel === 'settings') setSettingFocusId(d.entityId)
     }
     window.addEventListener('sandbox:open-entity', handler)
     return () => window.removeEventListener('sandbox:open-entity', handler)
@@ -238,10 +248,11 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
   // ── SidePanel → ContentPanel 桥接 ─────────────────────────
 
   function handleSelectChapter(ch: chapter.Chapter, viewMode?: string) {
-    // 标题格式：章节名（AI索引号XXX），XXX=文件号
+    // 标题格式：章节名（AI索引号XXX），XXX=三位文件号（与文件名 001.md 一致，避免 AI 混淆）
+    const idx = String(ch.chapter_number).padStart(3, '0')
     const chTitle = ch.title
-      ? `${ch.title}（${t('sidebar.aiIndex', { n: ch.chapter_number })}）`
-      : t('sidebar.aiIndex', { n: ch.chapter_number })
+      ? `${ch.title}（${t('sidebar.aiIndex', { n: idx })}）`
+      : t('sidebar.aiIndex', { n: idx })
     setTabTarget({ path: ch.file_path, title: chTitle })
     contentRef.current?.openFile(ch.file_path, chTitle, false, viewMode)
   }

@@ -140,8 +140,11 @@ export default function AISettingsDialog({ open, novel, onClose, onSave }: Props
               })}
             </div>
 
-            {/* 核心勾选项说明：放在破甲词内容结束后 */}
-            <p className="text-[11px] text-amber-600/90 mt-2">{t('novel.coreSectionDesc')}</p>
+            {/* 核心勾选项说明：放在破甲词内容结束后，带 ! 图标醒目 */}
+            <p className="flex items-start gap-1 text-[11px] text-amber-600/90 mt-2">
+              <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+              <span>{t('novel.coreSectionDesc')}</span>
+            </p>
 
             <div className="mt-2 space-y-1.5">
               <div className="text-[11px] text-muted-foreground">{t('novel.injectSection')}</div>
@@ -180,8 +183,13 @@ export default function AISettingsDialog({ open, novel, onClose, onSave }: Props
 
           {/* 可选区 */}
           <div>
-            <div className="text-xs font-medium text-muted-foreground">{t('novel.optSection')}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{t('novel.optSectionDesc')}</p>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              {t('novel.optSection')}
+            </div>
+            <p className="flex items-start gap-1 text-[11px] text-muted-foreground mt-0.5">
+              <span>{t('novel.optSectionDesc')}</span>
+            </p>
             <div className="mt-1.5 space-y-1.5">
               {OPT_MODULES.map(mod => (
                 <label key={mod} className="flex items-start gap-2 text-xs py-0.5">

@@ -14,6 +14,26 @@ export namespace app {
 	        this.path = source["path"];
 	    }
 	}
+	export class ArrangeSandboxInput {
+	    novel_id: number;
+	    sandbox_id: string;
+	    prompt: string;
+	    provider_name: string;
+	    model_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ArrangeSandboxInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.novel_id = source["novel_id"];
+	        this.sandbox_id = source["sandbox_id"];
+	        this.prompt = source["prompt"];
+	        this.provider_name = source["provider_name"];
+	        this.model_id = source["model_id"];
+	    }
+	}
 	export class ChatInput {
 	    session_id: string;
 	    novel_id: number;
@@ -629,8 +649,10 @@ export namespace app {
 	    stroke: string;
 	    strokeWidth: number;
 	    label: string;
+	    textPos: string;
 	    entityType: string;
 	    entityId: number;
+	    star: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SandboxShape(source);
@@ -650,8 +672,10 @@ export namespace app {
 	        this.stroke = source["stroke"];
 	        this.strokeWidth = source["strokeWidth"];
 	        this.label = source["label"];
+	        this.textPos = source["textPos"];
 	        this.entityType = source["entityType"];
 	        this.entityId = source["entityId"];
+	        this.star = source["star"];
 	    }
 	}
 	export class SandboxData {
@@ -815,6 +839,28 @@ export namespace app {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.novel_id = source["novel_id"];
+	    }
+	}
+	export class SkillLibraryEntry {
+	    name: string;
+	    file: string;
+	    title: string;
+	    description: string;
+	    category: string;
+	    mode: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SkillLibraryEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.file = source["file"];
+	        this.title = source["title"];
+	        this.description = source["description"];
+	        this.category = source["category"];
+	        this.mode = source["mode"];
 	    }
 	}
 	export class SlashCommand {

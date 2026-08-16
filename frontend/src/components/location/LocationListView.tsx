@@ -58,6 +58,19 @@ export default function LocationListView({ novelId, focusId }: Props) {
 
   useEffect(() => { load() }, [load])
 
+  // focusId 变化：切到列表 tab 并滚动到目标卡片
+  useEffect(() => {
+    if (focusId && focusId > 0) {
+      setViewTab('list')
+      setTimeout(() => {
+        const el = document.querySelector(`[data-loc-card="${focusId}"]`)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el?.classList.add('ring-2', 'ring-primary')
+        setTimeout(() => el?.classList.remove('ring-2', 'ring-primary'), 2500)
+      }, 120)
+    }
+  }, [focusId])
+
   const nameMap = useMemo(() => {
     const m = new Map<number, string>()
     for (const loc of locations) m.set(loc.id, loc.name)
@@ -344,7 +357,7 @@ export default function LocationListView({ novelId, focusId }: Props) {
                   }
 
                   return (
-                    <div key={loc.id} className="rounded-lg border border-border bg-card hover:border-border hover:shadow-sm transition-shadow group">
+                    <div key={loc.id} data-loc-card={loc.id} className="rounded-lg border border-border bg-card hover:border-border hover:shadow-sm transition-shadow group">
                       <div className="flex items-start gap-3 px-4 py-3">
                         <span className="shrink-0 flex h-8 w-8 items-center justify-center rounded bg-tag-green text-tag-green-foreground">
                           <MapPin className="h-4 w-4" />

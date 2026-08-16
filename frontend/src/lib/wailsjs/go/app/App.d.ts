@@ -29,6 +29,8 @@ export function ApproveTool(arg1:string,arg2:boolean,arg3:string):Promise<void>;
 
 export function ArchiveHistory(arg1:number,arg2:string):Promise<void>;
 
+export function ArrangeSandbox(arg1:app.ArrangeSandboxInput):Promise<app.SandboxData>;
+
 export function CancelChat(arg1:string):Promise<void>;
 
 export function CancelExtract(arg1:string):Promise<void>;
@@ -195,13 +197,19 @@ export function ImportWithLLM(arg1:app.ImportWithLLMInput):Promise<imp.ImportRes
 
 export function Initialize(arg1:string):Promise<void>;
 
+export function InstallSkill(arg1:string):Promise<string>;
+
 export function IsInitialized():Promise<boolean>;
 
 export function ListHistory(arg1:number,arg2:string):Promise<Array<draft.HistoryEntry>>;
 
+export function ListSandboxHistory(arg1:number,arg2:string):Promise<Array<draft.HistoryEntry>>;
+
 export function ListSandboxes(arg1:number):Promise<Array<app.SandboxMeta>>;
 
 export function ListSettings(arg1:number):Promise<Array<setting.SettingItem>>;
+
+export function ListSkillLibrary():Promise<Array<app.SkillLibraryEntry>>;
 
 export function ListSkills(arg1:app.ListSkillsInput):Promise<Array<skill.SkillMeta>>;
 
@@ -242,6 +250,8 @@ export function ReorderChaptersBatch(arg1:number,arg2:Array<number>,arg3:number,
 export function ReorderVolumes(arg1:number,arg2:Array<number>):Promise<void>;
 
 export function RestoreHistory(arg1:number,arg2:string,arg3:string):Promise<void>;
+
+export function RestoreSandboxHistory(arg1:number,arg2:string,arg3:string):Promise<void>;
 
 export function RestoreSnapshotAll(arg1:string):Promise<number>;
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Plus, Pencil, Trash2, Heart, Copy, PenLine } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, Heart, Copy, PenLine, CloudDownload, Download, CheckCircle2, Loader2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { toastError } from '@/lib/utils'
+import { toastError, toastSuccess } from '@/lib/utils'
 import { useApp } from '@/hooks/useApp'
 import type { skill } from '@/hooks/useApp'
 import SkillContributeDialog from './SkillContributeDialog'
@@ -41,6 +41,12 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [showContribute, setShowContribute] = useState(false)
+  const [showLibrary, setShowLibrary] = useState(false)
+  const [libEntries, setLibEntries] = useState<{ name: string; title: string; description: string; category: string }[]>([])
+  const [libLoading, setLibLoading] = useState(false)
+  const [libSearch, setLibSearch] = useState('')
+  const [installing, setInstalling] = useState<string | null>(null)
+  const [installed, setInstalled] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     if (!novelId) { setSkills([]); return }
@@ -117,6 +123,37 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
     }
   }
 
+  const openLibrary = async () => {
+    setShowLibrary(true)
+    setLibLoading(true)
+    try {
+      const list = await app.ListSkillLibrary()
+      setLibEntries((list ?? []).map((e: any) => ({ name: e.name, title: e.title || e.name, description: e.description || '', category: e.category || '' })))
+      // 已安装的标记（用户技能目录里同名的）
+      const installedNames = new Set<string>()
+      skills.forEach(s => { if (s.source === 'user') installedNames.add(s.name) })
+      setInstalled(installedNames)
+    } catch (err) {
+      toastError(String(err))
+    } finally {
+      setLibLoading(false)
+    }
+  }
+
+  const handleInstall = async (name: string) => {
+    setInstalling(name)
+    try {
+      const fileName = await app.InstallSkill(name)
+      setInstalled(prev => new Set(prev).add(name))
+      toastSuccess(t('skill.installed') + `：${fileName}`)
+      await load()
+    } catch (err) {
+      toastError(String(err))
+    } finally {
+      setInstalling(null)
+    }
+  }
+
   const duplicateTitle = (s: skill.SkillMeta) =>
     s.source === 'user' ? t('skill.copyToNovel') : t('skill.copyToUser')
 
@@ -127,6 +164,13 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
           {t('skill.skills')} ({skills.length})
         </span>
         <div className="flex items-center gap-2">
+          <button
+            onClick={openLibrary}
+            className="p-0.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-primary transition-colors"
+            title={t('skill.library')}
+          >
+            <CloudDownload className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={() => setShowContribute(true)}
             className="p-0.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-rose-500 transition-colors"
@@ -270,6 +314,70 @@ export default function SkillList({ novelId, activeSkillName, onSelectSkill, onE
         )}
       </div>
       <SkillContributeDialog open={showContribute} onClose={() => setShowContribute(false)} />
+
+      {/* 技能库面板 */}
+      {showLibrary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowLibrary(false)} />
+          <div className="relative bg-background rounded-xl shadow-2xl border w-[520px] max-w-[92vw] h-[500px] max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+              <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                <CloudDownload className="w-4 h-4 text-primary" />
+                {t('skill.library')}
+              </h3>
+              <button onClick={() => setShowLibrary(false)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-4 py-2 border-b shrink-0">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={libSearch}
+                  onChange={e => setLibSearch(e.target.value)}
+                  placeholder={t('skill.librarySearch')}
+                  className="w-full h-8 pl-8 pr-3 rounded-md border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5">
+              {libLoading ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('skill.libraryLoading')}
+                </div>
+              ) : libEntries.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">{t('skill.libraryEmpty')}</p>
+              ) : libEntries.filter(e => !libSearch.trim() || e.title.toLowerCase().includes(libSearch.toLowerCase()) || e.description.toLowerCase().includes(libSearch.toLowerCase())).map(e => (
+                <div key={e.name} className="rounded-lg border p-3 flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium">{e.title}</span>
+                      {e.category && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{e.category}</span>}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed line-clamp-3">{e.description}</p>
+                  </div>
+                  <button
+                    onClick={() => handleInstall(e.name)}
+                    disabled={installing === e.name || installed.has(e.name)}
+                    className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] border shrink-0 transition-colors ${
+                      installed.has(e.name)
+                        ? 'text-muted-foreground/50 cursor-default'
+                        : 'bg-primary text-primary-foreground hover:opacity-90 border-transparent disabled:opacity-50'
+                    }`}
+                  >
+                    {installing === e.name ? <Loader2 className="w-3 h-3 animate-spin" /> : installed.has(e.name) ? <CheckCircle2 className="w-3 h-3" /> : <Download className="w-3 h-3" />}
+                    {installed.has(e.name) ? t('skill.installed') : t('skill.install')}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="px-4 py-2 border-t text-[10px] text-muted-foreground shrink-0">
+              {t('skill.libraryHint')}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

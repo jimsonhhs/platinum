@@ -15,4 +15,10 @@ func RegisterAllTools(r *Registry) {
 	RegisterDeleteTools(r)
 	RegisterWebSearchTools(r)
 	RegisterWebFetchTools(r)
+	RegisterSandboxTools(r)
+}
+
+// RegisterSandboxTools 注册沙盘布局工具。
+func RegisterSandboxTools(r *Registry) {
+	r.Register(&ArrangeSandboxTool{})
 }

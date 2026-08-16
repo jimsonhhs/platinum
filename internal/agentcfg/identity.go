@@ -34,6 +34,7 @@ var mainAgentTools = []string{
 	"analyze_material",
 	"list_styles",
 	"set_enabled_style",
+	"arrange_sandbox",
 	"edit",
 	"read",
 	"search_story_memory",

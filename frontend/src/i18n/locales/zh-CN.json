@@ -156,7 +156,8 @@
     "dropToEnd": "拖到这里 = 放入本卷末尾",
     "volumeDefaultName": "第{{n}}卷",
     "newChapterInVolume": "在本卷新建章节",
-    "aiIndex": "AI索引号{{n}}"
+    "aiIndex": "AI索引号{{n}}",
+    "viewModeGlobal": "默认打开视图：点击立即切换当前章节，之后新开的章节也用它打开"
   },
   "chat": {
     "aiChat": "AI 对话",
@@ -464,7 +465,7 @@
     "coreSection": "核心内容（影响 AI 行为与技能）",
     "coreSectionDesc": "以下内容对小说维护至关重要，取消勾选会弹出严重确认。",
     "optSection": "可选功能（按需勾选）",
-    "optSectionDesc": "以下为高级功能，关闭不会影响核心写作流程，按需启用。",
+    "optSectionDesc": "以下为高级功能，关闭不会影响核心写作流程，关闭后能大幅降低 token 消耗。",
     "coreModuleWarn": "关闭「{{name}}」后，AI 将不再维护/读取该核心内容，可能影响小说的连贯性与质量。\n\n确定要关闭吗？",
     "aiSettings": "AI 设定（破甲词 · token 节流）",
     "aiSettingsDesc": "破甲词 / 注入 / 维护配置",
@@ -927,7 +928,14 @@
     "modeShortAuto": "智能",
     "modeShortManual": "指令",
     "modeShortAlways": "常驻",
-    "newTemplate": "---\nname: {{name}}\ndescription: \ncategory: 自定义\nmode: auto\nversion: 1\n---\n\n# {{name}}\n\n在这里写下技能正文（给 AI 的提示词）……\n"
+    "newTemplate": "---\nname: {{name}}\ndescription: \ncategory: 自定义\nmode: auto\nversion: 1\n---\n\n# {{name}}\n\n在这里写下技能正文（给 AI 的提示词）……\n",
+    "library": "技能库",
+    "librarySearch": "搜索技能…",
+    "libraryLoading": "正在连接技能库…",
+    "libraryEmpty": "技能库暂无内容",
+    "libraryHint": "技能库来自 GitHub 共享仓库，下载后安装到用户技能目录（全局生效），可随时编辑/删除",
+    "install": "下载",
+    "installed": "已安装"
   },
   "styleSample": {
     "generated": "已生成",
@@ -1291,7 +1299,7 @@
     "quickStart_conceptLocate": "告诉 AI 目标文档",
     "quickStart_conceptLocateDesc": "用「编号 + 行号」精确定位（如\"润色 006 的 25-59 行\"）。说「第X章/第六章」时 AI 会先只看章节标题匹配，确认后才读取正文（省 token）。说「本章」指当前打开的章节。",
     "quickStart_conceptSandbox": "沙盘",
-    "quickStart_conceptSandboxDesc": "视觉化世界地图：多份命名沙盘（左侧栏管理），6 种形状 + 文字工具自由摆放（移动/旋转/缩放/颜色/透明度），框选整组移动，「添加实体」从角色/地点/事件列表放入并自动关联，点击形状可跳转完整页面；存 novels/{id}/sandboxs/ 随书版本化。",
+    "quickStart_conceptSandboxDesc": "视觉化世界地图：多份命名沙盘（左侧栏管理），形状自由摆放（移动/旋转/缩放/颜色/文字/框选整组）。「添加实体」可从小说设定/地点/角色/事件导入（设定=井字地图容器、地点=倒水滴、角色=人头、事件=问号+星级）。聊天直接发指令即可让 AI 布局（\"把设定摆到沙盘上\"\"在X北边新建Y\"\"把A、B放到C旁边\"），支持删除/移动/批量/歧义反问。AI 布局按描述尺寸等比缩放、人物事件金字塔排列不重叠。停止操作自动保存，关进程强制落盘+历史归档（零丢失）。",
     "quickStart_conceptAiTrace": "AI 推导过程",
     "quickStart_conceptAiTraceDesc": "文风提取时实时显示 AI 推演（统计→思考→生成内容流，只读观看）；提取产物为空会明确报错，不会保存空文件。"
   },
@@ -1448,7 +1456,7 @@
     "noLocations": "还没有地点，先去「地点」页创建",
     "noCharacters": "还没有角色，先去「角色」页创建",
     "noTimeline": "还没有事件，先去「时间线」页创建",
-    "addEntityHint": "点击列表项放入画布：地点→方形、角色→圆形、事件→波浪；点击形状可跳转完整页面",
+    "addEntityHint": "点击列表项放入画布：小说设定→井字地图、地点→倒水滴、角色→人头形、事件→镂空问号+星级；点击形状可跳转完整页面",
     "textTool": "文字（点击画布输入，拖动角柄调字号）",
     "textPlaceholder": "输入文字…",
     "selectTool": "框选（拖框选中多个，拖动整组移动）",
@@ -1459,6 +1467,32 @@
     "renamePrompt": "沙盘名称：",
     "descPrompt": "简介（可留空）：",
     "deleteConfirm": "确定删除沙盘",
-    "rename": "改名/简介"
+    "rename": "改名/简介",
+    "inputText": "输入文字",
+    "inputTextPlaceholder": "输入文字…",
+    "textPos": "文字位置",
+    "textPosTop": "顶端",
+    "textPosMiddle": "中间",
+    "textPosBottom": "底部",
+    "editShape": "编辑图形",
+    "history": "历史",
+    "historyEmpty": "暂无历史版本",
+    "historyHint": "每次保存自动归档旧版本（最多保留 5 份）；切换到其他界面时自动保存",
+    "restore": "恢复",
+    "restoreConfirm": "恢复该历史版本？当前内容将自动归档",
+    "restored": "已恢复历史版本",
+    "shapeArrow": "箭头",
+    "arrange": "AI 布局",
+    "arranging": "布局中…",
+    "arranged": "布局已生成",
+    "arrangeNoModel": "请先在设置中选择模型",
+    "arrangePlaceholder": "可选：布局指令。留空=按全部设定生成完整布局；输入如「在王国东边新建临海城」「把森林放到北方」=增量调整",
+    "arrangeFull": "完整布局（全部实体）",
+    "arrangeIncremental": "增量调整（按指令）",
+    "arrangeHint": "AI 会根据设定推理空间关系：地点按刻板印象配色与形状（森林绿矩形/河流蓝波浪/火山三角…），角色为头像形，事件为镂空问号+星级；增量时保留已有摆放，只移动/新增指令涉及的内容",
+    "shapeWorld": "世界观",
+    "worldDefault": "世界地图",
+    "tabWorld": "小说设定",
+    "noWorld": "暂无小说设定，先去「设定」页创建（如地理/魔法体系/势力）"
   }
 }

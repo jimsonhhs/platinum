@@ -56,6 +56,20 @@ export default function CharacterListView({ novelId, focusId }: Props) {
 
   useEffect(() => { load() }, [load])
 
+  // focusId 变化：切到列表 tab 并滚动到目标卡片
+  useEffect(() => {
+    if (focusId && focusId > 0) {
+      setViewTab('list')
+      // 等渲染后定位
+      setTimeout(() => {
+        const el = document.querySelector(`[data-char-card="${focusId}"]`)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el?.classList.add('ring-2', 'ring-primary')
+        setTimeout(() => el?.classList.remove('ring-2', 'ring-primary'), 2500)
+      }, 120)
+    }
+  }, [focusId])
+
   // ── CRUD handlers ─────────────────────────────────────
 
   function openCreate() {
@@ -272,7 +286,7 @@ export default function CharacterListView({ novelId, focusId }: Props) {
                   const desc = c.description?.trim() || ''
 
                   return (
-                    <div key={c.id} className="rounded-lg border border-border bg-card hover:border-border hover:shadow-sm transition-shadow group">
+                    <div key={c.id} data-char-card={c.id} className="rounded-lg border border-border bg-card hover:border-border hover:shadow-sm transition-shadow group">
                       <div className="flex items-start gap-3 px-4 py-3">
                         <span className="shrink-0 w-8 h-8 rounded-full bg-tag-blue text-tag-blue-foreground text-xs font-medium flex items-center justify-center">
                           {(c.name ?? '').charAt(0) || '?'}

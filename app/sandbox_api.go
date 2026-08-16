@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"novel/internal/draft"
 	"novel/internal/git"
 )
 
@@ -28,8 +29,10 @@ type SandboxShape struct {
 	Stroke      string  `json:"stroke"`      // 边框色
 	StrokeWidth float64 `json:"strokeWidth"`
 	Label       string  `json:"label"`       // 形状上的文字
+	TextPos     string  `json:"textPos"`     // 文字位置：top | middle | bottom
 	EntityType  string  `json:"entityType"`  // "" | "location" | "character" | "timeline"
 	EntityID    int64   `json:"entityId"`    // 关联实体 ID（0=无）
+	Star        int     `json:"star"`        // 事件星级（1-5，实体为 timeline 时）
 }
 
 // SandboxData 是单份沙盘的完整内容。
@@ -138,6 +141,7 @@ func (a *App) GetSandbox(novelID int64, id string) (*SandboxData, error) {
 }
 
 // SaveSandbox 保存指定沙盘（写文件 + git 提交）。
+// 保存前自动归档旧版本到 sandboxs/_history/（去重 + 保留 5 份）。
 func (a *App) SaveSandbox(novelID int64, id string, sd *SandboxData) error {
 	if id == "" || strings.ContainsAny(id, `/\`) {
 		return fmt.Errorf("无效的沙盘 ID")
@@ -151,6 +155,12 @@ func (a *App) SaveSandbox(novelID int64, id string, sd *SandboxData) error {
 	if sd.Scale <= 0 {
 		sd.Scale = 1
 	}
+
+	// 保存前归档当前版本（仅当文件已存在且有内容；去重 + 保留 5 份）
+	if _, err := draft.ArchiveCurrent(novelID, filepath.Join("sandboxs", id+".json"), 5); err != nil {
+		a.logger.Warn("沙盘归档失败", "novel_id", novelID, "sandbox", id, "err", err)
+	}
+
 	if err := os.MkdirAll(sandboxDir(novelID), 0755); err != nil {
 		return fmt.Errorf("创建沙盘目录失败: %w", err)
 	}
@@ -163,6 +173,22 @@ func (a *App) SaveSandbox(novelID int64, id string, sd *SandboxData) error {
 	}
 	a.commitSandbox(novelID, "update sandbox: "+id)
 	return nil
+}
+
+// ListSandboxHistory 返回某沙盘的历史版本（时间倒序）。
+func (a *App) ListSandboxHistory(novelID int64, id string) ([]draft.HistoryEntry, error) {
+	if id == "" || strings.ContainsAny(id, `/\`) {
+		return nil, fmt.Errorf("无效的沙盘 ID")
+	}
+	return draft.ListHistory(novelID, filepath.Join("sandboxs", id+".json"))
+}
+
+// RestoreSandboxHistory 把某历史版本恢复到沙盘文件（当前版本自动归档）。
+func (a *App) RestoreSandboxHistory(novelID int64, id string, fileName string) error {
+	if id == "" || strings.ContainsAny(id, `/\`) {
+		return fmt.Errorf("无效的沙盘 ID")
+	}
+	return draft.RestoreHistory(novelID, filepath.Join("sandboxs", id+".json"), fileName, 5)
 }
 
 // CreateSandbox 新建沙盘（默认名"沙盘 N"），返回新 ID。

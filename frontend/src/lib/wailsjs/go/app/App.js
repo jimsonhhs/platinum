@@ -10,6 +10,10 @@ export function ArchiveHistory(arg1, arg2) {
   return window['go']['app']['App']['ArchiveHistory'](arg1, arg2);
 }
 
+export function ArrangeSandbox(arg1) {
+  return window['go']['app']['App']['ArrangeSandbox'](arg1);
+}
+
 export function CancelChat(arg1) {
   return window['go']['app']['App']['CancelChat'](arg1);
 }
@@ -342,6 +346,10 @@ export function Initialize(arg1) {
   return window['go']['app']['App']['Initialize'](arg1);
 }
 
+export function InstallSkill(arg1) {
+  return window['go']['app']['App']['InstallSkill'](arg1);
+}
+
 export function IsInitialized() {
   return window['go']['app']['App']['IsInitialized']();
 }
@@ -350,12 +358,20 @@ export function ListHistory(arg1, arg2) {
   return window['go']['app']['App']['ListHistory'](arg1, arg2);
 }
 
+export function ListSandboxHistory(arg1, arg2) {
+  return window['go']['app']['App']['ListSandboxHistory'](arg1, arg2);
+}
+
 export function ListSandboxes(arg1) {
   return window['go']['app']['App']['ListSandboxes'](arg1);
 }
 
 export function ListSettings(arg1) {
   return window['go']['app']['App']['ListSettings'](arg1);
+}
+
+export function ListSkillLibrary() {
+  return window['go']['app']['App']['ListSkillLibrary']();
 }
 
 export function ListSkills(arg1) {
@@ -436,6 +452,10 @@ export function ReorderVolumes(arg1, arg2) {
 
 export function RestoreHistory(arg1, arg2, arg3) {
   return window['go']['app']['App']['RestoreHistory'](arg1, arg2, arg3);
+}
+
+export function RestoreSandboxHistory(arg1, arg2, arg3) {
+  return window['go']['app']['App']['RestoreSandboxHistory'](arg1, arg2, arg3);
 }
 
 export function RestoreSnapshotAll(arg1) {
