@@ -50,9 +50,15 @@ export default function UpdateDialog({ open, result, onClose }: Props) {
               {t('update.versionLabel', { version: result.latest.tag_name })}
             </p>
           </div>
-          <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-            {result.latest.tag_name}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+              {t('update.current')} {result.currentVersion}
+            </span>
+            <span className="text-muted-foreground text-xs">→</span>
+            <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+              {result.latest.tag_name}
+            </span>
+          </div>
         </div>
 
         {/* Release notes */}

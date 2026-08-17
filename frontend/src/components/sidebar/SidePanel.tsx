@@ -29,6 +29,7 @@ interface Props {
   onEditAISettings?: () => void
   onDeleteChapter?: (novelId: number, chapterNumber: number) => void
   onMaintainChanges?: (files: git.FileChange[], parts: string[]) => void
+  onNeedNovel?: () => void
   onExportNovel: (novelId: number) => void
   target: { path: string; title: string } | null
   showCreate: boolean
@@ -61,7 +62,7 @@ export default function SidePanel({
   activePanel,
   novels, novelId, onSelectNovel,
   onSelectChapter, onSelectGoink, onEditNovelSettings, onEditAISettings, onExportNovel, target,
-  onDeleteChapter, onMaintainChanges,
+  onDeleteChapter, onMaintainChanges, onNeedNovel,
   showCreate, setShowCreate, title, setTitle, description, setDescription,
   onCreateNovel,
   activeSkillName, onSelectSkill, onEditSkill, onNewSkill,
@@ -144,6 +145,7 @@ export default function SidePanel({
           onExportNovel={() => onExportNovel(novelId)}
           onDeleteChapter={onDeleteChapter}
           onMaintainChanges={onMaintainChanges}
+          onNeedNovel={onNeedNovel}
         />
       ) : activePanel === 'characters' ? (
         <CharacterList novelId={novelId} />

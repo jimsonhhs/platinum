@@ -39,6 +39,14 @@ export default function SettingsDialog({ open, onClose, onSaved, initialTab = 'm
 
       {/* 弹窗 */}
       <div className="relative bg-background rounded-xl shadow-2xl border flex w-[880px] h-[700px] max-w-[95vw] max-h-[90vh]">
+        {/* 关闭按钮：弹窗级右上角，避开各 Tab 内容区右上角的操作按钮 */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          ✕
+        </button>
+
         {/* 左侧导航 */}
         <nav className="w-[160px] border-r py-4 px-2 flex flex-col gap-1 shrink-0">
           <div className="text-sm font-medium px-3 pb-3 text-foreground">{t('settings.title')}</div>
@@ -56,8 +64,8 @@ export default function SettingsDialog({ open, onClose, onSaved, initialTab = 'm
           ))}
         </nav>
 
-        {/* 右侧内容区 */}
-        <div className="flex-1 p-5 flex flex-col min-w-0 overflow-hidden">
+        {/* 右侧内容区：顶部留出关闭按钮的空间（pr-12） */}
+        <div className="flex-1 p-5 pl-5 pt-10 pr-12 flex flex-col min-w-0 overflow-hidden">
           {/* 关闭按钮 */}
           <button
             onClick={onClose}

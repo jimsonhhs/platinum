@@ -204,3 +204,24 @@ func (s *Store) GetAllMessages(ctx context.Context, sessionID string) ([]Message
 	}
 	return msgs, nil
 }
+
+// DeleteSession 彻底删除一个会话及其全部消息（物理删除，不可恢复）。
+// 事务内先删 messages 再删 sessions，失败回滚。
+func (s *Store) DeleteSession(ctx context.Context, sessionID string) error {
+	err := s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. 删除该会话全部消息（messages 表，session_id 外键）
+		if err := tx.Where("session_id = ?", sessionID).Delete(&Message{}).Error; err != nil {
+			return fmt.Errorf("session store: delete messages: %w", err)
+		}
+		// 2. 删除会话本体（sessions 表，主键）
+		if err := tx.Where("session_id = ?", sessionID).Delete(&Session{}).Error; err != nil {
+			return fmt.Errorf("session store: delete session: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	s.logger.Info("session deleted", "session_id", sessionID)
+	return nil
+}

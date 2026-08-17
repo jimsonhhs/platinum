@@ -29,12 +29,17 @@ type Result struct {
 
 // Parse 根据文件扩展名选择合适的解析器。
 func Parse(filePath string, logger *slog.Logger) (*Result, error) {
+	return ParseWithSeparator(filePath, logger, "")
+}
+
+// ParseWithSeparator 支持用户指定章节分隔符（"章""节""篇"等）；空串时用默认全模式。
+func ParseWithSeparator(filePath string, logger *slog.Logger, separator string) (*Result, error) {
 	ext := strings.ToLower(filepath.Ext(filePath))
 	switch ext {
 	case ".epub":
 		return parseEpub(filePath, logger)
 	case ".txt", ".md", ".markdown":
-		return parseTxt(filePath)
+		return parseTxt(filePath, separator)
 	default:
 		return nil, fmt.Errorf("不支持的文件格式: %s", ext)
 	}

@@ -32,9 +32,10 @@ type SessionDetail struct {
 }
 
 // GetModels 返回所有可用模型列表，由后端决定能力和推理程度。
+// 无 LLM 客户端（未配置模型）时返回空数组而非 nil，避免前端 null.find 崩溃。
 func (a *App) GetModels() []llm.AvailableModel {
 	if a.llmClient == nil {
-		return nil
+		return []llm.AvailableModel{}
 	}
 	return llm.Models(a.llmClient.Providers())
 }
@@ -159,4 +160,20 @@ func (a *App) TestConnection(input TestConnectionInput) error {
 		APIKey:       input.APIKey,
 		ModelID:      input.ModelID,
 	})
+}
+
+// DeleteSession 彻底删除一个 AI 对话会话（含全部消息，物理删除不可恢复）。
+func (a *App) DeleteSession(sessionID string) error {
+	if sessionID == "" {
+		return fmt.Errorf("session_id 不能为空")
+	}
+	// 校验会话存在，避免误删
+	if _, err := a.session.GetSession(a.ctx, sessionID); err != nil {
+		return fmt.Errorf("会话不存在或已被删除: %w", err)
+	}
+	if err := a.session.DeleteSession(a.ctx, sessionID); err != nil {
+		return fmt.Errorf("删除会话失败: %w", err)
+	}
+	a.logger.Info("App: session deleted", "session_id", sessionID)
+	return nil
 }

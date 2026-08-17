@@ -102,6 +102,7 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
   }, [activePanel])
   const [settingFocusId, setSettingFocusId] = useState<number | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [showNeedNovel, setShowNeedNovel] = useState(false) // 无书时点新建章节/卷 → 引导弹窗
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [showSettings, setShowSettings] = useState(false)
@@ -203,6 +204,16 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
     }
     window.addEventListener('sandbox:open-entity', handler)
     return () => window.removeEventListener('sandbox:open-entity', handler)
+  }, [])
+
+  // 反向定位：实体列表 → 切到沙盘面板（SandboxView 再负责选中图标）
+  useEffect(() => {
+    const handler = () => {
+      setActivePanel('sandbox')
+      setSidebarPanel(null)
+    }
+    window.addEventListener('entity:locate-sandbox', handler)
+    return () => window.removeEventListener('entity:locate-sandbox', handler)
   }, [])
 
   // 数据目录切换完成：立即读取新目录的书籍并弹回书架
@@ -615,6 +626,7 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
             onEditAISettings={() => { if (activeNovel) setAiSettingsNovel(activeNovel) }}
             onDeleteChapter={handleDeleteChapter}
             onMaintainChanges={handleMaintainChanges}
+            onNeedNovel={() => setShowNeedNovel(true)}
             onExportNovel={(id) => setExportNovelId(id)}
             target={tabTarget}
             showCreate={showCreate}
@@ -747,6 +759,35 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
         onClose={() => setShowHelp(false)}
       />
 
+      {/* 无书引导：点新建章节/卷时提示先创建或导入书 */}
+      {showNeedNovel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowNeedNovel(false)} />
+          <div className="relative bg-background rounded-xl shadow-2xl border w-[420px] p-6">
+            <h3 className="text-base font-semibold mb-2">{t('novel.needNovelTitle')}</h3>
+            <p className="text-sm text-muted-foreground mb-5">{t('novel.needNovelDesc')}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowNeedNovel(false)}
+                className="h-8 px-4 rounded-md text-xs border hover:bg-muted transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={() => {
+                  setShowNeedNovel(false)
+                  setShowCreateDialog(true)
+                  setActivePanel('novels')
+                }}
+                className="inline-flex items-center gap-1.5 h-8 px-4 rounded-md text-xs bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                {t('novel.goCreateBook')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <NovelEditDialog
         open={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
@@ -782,12 +823,13 @@ export default function WorkspaceView({ initialNovelId, initialShowHelp }: Props
 
       <ImportProgressDialog
         {...importNovel.dialogProps}
-        maxChapters={importNovel.maxChapters}
-        setMaxChapters={importNovel.setMaxChapters}
+        separator={importNovel.separator}
+        setSeparator={importNovel.setSeparator}
         modelKey={importNovel.modelKey}
         setModelKey={importNovel.setModelKey}
         modelOptions={importNovel.modelOptions}
         onStartLLM={importNovel.startLLMImport}
+        onConfirmPick={importNovel.confirmPickImport}
       />
 
       <UpdateDialog

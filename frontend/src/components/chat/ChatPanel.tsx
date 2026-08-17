@@ -257,6 +257,17 @@ const ChatPanel = forwardRef<ChatPanelHandle, Props>(function ChatPanel({ novelI
     setShowHistoryPanel(true)
   }, [])
 
+  // 会话被删除：刷新最近列表；若删的是当前会话则重置为新对话
+  const handleSessionDeleted = useCallback((sid: string) => {
+    setShowHistoryPanel(false)
+    app.GetSessions({ novel_id: novelId, page: 1, size: 5, search: '' }).then(r => {
+      if (r) { setSessions(r.items); setSessionsTotal(r.total) }
+    }).catch(() => {})
+    if (activeSessionId === sid) {
+      handleNewChat()
+    }
+  }, [app, novelId, activeSessionId, handleNewChat])
+
   const handleCloseHistory = useCallback(() => {
     setShowHistoryPanel(false)
   }, [])
@@ -1015,6 +1026,7 @@ const ChatPanel = forwardRef<ChatPanelHandle, Props>(function ChatPanel({ novelI
           novelId={novelId}
           onClose={handleCloseHistory}
           onSelectSession={handleSelectSession}
+          onDeleted={handleSessionDeleted}
         />
       </div>
 

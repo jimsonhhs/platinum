@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -43,7 +44,7 @@ func writeTxtFileBytes(t *testing.T, name string, data []byte) string {
 func TestParseTxt_StandardArabicChapters(t *testing.T) {
 	content := "第1章 开始\n正文内容...\n\n第2章 发展\n正文内容...\n\n第3章 高潮\n正文内容...\n"
 	path := writeTxtFile(t, "标准章节.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +70,7 @@ func TestParseTxt_StandardArabicChapters(t *testing.T) {
 func TestParseTxt_ChineseNumeralChapters(t *testing.T) {
 	content := "第一章 晨曦\n正文内容...\n\n第二章 暮色\n正文内容...\n\n第三章 夜幕\n正文内容...\n"
 	path := writeTxtFile(t, "中文数字.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +97,7 @@ func TestParseTxt_SpecialPrefixStarChapters(t *testing.T) {
 		"☆、第2章 chapter.002\n昏昏沉沉中，何文琳疲惫得睁不开眼...\n\n" +
 		"☆、第3章 chapter.003\n何文琳警惕的打量四周...\n"
 	path := writeTxtFile(t, "星号前缀.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +126,7 @@ func TestParseTxt_EnglishChapters(t *testing.T) {
 		"Chapter 2: The Development\nMore text...\n\n" +
 		"Chapter 3: The Climax\nFinal text...\n"
 	path := writeTxtFile(t, "english.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +156,7 @@ func TestParseTxt_MixedFormat_StrictPatternWins(t *testing.T) {
 		"第2章 另一个标题\n更多正文...\n\n" +
 		"第3章 第三个标题\n正文继续...\n"
 	path := writeTxtFile(t, "混合格式.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +178,7 @@ func TestParseTxt_MixedFormat_StrictPatternWins(t *testing.T) {
 func TestParseTxt_NoChapterMarkers(t *testing.T) {
 	content := "这是一段没有任何章节标记的纯文本。\n它只有正文内容，没有第1章这种标记。\n应该整段作为一个章节处理。\n"
 	path := writeTxtFile(t, "纯文本.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +200,7 @@ func TestParseTxt_NoChapterMarkers(t *testing.T) {
 func TestParseTxt_SingleChapterMatch(t *testing.T) {
 	content := "只有第1章是标记的\n其他内容都是正文\n没有更多的章节了\n"
 	path := writeTxtFile(t, "单匹配.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +221,7 @@ func TestParseTxt_SingleChapterMatch(t *testing.T) {
 func TestParseTxt_MarkdownHeadingChapters(t *testing.T) {
 	content := "# 第1章 开始\n正文...\n\n## 第2章 发展\n正文...\n"
 	path := writeTxtFile(t, "markdown.md", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +247,7 @@ func TestParseTxt_MarkdownHeadingChapters(t *testing.T) {
 func TestParseTxt_VolumeMarkersWithoutPrefix(t *testing.T) {
 	content := "卷一 风起\n正文内容...\n\n卷二 云涌\n正文内容...\n"
 	path := writeTxtFile(t, "卷标记.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +266,7 @@ func TestParseTxt_VolumeMarkersWithoutPrefix(t *testing.T) {
 func TestParseTxt_VolumeMarkersWithPrefix(t *testing.T) {
 	content := "第一卷 风起\n正文内容...\n\n第二卷 云涌\n正文内容...\n"
 	path := writeTxtFile(t, "第卷标记.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +287,7 @@ func TestParseTxt_VolumeMarkersWithPrefix(t *testing.T) {
 func TestParseTxt_FullWidthPunctuationChapters(t *testing.T) {
 	content := "第1章：开端\n正文...\n\n第2章：发展\n正文...\n"
 	path := writeTxtFile(t, "全角标点.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +312,7 @@ func TestParseTxt_LargeFile50Chapters(t *testing.T) {
 		sb.WriteString("这是本章节的正文内容，包含足够的文字来模拟真实小说。\n\n")
 	}
 	path := writeTxtFile(t, "大文件50章.txt", sb.String())
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +346,7 @@ func TestParseTxt_LargeFile50ChineseNumeralChapters(t *testing.T) {
 		sb.WriteString("这是本章节的正文内容，模拟真实小说的长度。\n\n")
 	}
 	path := writeTxtFile(t, "大文件50中文数字章.txt", sb.String())
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +364,7 @@ func TestParseTxt_GB18030Encoded(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := writeTxtFileBytes(t, "gb18030编码.txt", encoded)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +387,7 @@ func TestParseTxt_GB18030ChineseNumeralChapters(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := writeTxtFileBytes(t, "gb18030中文数字.txt", encoded)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -404,7 +405,7 @@ func TestParseTxt_GB18030ChineseNumeralChapters(t *testing.T) {
 func TestParseTxt_BuMarker(t *testing.T) {
 	content := "第一部 起源\n内容...\n\n第二部 发展\n内容...\n"
 	path := writeTxtFile(t, "部标记.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,7 +421,7 @@ func TestParseTxt_BuMarker(t *testing.T) {
 func TestParseTxt_EnglishChapterDotSeparator(t *testing.T) {
 	content := "Chapter 1. The Beginning\nSome text...\n\nChapter 2. The End\nMore text...\n"
 	path := writeTxtFile(t, "english_dot.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +434,7 @@ func TestParseTxt_EnglishChapterDotSeparator(t *testing.T) {
 func TestParseTxt_ChapterTitleWithSpecialChars(t *testing.T) {
 	content := "第1章 【特别篇】奇迹\n正文内容...\n\n第2章 《外传》暗影\n更多正文...\n"
 	path := writeTxtFile(t, "特殊标题.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -449,7 +450,7 @@ func TestParseTxt_ChapterTitleWithSpecialChars(t *testing.T) {
 func TestParseTxt_ConsecutiveChapterMarkers(t *testing.T) {
 	content := "第1章 标题1\n第2章 标题2\n第3章 标题3\n"
 	path := writeTxtFile(t, "连续章节.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -462,7 +463,7 @@ func TestParseTxt_ConsecutiveChapterMarkers(t *testing.T) {
 func TestParseTxt_ChapterContentsDoNotOverlap(t *testing.T) {
 	content := "第1章 独立\n这是独有内容AAA。\n\n第2章 分离\n这是另一段独有内容BBB。\n\n第3章 隔离\n最后一段独有内容CCC。\n"
 	path := writeTxtFile(t, "不重叠.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -493,7 +494,7 @@ func TestParseTxt_ChapterContentsDoNotOverlap(t *testing.T) {
 func TestParseTxt_UTF8BOMWithChapters(t *testing.T) {
 	content := "\xEF\xBB\xBF第1章 开始\n正文一。\n\n第2章 继续\n正文二。\n"
 	path := writeTxtFile(t, "bom章节.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -509,7 +510,7 @@ func TestParseTxt_UTF8BOMWithChapters(t *testing.T) {
 func TestParseTxt_CRLineEndings(t *testing.T) {
 	content := "第1章 测试\r正文内容。\r第2章 继续\r更多正文。\r"
 	path := writeTxtFile(t, "cr换行.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -522,7 +523,7 @@ func TestParseTxt_CRLineEndings(t *testing.T) {
 func TestParseTxt_ChapterTitleExtraction(t *testing.T) {
 	content := "第1章 标题行\n这是正文第一行。\n这是正文第二行。\n\n第2章 另一个标题\n后续正文内容。\n"
 	path := writeTxtFile(t, "标题提取.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -542,7 +543,7 @@ func TestParseTxt_ChapterTitleExtraction(t *testing.T) {
 // ── chapterPatterns 正则匹配测试 ─────────────────────────
 
 func TestChapterPatterns_StrictLineStart(t *testing.T) {
-	p := chapterPatterns[0] // strict_line_start
+	p := mustPattern("strict_line_start")
 	tests := []struct {
 		line    string
 		matches bool
@@ -571,7 +572,7 @@ func TestChapterPatterns_StrictLineStart(t *testing.T) {
 }
 
 func TestChapterPatterns_LooseInline(t *testing.T) {
-	p := chapterPatterns[1] // loose_inline
+	p := mustPattern("loose_inline")
 	tests := []struct {
 		content string
 		count   int
@@ -589,7 +590,7 @@ func TestChapterPatterns_LooseInline(t *testing.T) {
 }
 
 func TestChapterPatterns_English(t *testing.T) {
-	p := chapterPatterns[3] // english
+	p := mustPattern("english")
 	tests := []struct {
 		line    string
 		matches bool
@@ -609,7 +610,7 @@ func TestChapterPatterns_English(t *testing.T) {
 }
 
 func TestChapterPatterns_JuanLineStart(t *testing.T) {
-	p := chapterPatterns[4] // juan_line_start
+	p := mustPattern("juan_line_start")
 	tests := []struct {
 		line    string
 		matches bool
@@ -722,7 +723,7 @@ func TestParseTxt_LongBodyLineExceedsTitleLen(t *testing.T) {
 	}
 	content := "第1章 开篇\n\n正文。\n\n" + longLine + "\n\n第2章 继续\n\n正文。\n"
 	path := writeTxtFile(t, "长行过滤.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -737,7 +738,7 @@ func TestParseTxt_LongBodyLineExceedsTitleLen(t *testing.T) {
 func TestParseTxt_StrictWinsOverLooseOnTie(t *testing.T) {
 	content := "第1章 标题1\n正文一。\n\n第2章 标题2\n正文二。\n\n第3章 标题3\n正文三。\n"
 	path := writeTxtFile(t, "strict优先.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -750,7 +751,7 @@ func TestParseTxt_StrictWinsOverLooseOnTie(t *testing.T) {
 func TestParseTxt_ZeroMatches(t *testing.T) {
 	content := "纯文本，没有章节标记。\n多行内容。\n"
 	path := writeTxtFile(t, "零匹配.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -773,7 +774,7 @@ func minLen(a, b int) int {
 func TestParseTxt_HuiMarker(t *testing.T) {
 	content := "第一回 甄士隐梦幻识通灵\n正文内容...\n\n第二回 贾夫人仙逝扬州城\n正文内容...\n\n第三回 托内兄如海酬训教\n正文内容...\n"
 	path := writeTxtFile(t, "回目.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -789,7 +790,7 @@ func TestParseTxt_HuiMarker(t *testing.T) {
 func TestParseTxt_JieMarker(t *testing.T) {
 	content := "第一节 初识\n正文...\n\n第二节 深入\n正文...\n\n第三节 高潮\n正文...\n"
 	path := writeTxtFile(t, "节标记.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -802,7 +803,7 @@ func TestParseTxt_JieMarker(t *testing.T) {
 func TestParseTxt_Xuzhang(t *testing.T) {
 	content := "序章 黎明之前\n黑暗笼罩大地...\n\n第1章 觉醒\n主角睁开了眼睛...\n\n第2章 出发\n踏上了旅途...\n"
 	path := writeTxtFile(t, "序章.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -818,7 +819,7 @@ func TestParseTxt_Xuzhang(t *testing.T) {
 func TestParseTxt_Xiezi(t *testing.T) {
 	content := "楔子 风起\n正文内容...\n\n第1章 开始\n正文...\n"
 	path := writeTxtFile(t, "楔子.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -834,7 +835,7 @@ func TestParseTxt_Xiezi(t *testing.T) {
 func TestParseTxt_Yinzi(t *testing.T) {
 	content := "引子 暗涌\n正文...\n\n第1章 风暴\n正文...\n"
 	path := writeTxtFile(t, "引子.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -847,7 +848,7 @@ func TestParseTxt_Yinzi(t *testing.T) {
 func TestParseTxt_Fanwai(t *testing.T) {
 	content := "第1章 开始\n正文...\n\n第2章 高潮\n正文...\n\n番外 那些年\n番外内容...\n\n番外二 另一个故事\n更多番外...\n"
 	path := writeTxtFile(t, "番外.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -860,7 +861,7 @@ func TestParseTxt_Fanwai(t *testing.T) {
 func TestParseTxt_Zhongzhang(t *testing.T) {
 	content := "第1章 开始\n正文...\n\n第2章 发展\n正文...\n\n终章 尾声\n正文...\n"
 	path := writeTxtFile(t, "终章.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -876,7 +877,7 @@ func TestParseTxt_Zhongzhang(t *testing.T) {
 func TestParseTxt_Houji(t *testing.T) {
 	content := "第1章 正文\n内容...\n\n第2章 结局\n内容...\n\n后记\n感谢阅读。\n"
 	path := writeTxtFile(t, "后记.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -889,7 +890,7 @@ func TestParseTxt_Houji(t *testing.T) {
 func TestParseTxt_SingleXu(t *testing.T) {
 	content := "序\n这是序言的内容。\n\n第1章 开始\n正文...\n"
 	path := writeTxtFile(t, "序.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -902,7 +903,7 @@ func TestParseTxt_SingleXu(t *testing.T) {
 func TestParseTxt_NumericChapters(t *testing.T) {
 	content := "1\n正文内容...\n\n2\n更多内容...\n\n3\n最后一段...\n"
 	path := writeTxtFile(t, "数字章节.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -917,7 +918,7 @@ func TestParseTxt_NumericChapters(t *testing.T) {
 func TestParseTxt_SameLineMultiMatchDedup(t *testing.T) {
 	content := "第1章 开始\n正文内容...\n\n第2章 继续\n更多正文内容...\n\n===第3章 第03章 标题===\n正文...\n"
 	path := writeTxtFile(t, "同行多匹配.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -936,7 +937,7 @@ func TestParseTxt_SameLineMultiMatchDedup(t *testing.T) {
 
 // special_markers 正则单元测试
 func TestChapterPatterns_SpecialMarkers(t *testing.T) {
-	p := chapterPatterns[2] // special_markers
+	p := mustPattern("special_markers")
 	tests := []struct {
 		line    string
 		matches bool
@@ -967,7 +968,7 @@ func TestChapterPatterns_SpecialMarkers(t *testing.T) {
 
 // numeric_line 正则单元测试
 func TestChapterPatterns_NumericLine(t *testing.T) {
-	p := chapterPatterns[6] // numeric_line
+	p := mustPattern("numeric_line")
 	tests := []struct {
 		line    string
 		matches bool
@@ -990,4 +991,19 @@ func TestChapterPatterns_NumericLine(t *testing.T) {
 			t.Errorf("numeric_line.MatchString(%q) = %v, want %v", tc.line, got, tc.matches)
 		}
 	}
+}
+
+
+// mustPattern 按名称查找章节正则（避免硬编码索引因新增模式而错位）
+func mustPattern(name string) struct {
+	name    string
+	pattern *regexp.Regexp
+	loose   bool
+} {
+	for _, p := range chapterPatterns {
+		if p.name == name {
+			return p
+		}
+	}
+	panic("chapterPatterns: pattern not found: " + name)
 }

@@ -18,13 +18,14 @@ interface Props {
   onExportNovel: () => void
   onDeleteChapter?: (novelId: number, chapterNumber: number) => void
   onMaintainChanges?: (files: git.FileChange[], parts: string[]) => void
+  onNeedNovel?: () => void  // 无书时点新建章节/卷 → 引导去书架
 }
 
 const BLOCK_SIZE = 100
 
 function pad(n: number): string { return String(n).padStart(3, '0') }
 
-export default function ChapterList({ novelId, target, onSelectChapter, onSelectGoink, onEditNovelSettings, onEditAISettings, onExportNovel, onDeleteChapter, onMaintainChanges }: Props) {
+export default function ChapterList({ novelId, target, onSelectChapter, onSelectGoink, onEditNovelSettings, onEditAISettings, onExportNovel, onDeleteChapter, onMaintainChanges, onNeedNovel }: Props) {
   const { t } = useTranslation()
   const app = useApp()
 
@@ -160,6 +161,11 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
   }
 
   async function handleCreateVolume() {
+    // 无书时引导用户去书架创建/导入
+    if (!novelId) {
+      onNeedNovel?.()
+      return
+    }
     try {
       const vols = [...volumes, { name: t('sidebar.volumeDefaultName', { n: volumes.length + 1 }) }]
       await app.SaveVolumes(novelId, vols)
@@ -171,6 +177,11 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
 
   // 在指定卷新建章节（点击即建，标题默认文件号）
   async function handleCreateChapterInVolume(v: number) {
+    // 无书时引导用户去书架创建/导入
+    if (!novelId) {
+      onNeedNovel?.()
+      return
+    }
     try {
       await app.CreateChapter({ novel_id: novelId, title: '', volume: v })
       loadChapters()
@@ -450,6 +461,10 @@ export default function ChapterList({ novelId, target, onSelectChapter, onSelect
       try {
         await app.UpdateChapterTitle(novelId, ch.chapter_number, newTitle)
         loadChapters()
+        // 通知已打开的标签页刷新标题（ContentPanel 监听）
+        window.dispatchEvent(new CustomEvent('chapter:changed', {
+          detail: { chapterNumber: ch.chapter_number, title: newTitle },
+        }))
       } catch (err) {
         toastError(t('common.saveFailed') + ': ' + (err instanceof Error ? err.message : String(err)))
         console.error(err)

@@ -30,7 +30,10 @@ const arrangeSystemPrompt = `你是小说沙盘布局师。根据给定的小说
 1. 输出严格的 JSON 数组（不要 markdown 代码块），每个元素：
    {"kind":"location|character|event","id":数字,"name":"名字","x":0-1000,"y":0-1000,"w":数字,"h":数字,"fill":"#RRGGBB","shape":"drop|person|event|rect|triangle|wave|circle","textPos":"top|middle|bottom","star":0-5}
 2. x/y 是形状中心坐标（0-1000 空间），按空间关系摆放：相邻/包含/距离远近要符合设定描述。
-3. 地点形状按刻板印象模板：森林→rect(绿#2e7d32)、河流/海→wave(蓝#1565c0)、山→triangle(灰#616161)、城堡/城市→rect(灰白#9e9e9e)、火山→triangle(红#d32f2f)、冰原→rect(白#eceff1)、深渊→circle(紫#7b1fa2)、血池→circle(红#b71c1c)、洞穴→arc(棕#795548)、沙漠→circle(黄#f9a825)；描述里有区域大小就按比例给 w/h。
+3. 【颜色与图案联想规则】对每个地点，拆解地名中的意象词（如"血"→红、"星海"→深黑/蓝、"雪山"→白、"破败"→灰），组合出直觉上最快联想到的颜色与形状：
+   - 刻板印象模板（优先）：森林→rect(绿#2e7d32)、河流/河→wave(蓝#1565c0)、海/海→wave(蓝#1565c0)、山/山脉→triangle(灰#616161)、雪山→triangle(白#f5f5f5)、城堡/城市→rect(灰白#9e9e9e)、火山→triangle(红#d32f2f)、冰原/雪原→rect(白#eceff1)、深渊→circle(紫#7b1fa2)、血池/血河→wave或circle(红#b71c1c)、洞穴/洞窟→arc(棕#795548)、沙漠→circle(黄#f9a825)、草原→rect(草绿#7cb342)、沼泽→circle(墨绿#33691e)、湖泊→wave(青#26c6da)、戈壁→rect(土黄#bcaaa4)、荒原→rect(灰黄#a1887f)。
+   - 【超出刻板印象的词/地名】不要硬套模板，而是对名字做联想：例如"星海旋涡"→深蓝色(#1a237e)圆形；"破败森林"→灰绿色(#7a8b5c)圆形或矩形；"龙骨荒原"→灰白带骨感的浅灰(#bdbdbd)矩形。图案用最贴近联想的形状（rect/triangle/wave/circle/arc/drop）。
+   - 【大小比例强制】w/h 必须反映设定中的相对规模：若描述说某地是另一地的 2 倍大/更大/更小，其 w/h 必须约为另一地的 2 倍/相应倍数（基准地点 w/h 约 120-160）。描述里有"比XX大/小""XX的N倍"等字眼时，必须换算成具体 w/h 数值，禁止所有地点用相同默认大小。
 4. 角色→person 形状，颜色用 #ff6b6b 系；事件→event 形状（镂空问号），star 用重要性。
 5. 增量模式：提示词是"在XXX旁边新建YYY"时，只输出新增项，并参照已给出的现有形状坐标合理放置（相邻/方向）。
 6. 不要输出任何解释文字，只要 JSON 数组。`
@@ -181,7 +184,20 @@ func (a *App) ArrangeSandbox(input ArrangeSandboxInput) (*SandboxData, error) {
 		}
 		w, h := it.W, it.H
 		if w <= 0 || h <= 0 {
-			w, h = 120, 90
+			// LLM 未提供尺寸时按 kind 给差异化默认（避免所有地点同尺寸）
+			switch shapeType {
+			case "wave":
+				w, h = 200, 70 // 河流/海：宽扁
+			case "triangle":
+				w, h = 140, 120 // 山：高
+			case "circle":
+				w, h = 130, 130
+			case "drop":
+				w, h = 120, 110
+			default:
+				w, h = 120, 90
+			}
+			a.logger.Warn("沙盘布局：LLM 未提供尺寸，使用 kind 默认", "name", it.Name, "shape", shapeType)
 		}
 		fill := it.Fill
 		if fill == "" {

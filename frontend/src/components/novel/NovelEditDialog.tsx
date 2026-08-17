@@ -84,6 +84,7 @@ export default function NovelEditDialog({ open, novel, onClose, onSave }: Props)
               <input
                 value={title}
                 onChange={e => setTitle(e.target.value)}
+                autoFocus
                 className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </label>

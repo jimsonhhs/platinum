@@ -40,7 +40,7 @@ export default function MaterialExtractCard() {
       let key = s?.selected_model_key || ''
       app.GetModels().then(list => {
         if (cancelled) return
-        if (!list.find((m: any) => m.Key === key)) key = list[0]?.Key || ''
+        if (!list?.find((m: any) => m.Key === key)) key = list?.[0]?.Key || ''
         setModelKey(key)
       })
     })

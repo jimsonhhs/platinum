@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronRight, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ChevronRight, MapPin, Pencil, Plus, Trash2, X, Map as MapIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { location } from '@/hooks/useApp'
@@ -386,6 +386,13 @@ export default function LocationListView({ novelId, focusId }: Props) {
                         </div>
                         {/* Hover actions */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('entity:locate-sandbox', { detail: { entityType: 'location', entityId: loc.id, name: loc.name } }))}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                            title={t('location.locateSandbox')}
+                          >
+                            <MapIcon className="h-3.5 w-3.5" />
+                          </button>
                           <button onClick={() => openEdit(loc)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title={t('common.edit')}>
                             <Pencil className="h-3.5 w-3.5" />
                           </button>

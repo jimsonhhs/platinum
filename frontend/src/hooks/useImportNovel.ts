@@ -36,7 +36,7 @@ const INITIAL_IMPORT_PROGRESS: ImportProgressState = {
 interface UseImportNovelOptions {
   app: {
     ImportNovel: (input: app.ImportNovelInput) => Promise<imp.ImportResult>
-    PickAndImportNovel: (maxChapters: number) => Promise<imp.ImportResult>
+    PickAndImportNovel: (separator: string) => Promise<imp.ImportResult>
     ImportWithLLM: (input: app.ImportWithLLMInput) => Promise<imp.ImportResult>
     GetModels: () => Promise<llm.AvailableModel[]>
     GetSettings: () => Promise<config.AppSettings>
@@ -60,6 +60,9 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
   // LLM 兜底相关状态
   // 最大导入章数（0=全部；防超长文本导致失忆）
   const [maxChapters, setMaxChapters] = useState(0)
+  // 用户自定义章节分隔符：默认空=自动识别（章/卷/部/回/节/Chapter/序章等全部模式）；
+  // 仅当自动识别失败或想强制单规则时才填写（如"篇"）。
+  const [separator, setSeparator] = useState('')
 
   const [filePath, setFilePath] = useState('')
   const [modelKey, setModelKey] = useState('')
@@ -111,6 +114,7 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
 
   const startImport = useCallback(async (fp?: string) => {
     setError('')
+    // 有 fp（拖拽/右键导入）直接解析；无 fp 只打开配置弹窗，确认后由 confirmPickImport 弹文件选择
     setProgress({
       ...INITIAL_IMPORT_PROGRESS,
       stage: fp ? 'parse' : 'select_file',
@@ -118,11 +122,11 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
     })
     setOpen(true)
 
+    if (!fp) return // 等待用户在弹窗点"确认"再弹文件选择
+
     let result: imp.ImportResult | null
     try {
-      result = fp
-        ? await app.ImportNovel({ file_path: fp, max_chapters: maxChapters })
-        : await app.PickAndImportNovel(maxChapters)
+      result = await app.ImportNovel({ file_path: fp, max_chapters: maxChapters, separator })
     } catch (err: unknown) {
       setProgress(prev => ({
         ...prev,
@@ -161,6 +165,44 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
       setError(errorMessage(err, t('novel.importFailedRetry')))
     }
   }, [app, onImported, reset, t])
+
+  // 用户在配置弹窗点"确认"：弹出文件选择并导入
+  const confirmPickImport = useCallback(async () => {
+    setError('')
+    setProgress({
+      ...INITIAL_IMPORT_PROGRESS,
+      stage: 'select_file',
+      message: t('novel.importSelectFile2'),
+    })
+    try {
+      const result = await app.PickAndImportNovel(separator)
+      if (!result) {
+        reset() // 用户取消文件选择
+        return
+      }
+      if (result.needs_llm) {
+        setFilePath(result.file_path || '')
+        setProgress(prev => ({
+          ...prev,
+          stage: 'needs_llm',
+          message: t('novel.importNeedsLLM'),
+          percent: 0,
+        }))
+        return
+      }
+      setskipped_count(result.skipped_count ?? 0)
+      setskipped_chapters((result.skipped_chapters ?? []) as { title: string; reason: string }[])
+      await onImported(result)
+    } catch (err: unknown) {
+      setProgress(prev => ({
+        ...prev,
+        stage: 'error',
+        message: t('novel.importRollbackDone'),
+        percent: 100,
+      }))
+      setError(errorMessage(err, t('novel.importFailedRetry')))
+    }
+  }, [app, separator, reset, t])
 
   // 用户点"AI 分析"→ 调 ImportWithLLM，LLM 分析后直接导入
   const startLLMImport = useCallback(async () => {
@@ -202,12 +244,15 @@ export function useImportNovel({ app, onImported }: UseImportNovelOptions) {
 
   return {
     startImport,
+    confirmPickImport,
     startLLMImport,
     modelKey,
     setModelKey,
     modelOptions,
     maxChapters,
     setMaxChapters,
+    separator,
+    setSeparator,
     dialogProps: {
       open,
       progress,

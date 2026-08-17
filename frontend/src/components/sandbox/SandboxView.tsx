@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Circle, Square, Waves, Diamond, Triangle, Spline, Trash2, Save, MousePointer2, ExternalLink, Move, PlusCircle, BoxSelect, History, MoveRight, Sparkles, Loader2, Globe2, X } from 'lucide-react'
+import { Circle, Square, Waves, Diamond, Triangle, Spline, Trash2, Save, MousePointer2, ExternalLink, Move, PlusCircle, BoxSelect, History, MoveRight, Sparkles, Loader2, Globe2, X, RotateCw, ArrowDownToLine, ArrowUpToLine, ChevronUp, ChevronDown, Undo2, Redo2 } from 'lucide-react'
 import { useApp } from '@/hooks/useApp'
 import { toastError, toastSuccess, toastInfo } from '@/lib/utils'
 
@@ -21,10 +21,12 @@ interface SandboxShape {
   stroke: string
   strokeWidth: number
   label: string
-  textPos: 'top' | 'middle' | 'bottom'
+  textPos: 'top' | 'middle' | 'bottom' | 'left' | 'right'
   entityType: string
   entityId: number
   star: number
+  curvature?: number // 弧线弧度：0=平直线，越大弧越弯（默认 0.5）；仅 arc 用
+  flipped?: boolean // 水平镜像标记（前端渲染用，不进后端）
 }
 
 interface Props {
@@ -49,7 +51,7 @@ let idCounter = 0
 function newId(): string { return `s${Date.now()}_${idCounter++}` }
 
 // 形状路径（以左上角 (0,0) 为基准，宽 w 高 h）
-function shapePath(type: ShapeType, w: number, h: number): string {
+function shapePath(type: ShapeType, w: number, h: number, shapeCurvature?: number): string {
   switch (type) {
     case 'circle':
       return '' // 用 <ellipse> 渲染
@@ -61,8 +63,13 @@ function shapePath(type: ShapeType, w: number, h: number): string {
       // 波浪带：上下对称两条波浪（丝带形，不是底部直线封口）
       return `M0,${h * 0.35} Q${w * 0.25},${h * 0.1} ${w * 0.5},${h * 0.35} Q${w * 0.75},${h * 0.6} ${w},${h * 0.35} L${w},${h * 0.65} Q${w * 0.75},${h * 0.9} ${w * 0.5},${h * 0.65} Q${w * 0.25},${h * 0.4} 0,${h * 0.65} Z`
     case 'arc':
-      // 弧梯形（碗形）：上边大弧凸向上，左右直线向内收窄，下边小弧凸向下
-      return `M0,${h * 0.12} A${w * 0.5},${h * 0.45} 0 0 1 ${w},${h * 0.12} L${w * 0.86},${h * 0.82} A${w * 0.28},${h * 0.22} 0 0 0 ${w * 0.14},${h * 0.82} L0,${h * 0.12} Z`
+      // 半圆弧（二次贝塞尔）：起点 P0=(0,h)、终点 P2=(w,h)、控制点 C=(w/2, h*(1-curvature))
+      // curvature 越大（越接近 1）控制点越靠上，弧度越大；0 时接近平直线
+      {
+        const c = (shapeCurvature ?? 0.5)
+        const cy = h * Math.max(0.02, 1 - c)
+        return `M0,${h} Q${w * 0.5},${cy} ${w},${h}`
+      }
     case 'arrow':
       // 箭头朝右：横放矩形（2×0.8）+ 等边三角头（边长 1.2，顶点朝右，左边中点接矩形右缘中点）
       {
@@ -116,7 +123,17 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
   const [dragMode, setDragMode] = useState<'move' | 'resize' | 'rotate' | 'pan' | 'draw' | 'marquee' | null>(null)
   const [dragData, setDragData] = useState<any>(null)
   const svgRef = useRef<SVGSVGElement>(null)
+  const shapesRef = useRef<SandboxShape[]>([])
+  shapesRef.current = shapes
   const [onboardOpen, setOnboardOpen] = useState(false)
+  // 撤销/重做历史栈（快照数组，限制 50 步）
+  const [undoStack, setUndoStack] = useState<SandboxShape[][]>([])
+  const [redoStack, setRedoStack] = useState<SandboxShape[][]>([])
+  // 扳机标记：手势中只记一次快照；文本编辑中不重复记
+  const gestureActiveRef = useRef(false) // 拖拽手势进行中（move/resize/rotate）
+  const gestureSnapshotRef = useRef(false) // 本次手势是否已记录快照
+  const textEditRef = useRef(false)
+  const colorEditRef = useRef(false) // 取色窗口打开中（点开时记一次，离开时结束）
 
   // 首次进入沙盘：弹引导窗（localStorage 标记，只看一次）
   useEffect(() => {
@@ -125,6 +142,48 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
       localStorage.setItem('sandbox_onboarded', '1')
     }
   }, [])
+
+  // 反向定位：实体列表点击“定位到沙盘” → 选中沙盘上所有匹配实体（同名全选）+ 自动居中视口
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { entityType?: string; entityId?: number; name?: string } | undefined
+      if (!d) return
+      // 匹配：entityType+entityId 相同；或按名称匹配（同名全选）
+      const hits = shapes.filter(s => {
+        const t = s.entityType || ''
+        if (d.entityType && d.entityId) {
+          return t === d.entityType && s.entityId === d.entityId
+        }
+        if (d.name) {
+          return s.label === d.name
+        }
+        return false
+      })
+      if (hits.length === 0) return
+      // 同名全选 + 高亮最近一个
+      setSelectedIds(new Set(hits.map(s => s.id)))
+      setSelectedId(hits[hits.length - 1].id)
+      setPreviewShape(hits[hits.length - 1])
+      setEditPopup(null)
+      // 自动居中视口：让命中的图标移到视野中央；若太小则放大（约占视口 45% 宽）
+      const rect = svgRef.current?.getBoundingClientRect()
+      if (rect && rect.width > 0) {
+        const target = hits[hits.length - 1]
+        const cx = target.x + target.w / 2
+        const cy = target.y + target.h / 2
+        let ns = scale
+        const screenW = target.w * scale
+        if (screenW < rect.width * 0.25) {
+          ns = Math.max(scale, (rect.width * 0.45) / Math.max(1, target.w))
+        }
+        setViewX(rect.width / 2 - cx * ns)
+        setViewY(rect.height / 2 - cy * ns)
+        if (ns !== scale) setScale(ns)
+      }
+    }
+    window.addEventListener('entity:locate-sandbox', handler)
+    return () => window.removeEventListener('entity:locate-sandbox', handler)
+  }, [shapes, scale])
 
   const load = useCallback(async () => {
     if (!sandboxId) {
@@ -163,6 +222,14 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
         const t = new Date(cur.updatedAt || 0).getTime()
         if (lastMtime === 0) { lastMtime = t; return }
         if (t > lastMtime) {
+          // 若是自己刚保存（3 秒内）产生的 mtime 变化，跳过（避免自动保存重置选中/悬浮窗）
+          if (Date.now() - selfSaveAtRef.current < 3000) {
+            lastMtime = t
+            return
+          }
+          // 扳机：AI/外部写入沙盘 → 记录当前快照（可撤销到 AI 修改前）
+          setUndoStack(prev => [...prev, shapesRef.current].slice(-50))
+          setRedoStack([])
           lastMtime = t
           await load()
         }
@@ -171,52 +238,72 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
     return () => clearInterval(timer)
   }, [sandboxId, novelId, app, load])
 
+  // 自身保存时间戳 ref：区分“自己刚保存”（不该触发 load）与“外部改动”（该 load）
+  const selfSaveAtRef = useRef(0)
+  const doSave = useCallback(() => {
+    if (!sandboxId) return Promise.resolve()
+    return app.SaveSandbox(novelId, sandboxId, { shapes, viewX, viewY, scale } as any)
+      .then(() => {
+        selfSaveAtRef.current = Date.now()
+        setDirty(false)
+      })
+  }, [app, novelId, sandboxId, shapes, viewX, viewY, scale])
+
   // 切换到其他界面时自动保存（WorkspaceView 切走时 dispatch sandbox:auto-save）
   useEffect(() => {
     const handler = () => {
       if (!sandboxId) return
       // 有未保存改动才保存
-      app.SaveSandbox(novelId, sandboxId, { shapes, viewX, viewY, scale } as any)
-        .then(() => setDirty(false))
-        .catch(err => toastError(String(err)))
+      doSave().catch(err => toastError(String(err)))
     }
     window.addEventListener('sandbox:auto-save', handler)
     return () => window.removeEventListener('sandbox:auto-save', handler)
-  }, [sandboxId, novelId, shapes, viewX, viewY, scale, app])
+  }, [sandboxId, doSave])
   // 应用关闭前强制保存（beforeunload）
   useEffect(() => {
     const handler = () => {
       if (!sandboxId || !dirty) return
-      app.SaveSandbox(novelId, sandboxId, { shapes, viewX, viewY, scale } as any)
-        .then(() => setDirty(false))
-        .catch(() => {})
+      doSave().catch(() => {})
     }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
-  }, [sandboxId, novelId, dirty, shapes, viewX, viewY, scale, app])
+  }, [sandboxId, dirty, doSave])
 
   const persist = useCallback((next: SandboxShape[]) => {
     setDirty(true)
+    // 撤销快照：扳机式记录——
+    // 1) 拖拽手势中（move/resize/rotate）：只记录一次（手势开始状态），避免每帧压栈
+    // 2) 文本编辑中（改名）：focus 时已记录一次，输入过程不再压栈
+    // 3) 其他离散操作（新增/删除/图层/颜色等）：每次都记录
+    if (gestureActiveRef.current) {
+      // 手势中：仅第一次 persist 记录（手势开始时的状态）
+      if (!gestureSnapshotRef.current) {
+        setUndoStack(prev => [...prev, shapes].slice(-50))
+        setRedoStack([])
+        gestureSnapshotRef.current = true
+      }
+    } else if (!textEditRef.current && !colorEditRef.current) {
+      // 非手势且非文本/取色编辑：离散操作，每次都记录
+      setUndoStack(prev => [...prev, shapes].slice(-50))
+      setRedoStack([])
+    }
     setShapes(next)
-  }, [])
+  }, [shapes])
 
   // 自动保存兜底：操作停止 2 秒后自动落盘（关进程/切走时数据必已保存）
   useEffect(() => {
     if (!sandboxId || !dirty) return
     const t = setTimeout(() => {
-      app.SaveSandbox(novelId, sandboxId, { shapes, viewX, viewY, scale } as any)
-        .then(() => setDirty(false))
-        .catch(err => toastError(String(err)))
+      doSave().catch(err => toastError(String(err)))
     }, 2000)
     return () => clearTimeout(t)
-  }, [dirty, shapes, viewX, viewY, scale, sandboxId, novelId, app])
+  }, [dirty, sandboxId, doSave])
 
   async function handleSave() {
     if (!sandboxId) return
     setSaving(true)
     try {
-      await app.SaveSandbox(novelId, sandboxId, { shapes, viewX, viewY, scale } as any)
-      setDirty(false)
+      await doSave()
       toastSuccess(t('sandbox.saved'))
       window.dispatchEvent(new CustomEvent('sandbox:list-changed'))
     } catch (err) { toastError(String(err)) } finally { setSaving(false) }
@@ -368,6 +455,141 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
     persist(shapes.map(s => s.id === selectedId ? { ...s, ...patch } : s))
   }
 
+  // ── 撤销 / 重做 ───────────────────────────────────────
+
+  function undo() {
+    if (undoStack.length === 0) return
+    const prev = undoStack[undoStack.length - 1]
+    setRedoStack(rs => [...rs, shapes].slice(-50))
+    setUndoStack(us => us.slice(0, -1))
+    setShapes(prev)
+    setDirty(true)
+  }
+
+  function redo() {
+    if (redoStack.length === 0) return
+    const next = redoStack[redoStack.length - 1]
+    setUndoStack(us => [...us, shapes].slice(-50))
+    setRedoStack(rs => rs.slice(0, -1))
+    setShapes(next)
+    setDirty(true)
+  }
+
+  // Delete 键：删除当前选中/悬浮窗形状
+  function handleDeleteKey() {
+    const target = selectedId || editPopup?.id
+    if (!target) return
+    persist(shapes.filter(s => s.id !== target))
+    if (selectedId === target) setSelectedId(null)
+    if (editPopup?.id === target) setEditPopup(null)
+    setPreviewShape(null)
+  }
+
+  // 键盘监听：Ctrl+Z 撤回 / Ctrl+Y、Ctrl+Shift+Z 回退 / Delete 删除
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      // 输入框/文本域内不拦截（避免误触）
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        undo()
+      } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault()
+        redo()
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault()
+        handleDeleteKey()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }) // 每次渲染都重新绑定，闭包拿到最新 shapes/undoStack
+
+  // ── 图层顺序（数组顺序=渲染顺序，后面的盖前面）──
+
+  // 置入底层：移到数组开头
+  function sendToBack(id?: string) {
+    const target = id || selectedId
+    if (!target) return
+    const rest = shapes.filter(s => s.id !== target)
+    const sel = shapes.find(s => s.id === target)!
+    persist([sel, ...rest])
+  }
+
+  // 置入顶层：移到数组末尾
+  function bringToFront(id?: string) {
+    const target = id || selectedId
+    if (!target) return
+    const rest = shapes.filter(s => s.id !== target)
+    const sel = shapes.find(s => s.id === target)!
+    persist([...rest, sel])
+  }
+
+  // 两个形状包围盒是否重叠（含边）
+  function overlaps(a: SandboxShape, b: SandboxShape): boolean {
+    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)
+  }
+
+  // 上移：跳到下一个与它重叠的图形之上（无重叠则置顶）
+  // 层概念只对重叠图形有意义，避免非重叠图形一格一格挪
+  function moveUp(id?: string) {
+    const target = id || selectedId
+    if (!target) return
+    const idx = shapes.findIndex(s => s.id === target)
+    if (idx < 0 || idx >= shapes.length - 1) return
+    const sel = shapes[idx]
+    const next = [...shapes]
+    // 从当前往后找第一个与目标重叠的图形
+    const hit = next.findIndex((s, i) => i > idx && overlaps(sel, s))
+    if (hit < 0) {
+      // 没有重叠：直接置顶（移到末尾）
+      next.splice(idx, 1)
+      next.push(sel)
+    } else {
+      // 插到该重叠图形之后（即盖在它上面）
+      next.splice(idx, 1)
+      const afterIdx = next.findIndex(s => s.id === shapes[hit].id)
+      next.splice(afterIdx + 1, 0, sel)
+    }
+    persist(next)
+  }
+
+  // 下移：跳到上一个与它重叠的图形之下（无重叠则置底）
+  function moveDown(id?: string) {
+    const target = id || selectedId
+    if (!target) return
+    const idx = shapes.findIndex(s => s.id === target)
+    if (idx <= 0) return
+    const sel = shapes[idx]
+    const next = [...shapes]
+    // 从当前往前找第一个与目标重叠的图形
+    let hit = -1
+    for (let i = idx - 1; i >= 0; i--) {
+      if (overlaps(sel, shapes[i])) { hit = i; break }
+    }
+    if (hit < 0) {
+      // 没有重叠：直接置底（移到开头）
+      next.splice(idx, 1)
+      next.unshift(sel)
+    } else {
+      // 插到该重叠图形之前（即垫在它下面）
+      next.splice(idx, 1)
+      const beforeIdx = next.findIndex(s => s.id === shapes[hit].id)
+      next.splice(beforeIdx, 0, sel)
+    }
+    persist(next)
+  }
+
+  // 旋转 90°（顺时针，累加）
+  function rotate90(id?: string) {
+    const target = id || selectedId
+    if (!target) return
+    const sel = shapes.find(s => s.id === target)!
+    const base = ((sel.rotation || 0) % 360 + 360) % 360
+    persist(shapes.map(s => s.id === target ? { ...s, rotation: base + 90 } : s))
+  }
+
   // ── 指针交互（画布坐标换算）──────────────────────────
 
   function toCanvas(e: React.PointerEvent): { x: number; y: number } {
@@ -377,6 +599,9 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
 
   function onPointerDown(e: React.PointerEvent) {
     if (e.button !== 0) return
+    // 扳机开始：手势可能产生多次 persist，标记为“只记一次快照”
+    gestureActiveRef.current = true
+    gestureSnapshotRef.current = false
     const target = e.target as Element
     // 点击形状本体 → 选中 + 准备拖动（多选时整组移动）
     const shapeEl = target.closest('[data-shape-id]') as HTMLElement | null
@@ -536,6 +761,9 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
     }
     setDragMode(null)
     setDragData(null)
+    // 扳机结束：手势标记复位（下次手势重新记录快照）
+    gestureActiveRef.current = false
+    gestureSnapshotRef.current = false
   }
 
   function onWheel(e: React.WheelEvent) {
@@ -596,6 +824,22 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
       {/* 工具栏 */}
       <div className="flex items-center gap-1 px-4 py-2 border-b shrink-0 flex-wrap">
         <span className="text-xs font-medium text-muted-foreground mr-1">{t('sandbox.title')}</span>
+        <button
+          onClick={undo}
+          disabled={undoStack.length === 0}
+          className="inline-flex items-center gap-1 h-7 px-2 rounded-md text-[11px] border hover:bg-muted transition-colors disabled:opacity-40"
+          title={t('sandbox.undo')}
+        >
+          <Undo2 className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={redo}
+          disabled={redoStack.length === 0}
+          className="inline-flex items-center gap-1 h-7 px-2 rounded-md text-[11px] border hover:bg-muted transition-colors disabled:opacity-40"
+          title={t('sandbox.redo')}
+        >
+          <Redo2 className="w-3.5 h-3.5" />
+        </button>
         <button
           onClick={() => setTool('move')}
           className={`inline-flex items-center gap-1 h-7 px-2 rounded-md text-[11px] border transition-colors ${tool === 'move' ? 'bg-primary/10 border-primary text-primary' : 'hover:bg-muted'}`}
@@ -667,6 +911,8 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
               <option value="top">{t('sandbox.textPosTop')}</option>
               <option value="middle">{t('sandbox.textPosMiddle')}</option>
               <option value="bottom">{t('sandbox.textPosBottom')}</option>
+              <option value="left">{t('sandbox.textPosLeft')}</option>
+              <option value="right">{t('sandbox.textPosRight')}</option>
             </select>
             <button onClick={deleteSelected} className="inline-flex items-center gap-1 h-7 px-2 rounded-md text-[11px] border hover:bg-destructive/10 hover:text-red-500 transition-colors" title={t('sandbox.delete')}>
               <Trash2 className="w-3.5 h-3.5" />
@@ -720,10 +966,10 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
           <rect x={viewX} y={viewY} width={2000 * scale} height={2000 * scale} fill="url(#grid)" />
           <g transform={`translate(${viewX},${viewY}) scale(${scale})`}>
             {shapes.map(s => (
+              <Fragment key={s.id}>
               <g
-                key={s.id}
                 data-shape-id={s.id}
-                transform={`translate(${s.x},${s.y}) rotate(${s.rotation || 0},${s.w / 2},${s.h / 2})`}
+                transform={`translate(${s.x},${s.y}) rotate(${s.rotation || 0},${s.w / 2},${s.h / 2})${s.flipped ? ` scale(-1,1) translate(${-s.w},0)` : ''}`}
                 onClick={e => handleClickShape(e, s)}
                 style={{ cursor: 'move' }}
               >
@@ -744,9 +990,6 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                     </g>
                     {/* 中心圆点 */}
                     <circle cx={s.w / 2} cy={s.h / 2} r={6} fill={s.stroke} opacity={0.6} pointerEvents="none" />
-                    <text x={s.w / 2} y={-8} textAnchor="middle" fontSize={Math.max(12, Math.min(17, s.w / 14))} fill="var(--foreground)" pointerEvents="none" fontWeight={600}>
-                      {s.label || t('sandbox.worldDefault')}
-                    </text>
                   </>
                 ) : s.type === 'drop' ? (
                   // 倒水滴（地点）：顶部圆润大弧，底部快速收尖变小；下方 45° 侧视同心圆环
@@ -763,9 +1006,6 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                       <ellipse cx={s.w / 2} cy={s.h * 1.12} rx={s.w * 0.62} ry={s.w * 0.16} />
                       <ellipse cx={s.w / 2} cy={s.h * 1.12} rx={s.w * 0.4} ry={s.w * 0.1} />
                     </g>
-                    <text x={s.w / 2} y={s.textPos === 'bottom' ? s.h * 1.32 : s.textPos === 'middle' ? s.h / 2 : -6} textAnchor="middle" dominantBaseline="central" fontSize={Math.max(11, Math.min(15, s.w / 9))} fill="var(--foreground)" pointerEvents="none" fontWeight={500}>
-                      {s.label || ' '}
-                    </text>
                   </>
                 ) : s.type === 'person' ? (
                   // 人头梯形（人物）：圆头 + 梯形身，名字在上方
@@ -780,19 +1020,10 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                       fill={s.fill} fillOpacity={s.fillOpacity} stroke={s.stroke} strokeWidth={s.strokeWidth}
                       strokeDasharray={selectedId === s.id || selectedIds.has(s.id) ? '4 3' : undefined}
                     />
-                    <text x={s.w / 2} y={s.textPos === 'bottom' ? s.h + 12 : s.textPos === 'middle' ? s.h / 2 : -6} textAnchor="middle" dominantBaseline="central" fontSize={13} fill="var(--foreground)" pointerEvents="none" fontWeight={500}>
-                      {s.label || ' '}
-                    </text>
                   </>
                 ) : s.type === 'event' ? (
-                  // 镂空问号（事件）：粗笔画问号；星标大且显眼在问号上方，文字在问号下方
+                  // 镂空问号（事件）：粗笔画问号
                   <>
-                    {/* 星标（问号上方，大而显眼） */}
-                    {s.star > 0 && (
-                      <text x={s.w / 2} y={s.h * 0.06} textAnchor="middle" fontSize={Math.max(16, Math.min(26, s.w * 0.22))} fill="#f59e0b" pointerEvents="none" fontWeight={700}>
-                        {'★'.repeat(Math.max(1, Math.min(5, s.star)))}
-                      </text>
-                    )}
                     {/* 粗笔画镂空问号 */}
                     <g
                       fill="none" stroke={s.stroke} strokeWidth={Math.max(4, s.strokeWidth + 2)}
@@ -802,10 +1033,6 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                       <path d={`M${s.w * 0.3},${s.h * 0.42} C${s.w * 0.3},${s.h * 0.16} ${s.w * 0.7},${s.h * 0.16} ${s.w * 0.7},${s.h * 0.42} C${s.w * 0.7},${s.h * 0.62} ${s.w * 0.5},${s.h * 0.56} ${s.w * 0.5},${s.h * 0.72}`} />
                       <circle cx={s.w * 0.5} cy={s.h * 0.86} r={Math.max(2.5, s.w * 0.045)} fill={s.stroke} stroke="none" />
                     </g>
-                    {/* 文字（按位置：上方/居中/底部） */}
-                    <text x={s.w / 2} y={s.textPos === 'bottom' ? s.h + 14 : s.textPos === 'middle' ? s.h / 2 : -6} textAnchor="middle" dominantBaseline="central" fontSize={13} fill="var(--foreground)" pointerEvents="none" fontWeight={500}>
-                      {s.label || ' '}
-                    </text>
                   </>
                 ) : s.type === 'circle' ? (
                   <ellipse
@@ -820,26 +1047,27 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                     strokeDasharray={selectedId === s.id || selectedIds.has(s.id) ? '4 3' : undefined}
                   />
                 ) : s.type === 'text' ? (
+                  // 文字型：内容在文字层渲染（永远水平），这里只留透明点击区
+                  <rect x={0} y={0} width={s.w} height={s.h} fill="transparent" stroke="none" />
+                ) : s.type === 'arc' ? (
+                  // 半圆弧（二次贝塞尔）：fill 透明 + 粗 stroke 表现"有粗细的弧线"
+                  // 透明加厚命中层（同路径 strokeWidth×2.5）保证点击弧线附近可选中，不占整盒
                   <>
-                    {/* 虚线框（选中时）指示可编辑区域 */}
-                    {selectedId === s.id && (
-                      <rect x={-2} y={-2} width={s.w + 4} height={s.h + 4} fill="none" stroke="var(--primary)" strokeWidth={1} strokeDasharray="4 3" rx={4} />
-                    )}
-                    {/* foreignObject 内嵌 HTML：支持自动换行（pre-wrap） */}
-                    <foreignObject x={0} y={0} width={s.w} height={s.h} pointerEvents="none">
-                      <div
-                        style={{
-                          width: s.w, height: s.h,
-                          fontSize: Math.max(12, s.h),
-                          lineHeight: 1.3, color: 'var(--foreground)',
-                          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                          display: 'flex', alignItems: 'center',
-                          overflow: 'hidden', fontFamily: 'inherit',
-                        }}
-                      >
-                        {s.label || ''}
-                      </div>
-                    </foreignObject>
+                    <path
+                      d={shapePath(s.type, s.w, s.h, s.curvature)}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth={Math.max(10, (s.strokeWidth + 3) * 2.5)}
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d={shapePath(s.type, s.w, s.h, s.curvature)}
+                      fill="none"
+                      stroke={s.stroke}
+                      strokeWidth={Math.max(4, s.strokeWidth + 3)}
+                      strokeLinecap="round"
+                      strokeDasharray={selectedId === s.id || selectedIds.has(s.id) ? '4 3' : undefined}
+                    />
                   </>
                 ) : (
                   <path
@@ -848,21 +1076,78 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                     strokeDasharray={selectedId === s.id || selectedIds.has(s.id) ? '4 3' : undefined}
                   />
                 )}
-                {s.label && s.type !== 'text' && s.type !== 'drop' && s.type !== 'person' && s.type !== 'event' && (
-                  <text
-                    x={s.w / 2}
-                    y={s.textPos === 'top' ? -6 : s.textPos === 'bottom' ? s.h + 12 : s.h / 2}
-                    textAnchor="middle" dominantBaseline="central"
-                    fontSize={Math.max(11, Math.min(16, s.w / 8))}
-                    fill="var(--foreground)" pointerEvents="none"
-                  >
-                    {s.label}
-                  </text>
-                )}
-
-
-
               </g>
+
+              {/* 文字层：不随图形旋转/镜像，永远水平正向，按 textPos 固定在顶/中/下 */}
+              {s.type === 'text' ? (
+                <g onClick={e => handleClickShape(e, s)} style={{ cursor: 'move' }}>
+                  {/* 虚线框（选中时）指示可编辑区域 */}
+                  {selectedId === s.id && (
+                    <rect x={s.x - 2} y={s.y - 2} width={s.w + 4} height={s.h + 4} fill="none" stroke="var(--primary)" strokeWidth={1} strokeDasharray="4 3" rx={4} />
+                  )}
+                  {/* foreignObject 内嵌 HTML：支持自动换行（pre-wrap），永远水平 */}
+                  <foreignObject x={s.x} y={s.y} width={s.w} height={s.h} pointerEvents="none">
+                    <div
+                      style={{
+                        width: s.w, height: s.h,
+                        fontSize: Math.max(12, s.h),
+                        lineHeight: 1.3, color: 'var(--foreground)',
+                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                        display: 'flex', alignItems: 'center',
+                        overflow: 'hidden', fontFamily: 'inherit',
+                      }}
+                    >
+                      {s.label || ''}
+                    </div>
+                  </foreignObject>
+                </g>
+              ) : (
+                <g pointerEvents="none">
+                  {/* 星标（event 类型，永远水平在问号上方） */}
+                  {s.type === 'event' && s.star > 0 && (
+                    <text x={s.x + s.w / 2} y={s.y + s.h * 0.06} textAnchor="middle" fontSize={Math.max(16, Math.min(26, s.w * 0.22))} fill="#f59e0b" fontWeight={700}>
+                      {'★'.repeat(Math.max(1, Math.min(5, s.star)))}
+                    </text>
+                  )}
+                  {/* 名称文字：6 个位置（顶/中/底/左/右），左/右为竖排；永远水平正向不随图形旋转/镜像 */}
+                  {s.label && (s.type === 'world' || s.type === 'drop' || s.type === 'person' || s.type === 'event' || s.label !== ' ') && (
+                    <text
+                      x={(() => {
+                        const p = s.textPos
+                        if (p === 'left') return s.x - 6
+                        if (p === 'right') return s.x + s.w + 6
+                        return s.x + s.w / 2
+                      })()}
+                      y={(() => {
+                        const p = s.textPos
+                        if (p === 'left' || p === 'right') return s.y + s.h / 2
+                        if (p === 'top') return s.y - 6
+                        if (p === 'bottom') {
+                          if (s.type === 'drop') return s.y + s.h * 1.32
+                          return s.y + s.h + 12
+                        }
+                        return s.y + s.h / 2
+                      })()}
+                      textAnchor={(() => {
+                        const p = s.textPos
+                        if (p === 'left') return 'end'
+                        if (p === 'right') return 'start'
+                        return 'middle'
+                      })()}
+                      dominantBaseline="central"
+                      fontSize={s.type === 'world' ? Math.max(12, Math.min(17, s.w / 14))
+                        : s.type === 'drop' ? Math.max(11, Math.min(15, s.w / 9))
+                        : s.type === 'person' || s.type === 'event' ? 13
+                        : Math.max(11, Math.min(16, s.w / 8))}
+                      fill="var(--foreground)" fontWeight={s.type === 'world' ? 600 : 500}
+                      writingMode={s.textPos === 'left' || s.textPos === 'right' ? 'vertical-rl' : undefined}
+                    >
+                      {s.type === 'world' ? (s.label || t('sandbox.worldDefault')) : s.label}
+                    </text>
+                  )}
+                </g>
+              )}
+              </Fragment>
             ))}
             {/* 选中形状的控制柄（独立于旋转：角柄固定在轴对齐右下角，不随形状旋转） */}
             {selected && (() => {
@@ -890,6 +1175,9 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                     pointerEvents="all" style={{ cursor: 'grab' }}
                     onPointerDown={e => {
                       e.stopPropagation()
+                      // 扳机：旋转手势开始 → 只记一次快照
+                      gestureActiveRef.current = true
+                      gestureSnapshotRef.current = false
                       setDragMode('rotate')
                       setDragData({ id: selected.id })
                     }}
@@ -901,6 +1189,9 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                     pointerEvents="all" style={{ cursor: 'nwse-resize' }}
                     onPointerDown={e => {
                       e.stopPropagation()
+                      // 扳机：缩放手势开始 → 只记一次快照
+                      gestureActiveRef.current = true
+                      gestureSnapshotRef.current = false
                       setDragMode('resize')
                       setDragData({ id: selected.id })
                     }}
@@ -926,7 +1217,7 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
           if (!s) return null
           return (
             <div
-              className="absolute z-30 w-56 rounded-lg border bg-background shadow-xl"
+              className="absolute z-30 w-60 rounded-lg border bg-background shadow-xl"
               style={{ left: editPopup.x, top: editPopup.y }}
             >
               <div
@@ -953,11 +1244,96 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                   <label className="text-[10px] text-muted-foreground block mb-1">{t('sandbox.inputText')}</label>
                   <input
                     value={s.label}
+                    onFocus={() => {
+                      // 扳机：进入改名 → 记录一次快照（改名期间输入不重复记录）
+                      if (!textEditRef.current) {
+                        setUndoStack(prev => [...prev, shapes].slice(-50))
+                        setRedoStack([])
+                        textEditRef.current = true
+                      }
+                    }}
+                    onBlur={() => { textEditRef.current = false }}
                     onChange={e => persist(shapes.map(x => x.id === s.id ? { ...x, label: e.target.value } : x))}
                     placeholder={t('sandbox.inputTextPlaceholder')}
                     className="w-full h-7 rounded-md border-2 border-primary/60 bg-primary/5 px-2 text-[11px] font-medium focus:outline-none"
                   />
                 </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground block mb-1">{t('sandbox.fillColor')}</label>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {COLORS.map(c => (
+                      <button
+                        key={c}
+                        onClick={() => persist(shapes.map(x => x.id === s.id ? { ...x, fill: c, stroke: c } : x))}
+                        className="w-4 h-4 rounded-full border border-black/10 transition-transform hover:scale-110"
+                        style={{ background: c, outline: s.fill === c ? '2px solid var(--primary)' : undefined, outlineOffset: 1 }}
+                        title={c}
+                      />
+                    ))}
+                    {/* 自定义颜色：点击弹原生取色窗口 */}
+                    <label
+                      className="relative w-4 h-4 rounded-full border border-black/10 overflow-hidden cursor-pointer transition-transform hover:scale-110"
+                      title={t('sandbox.customColorTitle')}
+                      style={{
+                        background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)',
+                        outline: COLORS.every(c => c !== s.fill) ? '2px solid var(--primary)' : undefined,
+                        outlineOffset: 1,
+                      }}
+                    >
+                      <input
+                        type="color"
+                        value={COLORS.includes(s.fill) ? '#6bcb77' : s.fill}
+                        onFocus={() => {
+                          // 扳机：点开取色窗口 → 记录一次快照（选色过程不重复记录，满意才离开）
+                          if (!colorEditRef.current) {
+                            setUndoStack(prev => [...prev, shapes].slice(-50))
+                            setRedoStack([])
+                            colorEditRef.current = true
+                          }
+                        }}
+                        onBlur={() => { colorEditRef.current = false }}
+                        onChange={e => persist(shapes.map(x => x.id === s.id ? { ...x, fill: e.target.value, stroke: e.target.value } : x))}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground block mb-1">{t('sandbox.fillOpacity')}</label>
+                  <input
+                    type="range" min={0} max={100} value={Math.round(s.fillOpacity * 100)}
+                    onPointerDown={() => {
+                      // 扳机：滑块按下 → 记录一次快照，拖动过程不重复记录
+                      gestureActiveRef.current = true
+                      gestureSnapshotRef.current = false
+                    }}
+                    onPointerUp={() => {
+                      gestureActiveRef.current = false
+                      gestureSnapshotRef.current = false
+                    }}
+                    onChange={e => persist(shapes.map(x => x.id === s.id ? { ...x, fillOpacity: Number(e.target.value) / 100 } : x))}
+                    className="w-full h-4 accent-primary"
+                  />
+                </div>
+                {/* 弧度滑块：仅弧线（arc）形状显示，位于透明度下方 */}
+                {s.type === 'arc' && (
+                  <div>
+                    <label className="text-[10px] text-muted-foreground block mb-1">{t('sandbox.curvature')}</label>
+                    <input
+                      type="range" min={5} max={95} value={Math.round((s.curvature ?? 0.5) * 100)}
+                      onPointerDown={() => {
+                        gestureActiveRef.current = true
+                        gestureSnapshotRef.current = false
+                      }}
+                      onPointerUp={() => {
+                        gestureActiveRef.current = false
+                        gestureSnapshotRef.current = false
+                      }}
+                      onChange={e => persist(shapes.map(x => x.id === s.id ? { ...x, curvature: Number(e.target.value) / 100 } : x))}
+                      className="w-full h-4 accent-primary"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="text-[10px] text-muted-foreground block mb-1">{t('sandbox.textPos')}</label>
                   <select
@@ -968,7 +1344,48 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                     <option value="top">{t('sandbox.textPosTop')}</option>
                     <option value="middle">{t('sandbox.textPosMiddle')}</option>
                     <option value="bottom">{t('sandbox.textPosBottom')}</option>
+                    <option value="left">{t('sandbox.textPosLeft')}</option>
+                    <option value="right">{t('sandbox.textPosRight')}</option>
                   </select>
+                </div>
+
+                {/* 图层顺序 + 旋转（带文字说明，从上到下） */}
+                <div className="border-t pt-2 space-y-1">
+                  <button
+                    onClick={() => bringToFront(s.id)}
+                    className="w-full flex items-center gap-2 h-7 px-2 rounded-md text-[11px] text-foreground hover:bg-muted transition-colors"
+                  >
+                    <ArrowUpToLine className="w-3.5 h-3.5 text-muted-foreground" />
+                    {t('sandbox.bringToFront')}
+                  </button>
+                  <button
+                    onClick={() => moveUp(s.id)}
+                    className="w-full flex items-center gap-2 h-7 px-2 rounded-md text-[11px] text-foreground hover:bg-muted transition-colors"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                    {t('sandbox.moveUp')}
+                  </button>
+                  <button
+                    onClick={() => moveDown(s.id)}
+                    className="w-full flex items-center gap-2 h-7 px-2 rounded-md text-[11px] text-foreground hover:bg-muted transition-colors"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                    {t('sandbox.moveDown')}
+                  </button>
+                  <button
+                    onClick={() => sendToBack(s.id)}
+                    className="w-full flex items-center gap-2 h-7 px-2 rounded-md text-[11px] text-foreground hover:bg-muted transition-colors"
+                  >
+                    <ArrowDownToLine className="w-3.5 h-3.5 text-muted-foreground" />
+                    {t('sandbox.sendToBack')}
+                  </button>
+                  <button
+                    onClick={() => rotate90(s.id)}
+                    className="w-full flex items-center gap-2 h-7 px-2 rounded-md text-[11px] text-foreground hover:bg-muted transition-colors"
+                  >
+                    <RotateCw className="w-3.5 h-3.5 text-muted-foreground" />
+                    {t('sandbox.rotate90')}
+                  </button>
                 </div>
               </div>
             </div>

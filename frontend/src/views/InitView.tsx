@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useApp } from '@/hooks/useApp'
 import { useTheme, type Theme } from '@/hooks/useTheme'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,7 @@ export default function InitView({ onInitialized }: Props) {
   const [dataDir, setDataDir] = useState('')
   const [error, setError] = useState('')
   const [initializing, setInitializing] = useState(false)
+  const [countdown, setCountdown] = useState(10) // 保险倒计时：10 秒未操作自动进入
 
   useEffect(() => {
     app.GetPlatform().then((info) => {
@@ -61,9 +62,42 @@ export default function InitView({ onInitialized }: Props) {
     })
   }, [app])
 
+  // 保险机制：10 秒未操作自动进入主界面（防分辨率问题导致按钮不可见）
+  // 任何交互（点击/按键）重置倒计时；倒计时归零自动初始化
+  useEffect(() => {
+    if (initializing) return
+    setCountdown(10)
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          // 倒计时结束：若数据目录就绪则自动进入
+          if (dataDirRef.current) {
+            setInitializing(true)
+            app.Initialize(dataDirRef.current).then(onInitialized).catch(e => {
+              setError(String(e))
+              setInitializing(false)
+            })
+          }
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [initializing, app, onInitialized])
+
+  // dataDir 用 ref 同步，供倒计时闭包读取最新值
+  const dataDirRef = useRef(dataDir)
+  dataDirRef.current = dataDir
+
+  // 用户交互时重置倒计时
+  const resetCountdown = () => setCountdown(10)
+
   function handleThemeSelect(t: Theme) {
     setSelectedTheme(t)
     setTheme(t)
+    resetCountdown()
   }
 
   async function handleInit() {
@@ -79,7 +113,7 @@ export default function InitView({ onInitialized }: Props) {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex items-center justify-center min-h-screen overflow-y-auto">
       <div className="w-full max-w-lg mx-auto px-8 py-12 text-center">
         <Logo className="h-16 w-16 mx-auto mb-8" />
 
@@ -141,6 +175,7 @@ export default function InitView({ onInitialized }: Props) {
                   onClick={() => {
                     setSelectedLang(opt.key)
                     i18n.changeLanguage(opt.key)
+                    resetCountdown()
                   }}
                   className={`
                     rounded-xl border-2 p-3 text-left transition-all cursor-pointer
@@ -188,6 +223,12 @@ export default function InitView({ onInitialized }: Props) {
         >
           {initializing ? t('init.initializing') : t('init.start')}
         </Button>
+
+        {!initializing && countdown > 0 && countdown < 10 && (
+          <p className="text-[11px] text-muted-foreground mt-3">
+            {t('init.autoStartHint', { seconds: countdown })}
+          </p>
+        )}
       </div>
     </div>
   )

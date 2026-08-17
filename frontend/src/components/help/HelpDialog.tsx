@@ -213,6 +213,9 @@ function QuickStartTab() {
           <p><span className="text-foreground font-medium">{t('help.quickStart_conceptApproval')}</span> —— {t('help.quickStart_conceptApprovalDesc')}</p>
           <p><span className="text-foreground font-medium">{t('help.quickStart_conceptSandbox')}</span> —— {t('help.quickStart_conceptSandboxDesc')}</p>
           <p><span className="text-foreground font-medium">{t('help.quickStart_conceptAiLayout')}</span> —— {t('help.quickStart_conceptAiLayoutDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptSandboxColor')}</span> —— {t('help.quickStart_conceptSandboxColorDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptSandboxRing')}</span> —— {t('help.quickStart_conceptSandboxRingDesc')}</p>
+          <p><span className="text-foreground font-medium">{t('help.quickStart_conceptImport')}</span> —— {t('help.quickStart_conceptImportDesc')}</p>
           <p><span className="text-foreground font-medium">{t('help.quickStart_conceptAppearance')}</span> —— {t('help.quickStart_conceptAppearanceDesc')}</p>
           <p><span className="text-foreground font-medium">{t('help.quickStart_conceptAiTrace')}</span> —— {t('help.quickStart_conceptAiTraceDesc')}</p>
         </div>

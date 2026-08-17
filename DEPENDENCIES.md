@@ -67,7 +67,7 @@ VERSION 文件（仓库根目录，如 v1.0.1）→ scripts/build_windows.ps1 �
 | **chapter** | Store: ListByNovel/GetByNovelAndNumber/Create 等 + Chapter 模型 | git, storage | app/chapter.go、draft、import、migrate、search、pattern、rag、mcp_tools(chapter_tools/memory_tools/rw_tools) |
 | **novel** | Novel/PreferenceItem/ParseAIConfig/Store | storage | agentcfg（ParseAIConfig/Novel/EnabledStyle）、mcp_tools、export、app/novel.go、migrate |
 | **draft** | CopyToDraft/ImportDraft/ArchiveCurrent/ListHistory/RestoreHistory（签名含 limit） | git, chapter, novel, rag, text | mcp_tools(subagent_tools)、app/draft_api.go、agent 创作流程 |
-| **import** | Parse/ImportNovel（包名 imp） | git, chapter, novel, config, text（llm 经 GenerateTextFunc 解耦） | app/import_novel.go、mcp_tools(analyze_material) |
+| **import** | Parse/ParseWithSeparator/ImportNovel（包名 imp；separator 用户自定义分隔符，空=自动识别章/卷/部/回/节/篇/集/幕+Chapter+序章+干支+数字行；ImportResult 含 FilePath 供 LLM 兜底） | git, chapter, novel, config, text（llm 经 GenerateTextFunc 解耦） | app/import_novel.go、mcp_tools(analyze_material) |
 | **archive** | 快照（<DataDir>/archive/<ts>/，AI 不可达） | git, storage | app/archive_api.go |
 | **trash** | 回收站（.md+.json 成对，二次删除才清除） | git, storage | app/trash_api.go |
 | **rollback** | RollbackBeforeTurn（git revert 三步） | git, storage | agent（配合 storage.WithTurn） |
@@ -247,7 +247,7 @@ wails build（Go 1.26.5 + mingw + CGO_CFLAGS=-IC:\Users\haoha\go\goink-cgo-inclu
 | i18n 键 | zh-CN + en + audit_i18n.cjs |
 | 文件路径/文件名 | internal/git/rw.go + 前端 path 判断 + edit 工具白名单 + 技能/rules + README |
 | 沙盘（sandboxs/*.json） | app/sandbox_api.go（List/Get/Save/Create/Update/Delete）+ useApp 6 方法 + SandboxView/SandboxList + i18n；形状/实体关联字段（entityType/entityId）变更需同步前端类型 |
-| 沙盘 AI 布局 | internal/mcp_tools/sandbox_tools.go（arrange_sandbox：ops 结构化 move/delete/add + 全量/增量 + 比例尺 + 金字塔 + 嵌套 + 批量拆分）+ agentcfg/identity.go allowlist + app/sandbox_arrange.go（LLM 版按钮，请求级可取消 ctx）+ 前端 ArrangeSandbox/CancelArrange + 后台运行（可关弹窗切页、完成 toast、取消按钮）+ 首次引导弹窗（localStorage sandbox_onboarded） |
+| 沙盘 AI 布局 | internal/mcp_tools/sandbox_tools.go（arrange_sandbox：ops 结构化 move/delete/add/resize/color + 全量/增量 + 比例尺 + 金字塔 + 嵌套 + 批量拆分 + 环形/环绕双层叠加 + 复合名混色（形状词+颜色词）+ 批量前置校验 validateOpsTargets + 中文色名解析 parseColor）+ agentcfg/identity.go allowlist + app/sandbox_arrange.go（LLM 版按钮，请求级可取消 ctx）+ 前端 ArrangeSandbox/CancelArrange + 后台运行（可关弹窗切页、完成 toast、取消按钮）+ 首次引导弹窗（localStorage sandbox_onboarded） |
 | 后端新方法 | wails build 重新生成绑定 + useApp 导出 + 组件调用 |
 | 注入链内容 | agentcfg（MainSystemPrompt/NovelState）+ app/chat.go writeSystemMessages + AISettingsDialog |
 | 拖拽/排序 | dnd.log 快照验证 + prev 重算 + 导出顺序 |

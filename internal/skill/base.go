@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 )
 
-// baseSkillNames 是三个基础 skill（内置层文件名，来自 builtin/ 目录）。
+// baseSkillNames 是基础 skill（内置层文件名，来自 builtin/ 目录）。
 // 首次启动复制到用户技能目录，用户可自由编辑；删除后不自动补（仅首次安装）。
-var baseSkillNames = []string{"一致性比对", "分段写作", "多章创作"}
+var baseSkillNames = []string{"一致性比对", "分段写作", "多章创作", "重点分段"}
 
 // EnsureBaseSkills 首次安装基础 skill：用户技能目录缺少时，从内置层复制。
 func EnsureBaseSkills(userSkillsDir string) error {

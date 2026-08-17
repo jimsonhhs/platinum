@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2, UsersRound, X } from 'lucide-react'
+import { Pencil, Plus, Trash2, UsersRound, X, Map } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { character } from '@/hooks/useApp'
@@ -304,6 +304,9 @@ export default function CharacterListView({ novelId, focusId }: Props) {
                         </div>
                         {/* Hover actions */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button onClick={() => window.dispatchEvent(new CustomEvent('entity:locate-sandbox', { detail: { entityType: 'character', entityId: c.id, name: c.name } }))} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title={t('character.locateSandbox')}>
+                            <Map className="h-3.5 w-3.5" />
+                          </button>
                           <button onClick={() => openEdit(c)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title={t('common.edit')}>
                             <Pencil className="h-3.5 w-3.5" />
                           </button>

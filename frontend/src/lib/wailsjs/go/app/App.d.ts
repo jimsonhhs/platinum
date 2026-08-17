@@ -91,6 +91,8 @@ export function DeleteReaderPerspective(arg1:number,arg2:number):Promise<void>;
 
 export function DeleteSandbox(arg1:number,arg2:string):Promise<void>;
 
+export function DeleteSession(arg1:string):Promise<void>;
+
 export function DeleteSetting(arg1:number,arg2:number):Promise<void>;
 
 export function DeleteSkill(arg1:app.DeleteSkillInput):Promise<void>;
@@ -231,7 +233,7 @@ export function LogFrontend(arg1:string):Promise<void>;
 
 export function NormalizeVolumeOrders(arg1:number,arg2:number):Promise<void>;
 
-export function PickAndImportNovel(arg1:number):Promise<imp.ImportResult>;
+export function PickAndImportNovel(arg1:string):Promise<imp.ImportResult>;
 
 export function PickDataDir():Promise<string>;
 

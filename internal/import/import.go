@@ -23,6 +23,7 @@ type ImportResult struct {
 	SkippedCount    int              `json:"skipped_count"`
 	SkippedChapters []SkippedChapter `json:"skipped_chapters"`
 	NeedsLLM        bool             `json:"needs_llm"` // 正则分割结果不合理，提示前端可调用 LLM 分析
+	FilePath        string           `json:"file_path,omitempty"` // 原文件路径（LLM 兜底时前端需要）
 }
 
 // ProgressCallback 是进度回调函数，app 层用它来推送前端事件。
@@ -30,14 +31,15 @@ type ProgressCallback func(stage, message string, current, total, percent int, n
 
 // Import 执行完整的小说导入流程：解析文件 → 创建 Novel → 写入章节 → git 提交。
 func Import(ctx context.Context, logger *slog.Logger, db *gorm.DB, filePath string, gitName, gitEmail string, onProgress ProgressCallback) (*ImportResult, error) {
-	return ImportWithLimit(ctx, logger, db, filePath, 0, gitName, gitEmail, onProgress)
+	return ImportWithLimit(ctx, logger, db, filePath, 0, "", gitName, gitEmail, onProgress)
 }
 
-// ImportWithLimit 支持最大导入章数限制（maxChapters>0 时只导入前 N 章，防止超长文本撑爆上下文/失忆）。
-func ImportWithLimit(ctx context.Context, logger *slog.Logger, db *gorm.DB, filePath string, maxChapters int, gitName, gitEmail string, onProgress ProgressCallback) (*ImportResult, error) {
+// ImportWithLimit 支持最大导入章数限制（maxChapters>0 时只导入前 N 章，防止超长文本撑爆上下文/失忆），
+// 以及用户自定义章节分隔符（separator 如"章""节""篇"；空串用默认全模式）。
+func ImportWithLimit(ctx context.Context, logger *slog.Logger, db *gorm.DB, filePath string, maxChapters int, separator string, gitName, gitEmail string, onProgress ProgressCallback) (*ImportResult, error) {
 	onProgress("parse", "正在解析文件", 0, 0, 0, 0)
 
-	result, err := Parse(filePath, logger)
+	result, err := ParseWithSeparator(filePath, logger, separator)
 	if err != nil {
 		onProgress("error", "导入解析失败，已停止导入", 0, 0, 0, 0)
 		return nil, fmt.Errorf("导入解析失败: %w", err)
@@ -54,6 +56,7 @@ func ImportWithLimit(ctx context.Context, logger *slog.Logger, db *gorm.DB, file
 		return &ImportResult{
 			Title:    result.Title,
 			NeedsLLM: true,
+			FilePath: filePath,
 		}, nil
 	}
 

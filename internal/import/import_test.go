@@ -50,7 +50,7 @@ func TestParseTxt_StandardChapters(t *testing.T) {
 		"第2章 启程\n\n主角离开了村庄。\n\n" +
 		"第3章 遭遇\n\n遇到了第一个敌人。\n"
 	path := writeTemp(t, "novel.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestParseTxt_StandardChapters(t *testing.T) {
 func TestParseTxt_ChineseNumberChapters(t *testing.T) {
 	content := "第一章 开篇\n\n内容一。\n\n第十章 高潮\n\n内容十。\n"
 	path := writeTemp(t, "novel.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestParseTxt_ChineseNumberChapters(t *testing.T) {
 func TestParseTxt_PaddedNumbers(t *testing.T) {
 	content := "第001章 开始\n\n正文一。\n\n第010章 中期\n\n正文十。\n"
 	path := writeTemp(t, "novel.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestParseTxt_ChapterInBodyNotConfused(t *testing.T) {
 	content := "第1章 开始\n\n他想起之前那段情节，觉得故事写得很好。\n\n" +
 		"第2章 继续\n\n第二段。\n"
 	path := writeTemp(t, "novel.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestParseTxt_LongBodyLineFiltered(t *testing.T) {
 	}
 	content := "第1章 开篇\n\n正文。\n\n" + longLine + "\n\n第2章 继续\n\n正文。\n"
 	path := writeTemp(t, "long.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestParseTxt_LongBodyLineFiltered(t *testing.T) {
 func TestParseTxt_NoChapters(t *testing.T) {
 	content := "纯文本，没有任何章节标记。\n多行内容。\n"
 	path := writeTemp(t, "novel.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestParseTxt_NoChapters(t *testing.T) {
 
 func TestParseTxt_EmptyFile(t *testing.T) {
 	path := writeTemp(t, "empty.txt", "")
-	_, err := parseTxt(path)
+	_, err := parseTxt(path, "")
 	if err == nil {
 		t.Fatal("expected error for empty file")
 	}
@@ -149,7 +149,7 @@ func TestParseTxt_EmptyFile(t *testing.T) {
 
 func TestParseTxt_WhitespaceOnly(t *testing.T) {
 	path := writeTemp(t, "ws.txt", "\n  \n\t\n")
-	_, err := parseTxt(path)
+	_, err := parseTxt(path, "")
 	if err == nil {
 		t.Fatal("expected error for whitespace-only file")
 	}
@@ -158,7 +158,7 @@ func TestParseTxt_WhitespaceOnly(t *testing.T) {
 func TestParseTxt_IndentedChapter(t *testing.T) {
 	content := "　　第1章 缩进章节\n\n正文。\n\n  第2章 半角缩进\n\n正文二。\n"
 	path := writeTemp(t, "indented.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestParseTxt_IndentedChapter(t *testing.T) {
 func TestParseTxt_CRLF(t *testing.T) {
 	content := "第1章 测试\r\n\r\n正文。\r\n\r\n第2章 继续\r\n\r\n二章正文。\r\n"
 	path := writeTemp(t, "crlf.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestParseTxt_GB18030(t *testing.T) {
 	}
 	path := writeTempBytes(t, "gb18030.txt", data)
 
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestParseTxt_GB18030(t *testing.T) {
 func TestParseTxt_MarkdownFile(t *testing.T) {
 	content := "# 第1章 楔子\n\n正文一。\n\n## 第2章 启程\n\n正文二。\n"
 	path := writeTemp(t, "novel.md", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +241,7 @@ func TestParseTxt_TitleFromFilename(t *testing.T) {
 func TestParseTxt_PrologueEpilogue(t *testing.T) {
 	content := "楔子\n\n这是楔子的内容。\n\n第1章 开始\n\n正文。\n\n尾声\n\n这是尾声。\n"
 	path := writeTemp(t, "novel.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestParseTxt_PrologueEpilogue(t *testing.T) {
 func TestParseTxt_MixedChineseArabicChapter(t *testing.T) {
 	content := "第1章 开始\n\n正文一。\n\n第二章 发展\n\n正文二。\n\n第3章 高潮\n\n正文三。\n"
 	path := writeTemp(t, "mixed.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func TestParseTxt_MixedChineseArabicChapter(t *testing.T) {
 func TestParseTxt_LargeChineseNumber(t *testing.T) {
 	content := "第十一章 转折\n\n内容十一。\n\n第二十三章 决战\n\n内容二十三。\n"
 	path := writeTemp(t, "large_cn.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func TestParseTxt_LargeChineseNumber(t *testing.T) {
 func TestParseTxt_ThousandChapter(t *testing.T) {
 	content := "第一千章 新世界\n\n内容一千。\n\n第两千零一章 归来\n\n内容。\n"
 	path := writeTemp(t, "thousand.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +291,7 @@ func TestParseTxt_ThousandChapter(t *testing.T) {
 func TestParseTxt_BareChapter(t *testing.T) {
 	content := "第1章\n\n正文。\n\n第2章\n\n正文二。\n"
 	path := writeTemp(t, "bare.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +303,7 @@ func TestParseTxt_BareChapter(t *testing.T) {
 func TestParseTxt_PunctuationVariations(t *testing.T) {
 	content := "第1章：楔子\n\n正文。\n\n第2章。启程\n\n正文。\n\n第3章——转折\n\n正文。\n"
 	path := writeTemp(t, "punct.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +316,7 @@ func TestParseTxt_VolumeMarkers(t *testing.T) {
 	content := "第一卷 初入江湖\n\n第1章 山村少年\n\n正文。\n\n第2章 初遇\n\n正文。\n\n" +
 		"第二卷 风云际会\n\n第3章 下山\n\n正文。\n"
 	path := writeTemp(t, "volume.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,7 +330,7 @@ func TestParseTxt_UT8BOM(t *testing.T) {
 	// UTF-8 BOM: EF BB BF —— BOM 应在 parseTxt 中自动去除
 	content := "\xEF\xBB\xBF第1章 开始\n\n正文。\n\n第2章 继续\n\n正文。\n"
 	path := writeTemp(t, "bom.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func TestParseTxt_UT8BOM(t *testing.T) {
 func TestParseTxt_SectionMarkers(t *testing.T) {
 	content := "第一节 初识\n\n内容。\n\n第二节 深入\n\n内容。\n"
 	path := writeTemp(t, "section.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +355,7 @@ func TestParseTxt_SectionMarkers(t *testing.T) {
 func TestParseTxt_VeryShortChapter(t *testing.T) {
 	content := "第1章\n\n短。\n\n第2章 标题\n\n还是很短。\n"
 	path := writeTemp(t, "short.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +367,7 @@ func TestParseTxt_VeryShortChapter(t *testing.T) {
 func TestParseTxt_BlankLinesAroundHeader(t *testing.T) {
 	content := "\n\n\n第1章 开始\n\n\n正文。\n\n\n\n第2章 继续\n\n正文。\n"
 	path := writeTemp(t, "blanks.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,7 +380,7 @@ func TestParseTxt_SubtitleAfterChapter(t *testing.T) {
 	// 章节头下面紧跟副标题或引用
 	content := "第1章 初遇\n——副标题说明——\n\n正文开始。\n\n第2章\n（本章约3000字）\n\n正文。\n"
 	path := writeTemp(t, "subtitle.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,7 +398,7 @@ func TestParseTxt_100Chapters(t *testing.T) {
 		sb.WriteString("这是本章节的正文内容，模拟真实小说的长度。\n\n")
 	}
 	path := writeTemp(t, "100chapters.txt", sb.String())
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,7 +410,7 @@ func TestParseTxt_100Chapters(t *testing.T) {
 func TestParseTxt_TabIndent(t *testing.T) {
 	content := "\t第1章 测试\n\n正文。\n"
 	path := writeTemp(t, "tab.txt", content)
-	r, err := parseTxt(path)
+	r, err := parseTxt(path, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -834,7 +834,7 @@ func BenchmarkParseTxt(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		parseTxt(path)
+		parseTxt(path, "")
 	}
 }
 

@@ -51,7 +51,8 @@
     "loading": "Loading...",
     "backupNote": "All novels, characters, settings and other data can be backed up or migrated as a whole",
     "initializing": "Initializing...",
-    "start": "Get Started"
+    "start": "Get Started",
+    "autoStartHint": "Auto-starting in {{seconds}}s (click any option to reset)"
   },
   "workspace": {
     "darkMode": "Dark Mode",
@@ -275,7 +276,15 @@
     "searchNoMatch": "No matches",
     "searchPrev": "Previous",
     "searchNext": "Next",
-    "jumpToBottom": "Back to bottom"
+    "jumpToBottom": "Back to bottom",
+    "deleteSession": "Delete session",
+    "deleteSessionTitle": "Delete this conversation?",
+    "deleteSessionConfirm": "This conversation and all its messages will be permanently deleted and cannot be recovered. Are you sure?",
+    "deleteSessionBtn": "Delete permanently",
+    "deleteSessionNext": "Continue",
+    "deleteSessionTitle2": "Delete permanently?",
+    "deleteSessionConfirm2": "Final confirmation: this conversation and all its messages will be permanently erased. This cannot be undone. Are you absolutely sure?",
+    "deleteSessionBack": "Back"
   },
   "settings": {
     "title": "Settings",
@@ -512,7 +521,15 @@
     "injectPlatinum": "Story state doc (injected every turn)",
     "platinumUnified": "Story state doc",
     "platinumUnifiedDesc": "One switch controls both: ① inject into AI context every turn (AI reads); ② allow AI to maintain/update it after each chapter (AI writes)",
-    "titleRequiredHint": "Please enter a title"
+    "titleRequiredHint": "Please enter a title",
+    "needNovelTitle": "No novel yet",
+    "needNovelDesc": "You have not created or imported any novel yet. Please create one on the bookshelf first, then create a chapter.",
+    "goCreateBook": "Create a novel",
+    "importSeparator": "Chapter separator (optional)",
+    "importSeparatorPlaceholder": "Auto",
+    "importSeparatorHint": "Leave empty to auto-detect common formats (Chapter N, 第X章/回/节, prologue, etc.). If detection fails, type your marker (e.g. \"Part\") to force splitting on it.",
+    "importFormats": "Supported: TXT, Markdown (.md), EPUB",
+    "importConfirm": "Choose file"
   },
   "character": {
     "character": "Character",
@@ -554,7 +571,8 @@
     "expand": "Expand",
     "intro": "Introduction",
     "main": "Main",
-    "other": "Other"
+    "other": "Other",
+    "locateSandbox": "Locate in sandbox (select all with same name)"
   },
   "location": {
     "location": "Location",
@@ -625,7 +643,8 @@
         "River",
         "Lake"
       ]
-    }
+    },
+    "locateSandbox": "Locate in sandbox (select all with same name)"
   },
   "storyarc": {
     "narrativeArcs": "Narrative Arcs",
@@ -770,7 +789,8 @@
     "searchTimeline": "Search timeline...",
     "noMatchingEntries2": "No matching entries",
     "noEntries": "No entries yet",
-    "targetChapterN2": "Target Ch.{{n}}"
+    "targetChapterN2": "Target Ch.{{n}}",
+    "locateSandbox": "Locate in sandbox (select all with same name)"
   },
   "reader": {
     "all": "All",
@@ -1159,7 +1179,8 @@
     "tabMenu": "Tab actions",
     "tabClose": "Close this tab",
     "tabCloseOthers": "Close other tabs",
-    "tabCloseAll": "Close all tabs"
+    "tabCloseAll": "Close all tabs",
+    "aiIndex": "AI index"
   },
   "help": {
     "quickStart": "Quick Start",
@@ -1363,7 +1384,13 @@
     "quickStart_conceptAiLayout": "AI Layout (background)",
     "quickStart_conceptAiLayoutDesc": "After starting \"AI Layout\", the task runs in the background: you may close the dialog and switch pages; a notification appears when done, and you can stop it anytime via \"Cancel layout\". You can also adjust the sandbox via natural language in the associated chat.",
     "quickStart_conceptAppearance": "Appearance customization",
-    "quickStart_conceptAppearanceDesc": "Eight themes (quick-switch cycles the first four from the top-right). \"Custom Theme\" changes the whole UI (border/text/background/font/size, instant). \"Custom Editor\" changes editor colors and fonts (applied on save). Both areas save independent presets (max 10). The reset button is always black-on-white; if text and background become low-contrast, a rescue reset button appears at the bottom-right."
+    "quickStart_conceptAppearanceDesc": "Eight themes (quick-switch cycles the first four from the top-right). \"Custom Theme\" changes the whole UI (border/text/background/font/size, instant). \"Custom Editor\" changes editor colors and fonts (applied on save). Both areas save independent presets (max 10). The reset button is always black-on-white; if text and background become low-contrast, a rescue reset button appears at the bottom-right.",
+    "quickStart_conceptSandboxColor": "Sandbox colors",
+    "quickStart_conceptSandboxColorDesc": "In chat, say \"make X red\", \"golden gate\", \"crimson river\" and AI colors the shapes automatically (Chinese color names or #RRGGBB). Whole concepts like moat/snowy-mountain get default colors; compound names like \"blood river\" mix shape + color.",
+    "quickStart_conceptSandboxRing": "Rings & layers",
+    "quickStart_conceptSandboxRingDesc": "Say \"surround/enclose/moat\" and AI draws a ring using two stacked shapes; move up/down jumps to the next overlapping shape instead of stepping one by one; arc shapes expose a curvature slider.",
+    "quickStart_conceptImport": "Import novels",
+    "quickStart_conceptImportDesc": "TXT/Markdown/EPUB supported; leave the chapter separator empty for auto-detection (Chapter N, 第X章/回/节/篇, prologue, etc.), mixed formats split correctly; if detection fails, type your marker (e.g. \"Part\") to force split."
   },
   "profile": {
     "loadFailed": "Load failed",
@@ -1407,7 +1434,8 @@
     "checkNow": "Check Now",
     "checking": "Checking...",
     "upToDate": "Already up to date",
-    "checkFailed": "Check failed"
+    "checkFailed": "Check failed",
+    "current": "Current"
   },
   "trash": {
     "title": "Trash",
@@ -1510,7 +1538,7 @@
     "shapeArc": "Arc",
     "shapeDiamond": "Diamond",
     "shapeTriangle": "Triangle",
-    "fillOpacity": "Fill",
+    "fillOpacity": "Opacity",
     "labelPlaceholder": "Shape name…",
     "delete": "Delete",
     "save": "Save",
@@ -1571,6 +1599,23 @@
     "arrangeBgNoticeTitle": "Background notice",
     "onboardTitle": "Sandbox Guide",
     "onboardBody": "The sandbox is a visual story-setting board: arrange locations, characters, and events as shapes to see their spatial relations.\n\n· Left toolbar: the pointer is \"Move\", next is \"Box select\", then the \"shape\" tools (rect, circle, wave, arrow, person, event, etc.) — pick one and draw on the canvas.\n· Top \"Add from settings\": place existing locations/characters/events onto the sandbox in one click; select a shape to change color, opacity, label, or delete it.\n· \"AI Layout\": AI generates or adjusts the layout from your settings; it runs in the background and notifies you when done.\n· \"Chat adjustments\": describe needs in natural language in the sandbox’s associated chat (e.g. \"move the forest north\"), and the AI will adjust it for you.\n· \"Save / History\": save the current layout or restore from history.",
-    "onboardGotIt": "Got it"
+    "onboardGotIt": "Got it",
+    "layerOrder": "Layer order",
+    "sendToBack": "Send to back",
+    "moveDown": "Move down",
+    "moveUp": "Move up",
+    "bringToFront": "Bring to front",
+    "rotate90": "Rotate 90°",
+    "flipHorizontal": "Flip horizontally",
+    "textPosLeft": "Left (vertical)",
+    "textPosRight": "Right (vertical)",
+    "undo": "Undo (Ctrl+Z)",
+    "redo": "Redo (Ctrl+Y)",
+    "fillColor": "Color",
+    "customColor": "Custom",
+    "customColorTitle": "Pick custom color",
+    "aiIndex": "AI index",
+    "sandboxLabel": "Sandbox",
+    "curvature": "Curve"
   }
 }

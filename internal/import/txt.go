@@ -19,11 +19,11 @@ var chapterPatterns = []struct {
 }{
 	{
 		name:    "strict_line_start",
-		pattern: regexp.MustCompile(`(?m)^(?:#{1,6}\s+)?(?:[ 　\t]*)第[零〇一二三四五六七八九十百千两\d]+[章卷部回节]`),
+		pattern: regexp.MustCompile(`(?m)^(?:#{1,6}\s+)?(?:[ 　\t]*)第[零〇一二三四五六七八九十百千两\d]+[章卷部回节篇集幕]`),
 	},
 	{
 		name:    "loose_inline",
-		pattern: regexp.MustCompile(`第[零〇一二三四五六七八九十百千两\d]+[章卷部回节]`),
+		pattern: regexp.MustCompile(`第[零〇一二三四五六七八九十百千两\d]+[章卷部回节篇集幕]`),
 		loose:   true,
 	},
 	{
@@ -37,6 +37,10 @@ var chapterPatterns = []struct {
 	{
 		name:    "juan_line_start",
 		pattern: regexp.MustCompile(`(?m)^(?:#{1,6}\s+)?(?:[ 　\t]*)卷[零〇一二三四五六七八九十百千两\d]+`),
+	},
+	{
+		name:    "pian_line_start",
+		pattern: regexp.MustCompile(`(?m)^(?:#{1,6}\s+)?(?:[ 　\t]*)篇[零〇一二三四五六七八九十百千两\d]+`),
 	},
 	{
 		name: "celestial_cycle_marker",
@@ -67,13 +71,40 @@ type matchLine struct {
 	line  string // 匹配行文本
 }
 
-func parseTxt(filePath string) (*Result, error) {
+func parseTxt(filePath string, separator string) (*Result, error) {
 	content, err := readFileContent(filePath)
 	if err != nil {
 		return nil, err
 	}
 
 	title := inferTitle(filePath)
+
+	// 用户指定分隔符（如"章""节""篇"）时：只按该分隔符切分，覆盖默认全模式
+	var activePatterns []struct {
+		name    string
+		pattern *regexp.Regexp
+		loose   bool
+	}
+	if separator != "" {
+		esc := regexp.QuoteMeta(strings.TrimSpace(separator))
+		activePatterns = []struct {
+			name    string
+			pattern *regexp.Regexp
+			loose   bool
+		}{
+			{
+				name:    "user_separator_line_start",
+				pattern: regexp.MustCompile(`(?m)^(?:#{1,6}\s+)?(?:[ 　\t]*)第[零〇一二三四五六七八九十百千两\d]+` + esc),
+			},
+			{
+				name:    "user_separator_loose",
+				pattern: regexp.MustCompile(`第[零〇一二三四五六七八九十百千两\d]+` + esc),
+				loose:   true,
+			},
+		}
+	} else {
+		activePatterns = chapterPatterns
+	}
 
 	// 对每个正则模式，找出所有匹配行并按行长度过滤
 	type patternResult struct {
@@ -82,7 +113,7 @@ func parseTxt(filePath string) (*Result, error) {
 	}
 	var results []patternResult
 
-	for pi, cp := range chapterPatterns {
+	for pi, cp := range activePatterns {
 		allIdx := cp.pattern.FindAllStringIndex(content, -1)
 		var matches []matchLine
 		seen := make(map[int]bool) // 按行起始位置去重，避免同一行多匹配产生重复分割点

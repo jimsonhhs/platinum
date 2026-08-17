@@ -9,8 +9,8 @@ interface ModelOption {
 }
 
 interface Props {
-  maxChapters?: number
-  setMaxChapters?: (n: number) => void
+  separator?: string
+  setSeparator?: (s: string) => void
   open: boolean
   progress: ImportProgressState
   error: string
@@ -20,10 +20,11 @@ interface Props {
   setModelKey: (key: string) => void
   modelOptions: ModelOption[]
   onStartLLM: () => void
+  onConfirmPick: () => void
   onClose: () => void
 }
 
-export default function ImportProgressDialog({ open, progress, error, skippedCount, skippedChapters, modelKey, setModelKey, modelOptions, maxChapters, setMaxChapters, onStartLLM, onClose }: Props) {
+export default function ImportProgressDialog({ open, progress, error, skippedCount, skippedChapters, modelKey, setModelKey, modelOptions, separator, setSeparator, onStartLLM, onConfirmPick, onClose }: Props) {
   const { t } = useTranslation()
 
   const STAGE_LABEL: Record<ImportProgressStage, string> = {
@@ -78,21 +79,56 @@ export default function ImportProgressDialog({ open, progress, error, skippedCou
           {chapterText && (
             <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{chapterText}</span>
           )}
+          {/* ✕ 关闭（可取消阶段才显示） */}
+          {!isAnalyzing && (
+            <button
+              onClick={onClose}
+              className="shrink-0 ml-2 flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title={t('common.close')}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
-        {/* 导入上限设置（选文件阶段） */}
-        {progress.stage === 'select_file' && setMaxChapters && (
-          <div className="mt-4 flex items-center gap-2">
-            <label className="text-xs text-muted-foreground shrink-0">{t('novel.importMaxChapters')}</label>
-            <input
-              type="number"
-              min={0}
-              max={10000}
-              value={maxChapters ?? 0}
-              onChange={e => setMaxChapters(Math.max(0, Number(e.target.value)))}
-              className="w-24 h-8 rounded-md border bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <span className="text-[11px] text-muted-foreground">{t('novel.importMaxChaptersHint')}</span>
+        {/* 导入配置（选文件阶段）：分隔符 + 格式说明 + 确认/取消 */}
+        {progress.stage === 'select_file' && (
+          <div className="mt-4 space-y-3">
+            {/* 章节分隔符（可留空） */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground shrink-0">{t('novel.importSeparator')}</label>
+              <input
+                type="text"
+                value={separator ?? ''}
+                onChange={e => setSeparator?.(e.target.value)}
+                maxLength={8}
+                placeholder={t('novel.importSeparatorPlaceholder')}
+                className="w-20 h-8 rounded-md border bg-background px-2.5 text-xs text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">{t('novel.importSeparatorHint')}</p>
+
+            {/* 支持格式说明 */}
+            <p className="text-[11px] text-muted-foreground border-t border-border pt-2">
+              {t('novel.importFormats')}
+            </p>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={onClose}
+                className="h-8 px-4 rounded-md text-xs border hover:bg-muted transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={onConfirmPick}
+                className="h-8 px-4 rounded-md text-xs bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                {t('novel.importConfirm')}
+              </button>
+            </div>
           </div>
         )}
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, BookOpen, Flag, Lightbulb, Pencil, Plus, Target, Trash2, X } from 'lucide-react'
+import { AlertTriangle, BookOpen, Flag, Lightbulb, Map as MapIcon, Pencil, Plus, Target, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '@/hooks/useApp'
 import type { timeline } from '@/hooks/useApp'
@@ -590,6 +590,13 @@ export default function TimelineView({ novelId, focusEntryId }: Props) {
                                     <span className="text-[11px]">✓</span>
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => window.dispatchEvent(new CustomEvent('entity:locate-sandbox', { detail: { entityType: 'timeline', entityId: entry.id, name: entry.title } }))}
+                                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                  title={t('timeline.locateSandbox')}
+                                >
+                                  <MapIcon className="h-3.5 w-3.5" />
+                                </button>
                                 <button
                                   onClick={() => openEdit(entry)}
                                   className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"

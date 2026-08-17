@@ -106,6 +106,23 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
   // eslint-disable-next-line react-hooks/exhaustive-deps -- initRef.current is mutable and not a valid dependency; effect should only re-run when tabs/novelId change
   }, [tabs, novelId, app, t, updateTab])
 
+  // 章节改名后刷新已打开标签的标题（ChapterList dispatch chapter:changed）
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { chapterNumber: number; title: string } | undefined
+      if (!detail) return
+      const idx = String(detail.chapterNumber).padStart(3, '0')
+      // 只更新章节类 tab（chapters/NNN.md），标题改为纯章节名（不含索引号括号）
+      for (const tab of tabs) {
+        if (tab.type === 'file' && tab.path === `chapters/${idx}.md`) {
+          updateTab(tab.id, { title: detail.title })
+        }
+      }
+    }
+      window.addEventListener('chapter:changed', handler)
+      return () => window.removeEventListener('chapter:changed', handler)
+  }, [tabs, updateTab])
+
   // Ctrl+Shift+V 切换技能预览
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -781,11 +798,30 @@ const ContentPanel = forwardRef<ContentPanelHandle, Props>(function ContentPanel
   // File tab
   const viewMode = activeTab.viewMode || 'content'
 
+  // 主页面左上角标题：纯章节名 + （AI索引号：xx正文/草稿/大纲）
+  // 打开时 title 形如 “章节名（AI索引号XXX）”，这里剥离括号尾缀只显示章节名
+  const baseTitle = (activeTab.title || '').replace(/（AI索引号\d+）$/u, '').replace(/\(AI index\d+\)$/i, '')
+  // 仅对章节类文件（chapters/outlines/user_outlines/drafts 的 NNN.md）显示索引号
+  const titleIndex = (() => {
+    const p = activeTab.path || ''
+    const m = p.match(/(?:chapters|outlines|user_outlines|drafts)\/(\d{1,6})\.md$/)
+    if (!m) return null
+    const modeLabel =
+      viewMode === 'draft' ? t('content.draft')
+      : viewMode === 'userOutline' ? t('content.userOutline')
+      : viewMode === 'outline' ? t('content.bodyOutline')
+      : t('content.body')
+    return `（${t('content.aiIndex')}：${m[1]}${modeLabel}）`
+  })()
+
   return (
     <main className="flex-1 bg-background flex flex-col min-w-0 min-h-0 border-r overflow-hidden">
       <TabBar tabs={tabs} activeTabId={activeTabId} onSelect={setActiveTabId} onClose={closeTab} onCloseOthers={closeOtherTabs} onCloseAll={closeAllTabs} />
       <div className="flex items-center justify-between px-4 py-2 border-b shrink-0 select-none">
-        <span className="text-sm font-medium truncate">{activeTab.title}</span>
+        <span className="text-sm font-medium truncate">
+          {baseTitle}
+          {titleIndex && <span className="text-muted-foreground/70 text-xs font-normal ml-1.5">{titleIndex}</span>}
+        </span>
         <div className="flex items-center gap-0.5 shrink-0">
           {viewMode === 'draft' && (
             <>

@@ -52,5 +52,7 @@ if (Test-Path $versionFile) {
 }
 Write-Host "[4/4] wails build ..."
 Set-Location $root
-wails build -ldflags "-X internal/version.Version=$version"
+# -X 需要完整包路径（go.mod 是 module novel），否则版本注入无效、运行时仍是 dev
+# -tags native_webview2loader：绕过 ld .rsrc merge failure（multiple non-default manifests），必须加，否则构建失败
+wails build -tags native_webview2loader -ldflags "-X novel/internal/version.Version=$version"
 Write-Host "完成: build\bin\platinum.exe (版本 $version)"

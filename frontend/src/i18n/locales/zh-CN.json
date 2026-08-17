@@ -51,7 +51,8 @@
     "loading": "加载中...",
     "backupNote": "所有小说、角色、设置等数据可整体备份或迁移",
     "initializing": "正在初始化...",
-    "start": "开始使用"
+    "start": "开始使用",
+    "autoStartHint": "{{seconds}} 秒后自动进入（点击任意选项可重置计时）"
   },
   "workspace": {
     "darkMode": "深色模式",
@@ -266,7 +267,15 @@
     "searchNoMatch": "无匹配",
     "searchPrev": "上一个",
     "searchNext": "下一个",
-    "jumpToBottom": "回到底部"
+    "jumpToBottom": "回到底部",
+    "deleteSession": "删除会话",
+    "deleteSessionTitle": "删除此对话？",
+    "deleteSessionConfirm": "删除后该对话及其全部消息将被彻底清除，无法恢复。确定要删除吗？",
+    "deleteSessionBtn": "彻底删除",
+    "deleteSessionNext": "继续删除",
+    "deleteSessionTitle2": "确定要彻底删除吗？",
+    "deleteSessionConfirm2": "这是最后确认：该对话及其全部消息将被彻底清除，无法撤销、无法恢复。确定要删除吗？",
+    "deleteSessionBack": "返回"
   },
   "settings": {
     "title": "设置",
@@ -499,7 +508,15 @@
     "injectPlatinum": "故事状态文档（每轮注入 AI 上下文）",
     "platinumUnified": "故事状态文档",
     "platinumUnifiedDesc": "一个开关同时控制两项：① 每轮注入 AI 上下文（AI 读取全书状态）；② 允许 AI 每章后维护更新（进度/遗留问题）",
-    "titleRequiredHint": "请输入书名"
+    "titleRequiredHint": "请输入书名",
+    "needNovelTitle": "还没有书",
+    "needNovelDesc": "您还没有创建或导入任何作品。请先到书架创建一本书，然后再新建章节。",
+    "goCreateBook": "去创建书籍",
+    "importSeparator": "章节分隔符（可留空）",
+    "importSeparatorPlaceholder": "自动",
+    "importSeparatorHint": "留空自动识别常见格式（第X章/卷/部/回/节、Chapter N、序章/楔子等）。若识别不准，可填写您书中划分章节的标志字（如“篇”），将强制按“第X篇”分割。",
+    "importFormats": "支持格式：TXT、Markdown（.md）、EPUB 电子书",
+    "importConfirm": "选择文件"
   },
   "character": {
     "character": "角色",
@@ -538,7 +555,8 @@
     "expand": "展开",
     "intro": "简介",
     "main": "主要",
-    "other": "其他"
+    "other": "其他",
+    "locateSandbox": "在沙盘中定位（同名全选）"
   },
   "location": {
     "location": "地点",
@@ -606,7 +624,8 @@
         "河流",
         "湖泊"
       ]
-    }
+    },
+    "locateSandbox": "在沙盘中定位（同名全选）"
   },
   "storyarc": {
     "narrativeArcs": "叙事弧线",
@@ -747,7 +766,8 @@
     "searchTimeline": "搜索时间线...",
     "noMatchingEntries2": "无匹配条目",
     "noEntries": "暂无条目",
-    "targetChapterN2": "目标第{{n}}章"
+    "targetChapterN2": "目标第{{n}}章",
+    "locateSandbox": "在沙盘中定位（同名全选）"
   },
   "reader": {
     "all": "全部",
@@ -1120,7 +1140,8 @@
     "tabMenu": "标签页操作",
     "tabClose": "关闭此标签页",
     "tabCloseOthers": "关闭其他标签页",
-    "tabCloseAll": "关闭全部标签页"
+    "tabCloseAll": "关闭全部标签页",
+    "aiIndex": "AI索引号"
   },
   "help": {
     "quickStart": "快速入门",
@@ -1324,7 +1345,13 @@
     "quickStart_conceptAiLayout": "AI 布局（后台运行）",
     "quickStart_conceptAiLayoutDesc": "点「AI 布局」后任务在后台执行：可关闭弹窗切换到其他页面，完成后弹窗通知；可点「取消布局」随时中止；也可在关联对话中用自然语言调整沙盘。",
     "quickStart_conceptAppearance": "外观自定义",
-    "quickStart_conceptAppearanceDesc": "八套主题（右上角快速切换前四套）；「自定义主题」改整个界面的边框/文字/背景/字体/字号（立即生效）；「自定义编辑器」改正文区颜色与字体（保存生效）；两区配色方案各自独立保存，最多 10 套；恢复默认按钮常驻黑底白字，文字背景同色时右下角自动浮现救援按钮。"
+    "quickStart_conceptAppearanceDesc": "八套主题（右上角快速切换前四套）；「自定义主题」改整个界面的边框/文字/背景/字体/字号（立即生效）；「自定义编辑器」改正文区颜色与字体（保存生效）；两区配色方案各自独立保存，最多 10 套；恢复默认按钮常驻黑底白字，文字背景同色时右下角自动浮现救援按钮。",
+    "quickStart_conceptSandboxColor": "沙盘改色",
+    "quickStart_conceptSandboxColorDesc": "聊天里说\"把X改成红色\"\"金色的城门\"\"猩红的河\"，AI 自动给形状上色（中文色名或 #RRGGBB 都行）；护城河/雪山/血池等整体概念自动配默认色，血河/猩红雪山这类复合名自动按\"形状+颜色\"混搭。",
+    "quickStart_conceptSandboxRing": "环形与图层",
+    "quickStart_conceptSandboxRingDesc": "说\"环绕/包围/圈住/护城河\"，AI 自动用双层叠加画出环带；上移/下移直接跳到下一个重叠图形，不用一格一格挪；弧线形状选中后可调弧度。",
+    "quickStart_conceptImport": "导入书籍",
+    "quickStart_conceptImportDesc": "支持 TXT/Markdown/EPUB；章节分隔符留空自动识别（第X章/回/节/篇/卷、Chapter N、序章/楔子等），混合格式也能全切；识别不准可手动指定分隔符（如\"篇\"）。"
   },
   "profile": {
     "loadFailed": "加载失败",
@@ -1365,7 +1392,8 @@
     "checkNow": "立即检查",
     "checking": "检查中...",
     "upToDate": "已是最新版本",
-    "checkFailed": "检查失败"
+    "checkFailed": "检查失败",
+    "current": "当前"
   },
   "trash": {
     "title": "回收站",
@@ -1468,7 +1496,7 @@
     "shapeArc": "弧形",
     "shapeDiamond": "菱形",
     "shapeTriangle": "三角",
-    "fillOpacity": "填充",
+    "fillOpacity": "透明度",
     "labelPlaceholder": "形状名称…",
     "delete": "删除",
     "save": "保存",
@@ -1528,6 +1556,23 @@
     "arrangeBgNoticeTitle": "后台运行说明",
     "onboardTitle": "沙盘使用指南",
     "onboardBody": "沙盘是一个可视化故事设定板，把地点、角色、事件摆成图形，方便你梳理故事空间关系。\n\n· 左侧工具栏：第一个指针是「移动」，旁边是「框选」，再往右是各种「图形」工具（矩形、圆形、波浪、箭头、人物、事件等），点一个再到画布上画即可。\n· 顶部「添加设定」：把已有的地点/角色/事件一键摆上沙盘；选中图形后可改颜色、透明度、文字，或删除。\n· 「AI 布局」：让 AI 根据设定自动生成或调整布局，在后台运行，完成后会提示。\n· 「对话调整」：在本沙盘关联的对话里用自然语言描述需求（如\"把森林移到北方\"），AI 会帮你调整。\n· 「保存/历史」：保存当前布局，或从历史版本恢复。",
-    "onboardGotIt": "知道了"
+    "onboardGotIt": "知道了",
+    "layerOrder": "图层顺序",
+    "sendToBack": "置入底层",
+    "moveDown": "下移一层",
+    "moveUp": "上移一层",
+    "bringToFront": "置入顶层",
+    "rotate90": "旋转 90°",
+    "flipHorizontal": "水平镜像",
+    "textPosLeft": "左侧（竖排）",
+    "textPosRight": "右侧（竖排）",
+    "undo": "撤回 (Ctrl+Z)",
+    "redo": "回退 (Ctrl+Y)",
+    "fillColor": "颜色",
+    "customColor": "自定义",
+    "customColorTitle": "选择自定义颜色",
+    "aiIndex": "AI索引号",
+    "sandboxLabel": "沙盘",
+    "curvature": "弧度"
   }
 }

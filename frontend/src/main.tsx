@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { toast } from 'sonner'
+import { LogFrontend } from '@/lib/wailsjs/go/app/App'
 import './index.css'
 import './i18n'
 import App from './App.tsx'
@@ -14,6 +15,11 @@ window.addEventListener('unhandledrejection', (e) => {
   if (/cancel|abort|取消/i.test(msg)) return
   toast.error(`操作失败：${msg}`)
   console.error('[unhandledrejection]', err)
+  // 调试辅助：把堆栈写进日志，便于定位（发布后保留无害）
+  try {
+    const stack = err instanceof Error && err.stack ? err.stack : msg
+    LogFrontend('[unhandledrejection] ' + stack.slice(0, 800)).catch(() => {})
+  } catch { /* ignore */ }
 })
 
 createRoot(document.getElementById('root')!).render(

@@ -87,11 +87,11 @@ export default function SandboxList({ novelId, currentId, onSelect }: Props) {
           <div
             key={item.id}
             onClick={() => onSelect(item.id)}
-            className={`group w-full px-3 py-2 text-left cursor-pointer transition-colors border-b border-border/40 ${currentId === item.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}
+            className={`group w-full px-3 py-2.5 text-left cursor-pointer transition-colors border-b border-border/40 ${currentId === item.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}
           >
             <div className="flex items-center gap-1.5">
-              <span className="shrink-0 text-[10px] font-mono text-muted-foreground/70">{String(idx + 1).padStart(2, '0')}</span>
-              <span className="flex-1 text-xs font-medium truncate">{item.name}</span>
+              <span className="shrink-0 text-[11px] font-mono text-muted-foreground/70">{String(idx + 1).padStart(2, '0')}</span>
+              <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
               <button
                 onClick={e => { e.stopPropagation(); handleRename(item) }}
                 className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground transition-opacity"
@@ -107,9 +107,13 @@ export default function SandboxList({ novelId, currentId, onSelect }: Props) {
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
-            {item.description && (
-              <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">{item.description}</p>
-            )}
+            {/* 第二行：AI 索引号 + 简介 */}
+            <div className="flex items-center gap-1.5 mt-0.5 pl-4">
+              <span className="text-[11px] text-muted-foreground/80">{t('sandbox.aiIndex')}：{t('sandbox.sandboxLabel')}{String(idx + 1).padStart(2, '0')}</span>
+              {item.description && (
+                <span className="text-[11px] text-muted-foreground/60 truncate">{item.description}</span>
+              )}
+            </div>
           </div>
         ))}
       </div>
