@@ -657,10 +657,11 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
     // 画新形状（非 move/select 工具）
     if (tool && tool !== 'move') {
       const p = toCanvas(e)
+      const defColor = tool === 'wave' ? '#1565c0' : COLORS[2] // 波浪线默认蓝色
       const s: SandboxShape = {
         id: newId(), type: tool,
         x: p.x - 60, y: p.y - 40, w: 120, h: 80, rotation: 0,
-        fill: COLORS[2], fillOpacity: 0.35, stroke: COLORS[2], strokeWidth: 2,
+        fill: defColor, fillOpacity: 0.35, stroke: defColor, strokeWidth: 2,
         label: '', textPos: 'top' as const, entityType: '', entityId: 0, star: 0,
       }
       persist([...shapes, s])
@@ -1103,9 +1104,9 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                 </g>
               ) : (
                 <g pointerEvents="none">
-                  {/* 星标（event 类型，永远水平在问号上方） */}
+                  {/* 星标（event 类型，永远水平在问号上方，贴近图形顶缘） */}
                   {s.type === 'event' && s.star > 0 && (
-                    <text x={s.x + s.w / 2} y={s.y + s.h * 0.06} textAnchor="middle" fontSize={Math.max(16, Math.min(26, s.w * 0.22))} fill="#f59e0b" fontWeight={700}>
+                    <text x={s.x + s.w / 2} y={s.y + s.h * 0.1} textAnchor="middle" fontSize={Math.max(16, Math.min(26, s.w * 0.22))} fill="#f59e0b" fontWeight={700}>
                       {'★'.repeat(Math.max(1, Math.min(5, s.star)))}
                     </text>
                   )}
@@ -1121,7 +1122,11 @@ export default function SandboxView({ novelId, sandboxId }: Props) {
                       y={(() => {
                         const p = s.textPos
                         if (p === 'left' || p === 'right') return s.y + s.h / 2
-                        if (p === 'top') return s.y - 6
+                        if (p === 'top') {
+                          // event 顶部还有星标：文字再往上提一个文字高度，避免与星重叠
+                          if (s.type === 'event') return s.y - 6 - 20
+                          return s.y - 6
+                        }
                         if (p === 'bottom') {
                           if (s.type === 'drop') return s.y + s.h * 1.32
                           return s.y + s.h + 12

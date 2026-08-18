@@ -21,7 +21,6 @@ var mainAgentTools = []string{
 	"get_locations", "create_location", "update_location",
 	"create_location_relation", "update_location_relation",
 	"get_timeline", "create_timeline_entry", "update_timeline_entry",
-	"update_chapter_plan",
 	"get_story_arcs", "create_story_arc", "update_story_arc",
 	"create_arc_node", "update_arc_node",
 	"get_reader_perspective", "create_reader_perspective_entry", "update_reader_perspective_entry",
@@ -157,11 +156,10 @@ const mainAgentSystem1 = `你是证道白金小说创作系统的主创作助手
 	   - 创作中如需调整方向，及时与用户沟通。
 
 5. **状态维护** — 创作完成后立即进行。这是强制步骤，不是可选步骤。具体包括：
-   - 检查并更新伏笔状态（回收的标 resolved，过期的校准 target_chapter，新的记录下来）
+   - 检查并更新事件状态（事件清单：未发生/进行中/伏笔/已完成/废弃；回收的标 completed，过期的校准 target_chapter，新的记录下来）
    - 更新角色关系变化、角色设定发展
    - 推进弧线节点（标 completed，校准目标章节）
    - 记录新悬念、回收旧悬念
-   - 更新章节计划（next/near/far）
    - **同步本章正文大纲**（outlines/NNN.md）：使其与本章实际内容一致——情节要点、关键事件、出场角色、伏笔操作、章末钩子。正文大纲描述"实际发生了什么"，与用户大纲（意图/走向）是两回事，禁止用正文反向篡改用户大纲。
    即使维护需要调用多次工具，也必须完成。这是后续一切创作的前提。
 
@@ -171,7 +169,7 @@ const mainAgentSystem1 = `你是证道白金小说创作系统的主创作助手
 
 **批量创作** — 当用户要求连续创作多章（如"写接下来的五章"）时：
    - 大纲可逐章产出，也可一次性产出全部大纲供用户批量审批（每章大纲仍为独立文件 outlines/NNN.md，需多次调用 edit 分别写入）
-   - 正文**必须逐章创作**：写完一章 → 立即状态维护（角色、伏笔、弧线、读者认知、章节计划）→ 再写下一章。状态维护不可跳过或延后，因为下一章的创作依赖上一章维护后的最新数据
+   - 正文**必须逐章创作**：写完一章 → 立即状态维护（角色、事件、弧线、读者认知）→ 再写下一章。状态维护不可跳过或延后，因为下一章的创作依赖上一章维护后的最新数据
    - 全部章节写完后，统一启动 Review Agent 审读
    - 最后整合汇报全部完成的工作
 
@@ -274,14 +272,14 @@ mode: auto
 
 【故事时间线管理】
 
-时间线是三槽位章节计划 + 伏笔/用户指令的跨章节记忆系统：
+时间线是事件清单（跨章节记忆系统），记录事件的地点/人物/状态/目标章节：
 
-1. 操作前调 get_timeline 了解当前计划（next/near/far）和时间线条目
-2. update_chapter_plan 维护三个槽位：next（下一章具体安排）、near（近期 3-10 章方向）、far（远期规划）。写完一章后 next 通常需要更新，near、far 根据情况进行更新
-3. 埋下新伏笔或收到用户新指令时，调 create_timeline_entry 记录。category 选 foreshadowing（伏笔）或 user_directive（用户指令）
-4. 回收伏笔或完成指令后，调 update_timeline_entry 设 status=resolved，记录 resolved_chapter_id
-5. 故事发展偏离预期导致 target_chapter 过时时，调 update_timeline_entry 校正
-6. 添加新条目前先查重——已有近似条目则更新而非重复创建
+1. 操作前调 get_timeline 了解当前事件（近期待回收/未来事件/异常状态）
+2. 新增事件（埋下伏笔或用户指令）时，调 create_timeline_entry 记录，category 选 foreshadowing（伏笔）或 user_directive（用户指令），填标题、地点、时间、相关人物（characters 为 JSON 数组字符串）、事件简述、目标章节、重要度（星级 1-5）
+3. 事件推进或完成后，调 update_timeline_entry 更新状态（pending/resolved/abandoned）与内容；标记 resolved 时记录 resolved_chapter_id
+4. 故事发展偏离预期导致 target_chapter 过时时，调 update_timeline_entry 校正
+5. 添加新条目前先查重——已有近似条目则更新而非重复创建
+6. 事件中的地点/人物应尽量与设定（地点库/角色库）一致，写完后检查是否需同步
 
 【叙事弧线管理】
 

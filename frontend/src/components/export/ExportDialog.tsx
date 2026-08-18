@@ -157,14 +157,14 @@ export default function ExportDialog({ open, novelId, novelTitle, onClose, onExp
                     </div>
                     <div className="pl-5 grid grid-cols-4 gap-x-1 gap-y-0.5 mt-0.5">
                       {volChs.map(c => (
-                        <label key={c.id} className="flex items-center gap-1 text-[11px] cursor-pointer">
+                        <label key={c.id} className="flex items-center gap-1 text-[11px] cursor-pointer" title={c.title || String(c.chapter_number).padStart(3, '0')}>
                           <input
                             type="checkbox"
                             checked={selected.has(c.chapter_number)}
                             onChange={() => toggleChapter(c.chapter_number)}
                             className="accent-primary"
                           />
-                          <span className="truncate tabular-nums">{String(c.chapter_number).padStart(3, '0')}</span>
+                          <span className="truncate">{c.title && c.title.trim() ? c.title : String(c.chapter_number).padStart(3, '0')}</span>
                         </label>
                       ))}
                     </div>

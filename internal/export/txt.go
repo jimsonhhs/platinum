@@ -21,7 +21,7 @@ func exportTxt(n *novel.Novel, chapters []ChapterWithContent) ([]byte, string, e
 			title = fmt.Sprintf("第%d章", ch.ChapterNumber)
 		}
 
-		fmt.Fprintf(&b, "第%d章 %s\n\n", ch.ChapterNumber, title)
+		fmt.Fprintf(&b, "%s\n\n", title)
 		b.WriteString(strings.TrimSpace(cc.Content))
 		b.WriteString("\n\n\n")
 	}

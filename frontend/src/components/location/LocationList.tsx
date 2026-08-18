@@ -3,6 +3,7 @@ import { ChevronRight, MapPin, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toastError } from '@/lib/utils'
 import { useApp } from '@/hooks/useApp'
+import { EventsOn } from '@/lib/wailsjs/runtime/runtime'
 import type { location } from '@/hooks/useApp'
 
 interface TreeNode {
@@ -47,6 +48,18 @@ export default function LocationList({ novelId }: Props) {
   }, [novelId, app])
 
   useEffect(() => { load() }, [load])
+
+  // 主区域新增/编辑/删除地点后刷新（事件驱动，不依赖切换面板）
+  // 兼容两种来源：前端 window 事件（LocationListView 保存后）+ wails 事件（AI 工具 create/update_location 后）
+  useEffect(() => {
+    const handler = () => { load() }
+    window.addEventListener('locations:changed', handler)
+    const unsub = EventsOn('locations:changed', handler)
+    return () => {
+      window.removeEventListener('locations:changed', handler)
+      unsub?.()
+    }
+  }, [load])
 
   async function handleDelete(locId: number) {
     if (!confirm(t('location.confirmDeleteWithChildren'))) return

@@ -168,3 +168,12 @@
 .approval-accept-btn:hover {
   background: color-mix(in oklab, var(--tool-green-border) 20%, transparent);
 }
+
+.tool-result {
+  padding: 0.1rem 0.6rem 0.35rem;
+  color: color-mix(in oklab, var(--tool-green-border) 75%, var(--foreground));
+  font-size: 0.68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

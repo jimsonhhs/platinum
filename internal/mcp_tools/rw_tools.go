@@ -543,7 +543,7 @@ func lineRangeReplace(content string, startLine, endLine int, newContent string)
 
 // ── 路径校验 ──────────────────────────────────────────────
 
-var pathRe = regexp.MustCompile(`^(chapters/\d{3,6}\.md|goink\.md|outlines/\d{3,6}\.md|skills/[^/]+\.md|~/.goink/skills/[^/]+\.md)$`)
+var pathRe = regexp.MustCompile(`^(chapters/\d{3,6}\.md|goink\.md|platinum\.md|outlines/\d{3,6}\.md|skills/[^/]+\.md|~/.goink/skills/[^/]+\.md)$`)
 
 func validPath(p string) bool {
 	return pathRe.MatchString(p)

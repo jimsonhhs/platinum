@@ -40,7 +40,7 @@ export default function BookshelfView({
     // 清空 input 以便重复选同一文件
     e.target.value = ''
     await onSaveCover(novelID, file)
-    setCoverKeys(prev => ({ ...prev, [novelID]: (prev[novelID] ?? 0) + 1 }))
+    setCoverKeys(prev => ({ ...prev, [novelID]: Date.now() })) // 用时间戳强制刷新封面（img 缓存保险）
   }
 
   return (

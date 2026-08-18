@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Library, List, Search, Settings, Users, MapPin, GitBranch, History, Eye, Wrench, Sparkles, Trash2, ArchiveRestore, Globe, LayoutGrid } from 'lucide-react'
+import { Library, List, Search, Settings, Users, MapPin, GitBranch, Star, Eye, Wrench, Sparkles, Trash2, ArchiveRestore, Globe, LayoutGrid } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 interface Activity {
@@ -22,7 +22,7 @@ const activities: Activity[] = [
   { id: 'characters', icon: Users, labelKey: 'shell.characters', module: 'character' },
   { id: 'locations', icon: MapPin, labelKey: 'shell.locations' },
   { id: 'storyarcs', icon: GitBranch, labelKey: 'shell.arcs', module: 'arc' },
-  { id: 'timeline', icon: History, labelKey: 'shell.timeline', module: 'timeline' },
+  { id: 'timeline', icon: Star, labelKey: 'shell.timeline', module: 'timeline' },
   { id: 'reader', icon: Eye, labelKey: 'shell.readerView', module: 'reader' },
   { id: 'skills', icon: Wrench, labelKey: 'shell.skills' },
   { id: 'archive', icon: ArchiveRestore, labelKey: 'shell.archive' },

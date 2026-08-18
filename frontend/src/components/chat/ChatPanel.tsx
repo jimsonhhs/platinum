@@ -1110,6 +1110,7 @@ const ChatPanel = forwardRef<ChatPanelHandle, Props>(function ChatPanel({ novelI
                             status={seg.toolStatus}
                             activityKind={seg.activityKind}
                             error={seg.error}
+                            result={seg.result}
                             approvalType={seg.approvalType}
                             approvalPayload={seg.approvalPayload}
                             onApprove={

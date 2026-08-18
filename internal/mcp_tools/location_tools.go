@@ -287,7 +287,10 @@ func (t *CreateLocationTool) Execute(ctx context.Context, args any, tc ToolConte
 		}, nil
 	}
 
-	return &ToolResult{
+		if tc.Notify != nil {
+		tc.Notify("locations:changed", map[string]any{"novel_id": tc.NovelID})
+	}
+return &ToolResult{
 		Success: true,
 		Data:    map[string]any{"ids": ids, "count": len(ids)},
 	}, nil
@@ -358,6 +361,9 @@ func (t *UpdateLocationTool) Execute(ctx context.Context, args any, tc ToolConte
 
 	if err := tc.DB.WithContext(ctx).Save(&loc).Error; err != nil {
 		return nil, fmt.Errorf("save location: %w", err)
+	}
+	if tc.Notify != nil {
+		tc.Notify("locations:changed", map[string]any{"novel_id": tc.NovelID})
 	}
 
 	return &ToolResult{

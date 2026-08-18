@@ -93,6 +93,10 @@ func (a *App) UpdateLocation(novelID int64, locID int64, input UpdateLocationInp
 	if err := a.location.DB.WithContext(a.ctx).Save(&loc).Error; err != nil {
 		return fmt.Errorf("update location: %w", err)
 	}
+	// 地点改名：同步该小说所有沙盘里关联形状的标签
+	if input.Name != "" {
+		a.SyncSandboxEntityName(novelID, "location", locID, input.Name)
+	}
 	return nil
 }
 

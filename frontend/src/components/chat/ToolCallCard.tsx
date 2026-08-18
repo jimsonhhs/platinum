@@ -10,6 +10,7 @@ interface Props {
   status: 'executing' | 'awaiting_approval' | 'completed' | 'failed'
   activityKind?: string
   error?: string
+  result?: Record<string, unknown>
   compact?: boolean
   // approval
   approvalType?: string
@@ -151,7 +152,28 @@ function ApprovalView({ displayText, compact, approvalType, approvalPayload, onA
   )
 }
 
-export default memo(function ToolCallCard({ displayText, status, activityKind, error, compact, approvalType, approvalPayload, onApprove, onReject }: Props) {
+// 工具结果 → 人类可读摘要（如 create_character 的 count/ids）
+function formatResult(toolName: string, result?: Record<string, unknown>): string | null {
+  if (!result) return null
+  const count = result.count as number | undefined
+  const ids = result.ids
+  if (toolName === 'create_character') {
+    if (typeof count === 'number' && count > 0) return `已创建 ${count} 个角色`
+    if (Array.isArray(ids) && ids.length > 0) return `已创建 ${ids.length} 个角色`
+  }
+  if (toolName === 'create_location') {
+    if (typeof count === 'number' && count > 0) return `已创建 ${count} 个地点`
+  }
+  if (toolName === 'create_timeline_entry') {
+    if (Array.isArray(ids) && ids.length > 0) return `已记录 ${ids.length} 条事件`
+  }
+  // 通用兜底
+  if (typeof count === 'number' && count > 0) return `完成（${count} 项）`
+  if (Array.isArray(ids) && ids.length > 0) return `完成（${ids.length} 项）`
+  return null
+}
+
+export default memo(function ToolCallCard({ toolName, displayText, status, activityKind, error, result, compact, approvalType, approvalPayload, onApprove, onReject }: Props) {
   const { t } = useTranslation()
 
   // 审批中状态
@@ -182,6 +204,14 @@ export default memo(function ToolCallCard({ displayText, status, activityKind, e
           {isExecuting ? activityBadge(activityKind, t) : isCompleted ? t('chat.done') : t('chat.failed')}
         </span>
       </div>
+
+      {/* 工具结果摘要（completed 且有结果时显示，让用户看到实际产出） */}
+      {isCompleted && !compact && (() => {
+        const summary = formatResult(toolName, result)
+        return summary ? (
+          <div className="tool-result">{summary}</div>
+        ) : null
+      })()}
 
       {isFailed && error && (
         <div className="tool-error">{error.slice(0, 120)}</div>

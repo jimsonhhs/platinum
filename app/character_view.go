@@ -62,6 +62,10 @@ func (a *App) UpdateCharacter(novelID int64, charID int64, input UpdateCharacter
 	if err := storage.PatchAndSave(a.character.DB.WithContext(a.ctx), charID, novelID, &input, &ch); err != nil {
 		return fmt.Errorf("update character: %w", err)
 	}
+	// 角色改名：同步该小说所有沙盘里关联形状的标签
+	if input.Name != "" {
+		a.SyncSandboxEntityName(novelID, "character", charID, input.Name)
+	}
 	return nil
 }
 

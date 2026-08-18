@@ -19,16 +19,16 @@ import (
 type GetTimelineArgs struct {
 	CurrentChapter int    `json:"current_chapter" jsonschema:"description=当前章节号。传入时自动收集附近条目并检测异常。写新章时必填" validate:"omitempty,min=1"`
 	Category       string `json:"category" jsonschema:"description=按分类筛选,enum=foreshadowing,enum=user_directive"`
-	Status         string `json:"status" jsonschema:"description=按状态筛选,enum=pending,enum=resolved,enum=abandoned"`
+	Status         string `json:"status" jsonschema:"description=按状态筛选,enum=not_started,enum=pending,enum=foreshadowing,enum=completed,enum=abandoned"`
 	PageArgs              // 嵌入分页参数（仅不传 current_chapter 时生效）
 }
 
-// GetTimelineTool 获取章节计划 + 伏笔/用户指令总览。
+// GetTimelineTool 获取故事事件总览（事件清单）。
 type GetTimelineTool struct{}
 
 func (t *GetTimelineTool) Name() string { return "get_timeline" }
 func (t *GetTimelineTool) Description() string {
-	return "获取故事时间线总览：章节计划（next/near/far）+ 伏笔和用户指令。两种用法：\n" +
+	return "获取故事事件总览（事件清单）。两种用法：\n" +
 		"- 传入 current_chapter：自动收集附近条目（近期历史+未来+异常标记），不要传分页/过滤 参数\n" +
 		"- 不传 current_chapter：分页浏览条目（不含计划），可用 category/status 过滤，需要传分页/过滤 参数"
 }
@@ -45,16 +45,12 @@ func (t *GetTimelineTool) Execute(ctx context.Context, args any, tc ToolContext)
 	store := timeline.NewStore(tc.DB, slog.Default())
 
 	if a.CurrentChapter > 0 {
-		plans, err := store.GetPlans(ctx, tc.NovelID)
-		if err != nil {
-			return nil, fmt.Errorf("query plans: %w", err)
-		}
-		return t.executeContext(ctx, a, tc, store, plans)
+		return t.executeContext(ctx, a, tc, store)
 	}
 	return t.executeFull(ctx, a, tc, store)
 }
 
-func (t *GetTimelineTool) executeContext(ctx context.Context, a *GetTimelineArgs, tc ToolContext, store *timeline.Store, plans []timeline.ChapterPlan) (*ToolResult, error) {
+func (t *GetTimelineTool) executeContext(ctx context.Context, a *GetTimelineArgs, tc ToolContext, store *timeline.Store) (*ToolResult, error) {
 	// 近期历史（target_chapter < current，最近 10 条）
 	history, err := store.ListBefore(ctx, tc.NovelID, a.CurrentChapter, 10)
 	if err != nil {
@@ -81,7 +77,7 @@ func (t *GetTimelineTool) executeContext(ctx context.Context, a *GetTimelineArgs
 		}
 	}
 
-	formatted := formatTimelineContext(plans, history, anomalies, future, a.CurrentChapter)
+	formatted := formatTimelineContext(history, anomalies, future, a.CurrentChapter)
 
 	return &ToolResult{
 		Success: true,
@@ -114,6 +110,10 @@ type CreateTimelineEntryItem struct {
 	Category        string `json:"category" jsonschema:"required,description=条目类型,enum=foreshadowing,enum=user_directive" validate:"required,oneof=foreshadowing user_directive"`
 	Title           string `json:"title" jsonschema:"required,description=简短标题"                                   validate:"required"`
 	Content         string `json:"content" jsonschema:"description=详细描述"`
+	Location        string `json:"location" jsonschema:"description=地点（尽量与地点库一致）"`
+	EventTime       string `json:"event_time" jsonschema:"description=时间（自由文本，如第三日黄昏/第5章前）"`
+	Characters      string `json:"characters" jsonschema:"description=相关人物，JSON 数组字符串，如[\"林茵\",\"瓦里安\"]"`
+	RelatedChapters string `json:"related_chapters" jsonschema:"description=相关章节（JSON 数组字符串或自由文本）"`
 	DetailJSON      string `json:"detail_json" jsonschema:"description=字符串形式的JSON，结构化数据"`
 	TargetChapter   int    `json:"target_chapter" jsonschema:"required,description=预计回收章节号（不准确不要紧，后续可调整）"        validate:"required,min=1"`
 	Importance      int    `json:"importance" jsonschema:"description=重要度1-5,default=3,minimum=1,maximum=5"         validate:"omitempty,min=1,max=5"`
@@ -131,9 +131,9 @@ type CreateTimelineEntryTool struct{}
 
 func (t *CreateTimelineEntryTool) Name() string { return "create_timeline_entry" }
 func (t *CreateTimelineEntryTool) Description() string {
-	return "批量创建伏笔或用户指令（1-6条）。保证原子性，失败时返回具体条目原因。" +
-		"每章写完后发现新埋的伏笔或用户指令时调用。" +
-		"category 为 foreshadowing（伏笔）或 user_directive（用户创作指令）。"
+	return "批量创建事件（事件清单，1-6条）。保证原子性，失败时返回具体条目原因。" +
+		"每章写完后发现新事件（伏笔/用户指令/重要情节）时调用。" +
+		"category 为 foreshadowing（伏笔）或 user_directive（用户创作指令）；建议填 location（地点）、event_time（时间）、characters（相关人物 JSON 数组）、importance（星级 1-5）。"
 }
 func (t *CreateTimelineEntryTool) Category() ToolCategory { return CategoryWritingAssistant }
 
@@ -164,6 +164,10 @@ func (t *CreateTimelineEntryTool) Execute(ctx context.Context, args any, tc Tool
 				Category:        item.Category,
 				Title:           item.Title,
 				Content:         item.Content,
+				Location:        item.Location,
+				EventTime:       item.EventTime,
+				Characters:      item.Characters,
+				RelatedChapters: item.RelatedChapters,
 				DetailJSON:      item.DetailJSON,
 				TargetChapter:   item.TargetChapter,
 				Importance:      importance,
@@ -203,7 +207,7 @@ type UpdateTimelineEntryArgs struct {
 	DetailJSON        string `json:"detail_json" jsonschema:"description=新的结构化数据（完全替换旧的）"`
 	TargetChapter     int    `json:"target_chapter" jsonschema:"description=新的目标章节号,minimum=1" validate:"omitempty,min=1"`
 	Importance        int    `json:"importance" jsonschema:"description=新的重要度1-5,minimum=1,maximum=5"`
-	Status            string `json:"status" jsonschema:"description=新状态,enum=pending,enum=resolved,enum=abandoned"`
+	Status            string `json:"status" jsonschema:"description=新状态,enum=not_started,enum=pending,enum=foreshadowing,enum=completed,enum=abandoned"`
 	ResolvedChapterID int64  `json:"resolved_chapter_id" jsonschema:"description=在哪章回收（标记resolved时填入）"`
 }
 
@@ -212,8 +216,8 @@ type UpdateTimelineEntryTool struct{}
 
 func (t *UpdateTimelineEntryTool) Name() string { return "update_timeline_entry" }
 func (t *UpdateTimelineEntryTool) Description() string {
-	return "更新已有的伏笔或用户指令。只需传入要修改的字段。" +
-		"常见用途：回收伏笔（status=resolved + resolved_chapter_id）、调整 target_chapter、修改内容。" +
+	return "更新已有的事件（事件清单）。只需传入要修改的字段。" +
+		"事件状态：not_started（未发生）/ pending（进行中）/ foreshadowing（伏笔）/ completed（已完成）/ abandoned（已废弃）。标记 completed 时建议填 resolved_chapter_id。" +
 		"category 和 source_chapter_id 创建后不可变。"
 }
 func (t *UpdateTimelineEntryTool) Category() ToolCategory { return CategoryWritingAssistant }
@@ -253,70 +257,10 @@ func (t *UpdateTimelineEntryTool) Execute(ctx context.Context, args any, tc Tool
 	}, nil
 }
 
-// ── update_chapter_plan ─────────────────────────────────
-
-// UpdateChapterPlanArgs 是 update_chapter_plan 的参数。
-type UpdateChapterPlanArgs struct {
-	Scope   string `json:"scope" jsonschema:"required,description=计划范围,enum=next,enum=near,enum=far" validate:"required,oneof=next near far"`
-	Content string `json:"content" jsonschema:"required,description=计划内容，自然语言描述"                   validate:"required"`
-}
-
-// UpdateChapterPlanTool 更新章节创作计划。
-type UpdateChapterPlanTool struct{}
-
-func (t *UpdateChapterPlanTool) Name() string { return "update_chapter_plan" }
-func (t *UpdateChapterPlanTool) Description() string {
-	return "更新章节创作计划。三个槽位：\n" +
-		"- next：下一章的写作计划\n" +
-		"- near：近期的写作计划\n" +
-		"- far：远期的写作方向\n" +
-		"同一 scope 重复调用会覆盖旧值。写新章前应更新计划以反映最新进展。"
-}
-func (t *UpdateChapterPlanTool) Category() ToolCategory { return CategoryWritingAssistant }
-
-func (t *UpdateChapterPlanTool) JSONSchema() json.RawMessage {
-	return SchemaOf(UpdateChapterPlanArgs{})
-}
-func (t *UpdateChapterPlanTool) ExposeToLLM() bool { return true }
-func (t *UpdateChapterPlanTool) NewArgs() any      { return &UpdateChapterPlanArgs{} }
-
-func (t *UpdateChapterPlanTool) Execute(ctx context.Context, args any, tc ToolContext) (*ToolResult, error) {
-	a := args.(*UpdateChapterPlanArgs)
-
-	plan := timeline.ChapterPlan{
-		NovelID: tc.NovelID,
-		Scope:   a.Scope,
-		Content: a.Content,
-	}
-
-	if err := timeline.NewStore(tc.DB, slog.Default()).SavePlan(ctx, &plan); err != nil {
-		return nil, fmt.Errorf("save plan: %w", err)
-	}
-
-	return &ToolResult{
-		Success: true,
-		Data: map[string]any{
-			"scope": plan.Scope,
-		},
-	}, nil
-}
-
 // ── 格式化 ──────────────────────────────────────────────
 
-func formatTimelineContext(plans []timeline.ChapterPlan, history, anomalies, future []timeline.TimelineEntry, currentChapter int) string {
+func formatTimelineContext(history, anomalies, future []timeline.TimelineEntry, currentChapter int) string {
 	var parts []string
-
-	// 章节计划
-	parts = append(parts, "### 章节计划")
-	planMap := map[string]string{"next": "暂无", "near": "暂无", "far": "暂无"}
-	for _, p := range plans {
-		if p.Content != "" {
-			planMap[p.Scope] = p.Content
-		}
-	}
-	parts = append(parts, fmt.Sprintf("- **next**：%s", planMap["next"]))
-	parts = append(parts, fmt.Sprintf("- **near**：%s", planMap["near"]))
-	parts = append(parts, fmt.Sprintf("- **far**：%s", planMap["far"]))
 
 	// 近期历史（排除已在异常中的条目，避免重复）
 	anomalyIDs := make(map[int64]bool, len(anomalies))
@@ -430,5 +374,5 @@ func RegisterTimelineTools(r *Registry) {
 	r.Register(&GetTimelineTool{})
 	r.Register(&CreateTimelineEntryTool{})
 	r.Register(&UpdateTimelineEntryTool{})
-	r.Register(&UpdateChapterPlanTool{})
+	
 }

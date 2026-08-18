@@ -146,6 +146,7 @@ export default function LocationListView({ novelId, focusId }: Props) {
       await app.CreateLocation(novelId, buildPayload())
       setEditMode(null)
       await load()
+      window.dispatchEvent(new CustomEvent('locations:changed'))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('location.createFailed'))
     } finally {
@@ -161,6 +162,7 @@ export default function LocationListView({ novelId, focusId }: Props) {
       await app.UpdateLocation(novelId, editMode.item.id, buildPayload())
       setEditMode(null)
       await load()
+      window.dispatchEvent(new CustomEvent('locations:changed'))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('location.updateFailed'))
     } finally {
@@ -174,6 +176,7 @@ export default function LocationListView({ novelId, focusId }: Props) {
     try {
       await app.DeleteLocation(novelId, locId)
       await load()
+      window.dispatchEvent(new CustomEvent('locations:changed'))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('location.deleteFailed'))
     } finally {

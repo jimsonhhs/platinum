@@ -57,11 +57,15 @@ func (a *App) UpdateChapterPlan(novelID int64, input UpdateChapterPlanInput) err
 // CreateTimelineEntryInput 是 CreateTimelineEntry 的参数。
 type CreateTimelineEntryInput struct {
 	Category        string `json:"category"`                    // "foreshadowing" | "user_directive"，必填
-	Title           string `json:"title"`                       // 简短标题，必填
-	Content         string `json:"content,omitempty"`           // 详细描述
+	Title           string `json:"title"`                       // 事件标题，必填
+	Content         string `json:"content,omitempty"`           // 事件简述
+	Location        string `json:"location,omitempty"`          // 地点
+	EventTime       string `json:"event_time,omitempty"`        // 时间
+	Characters      string `json:"characters,omitempty"`        // 相关人物（JSON 数组字符串）
+	RelatedChapters string `json:"related_chapters,omitempty"`  // 相关章节
 	DetailJSON      string `json:"detail_json,omitempty"`       // JSON 字符串
-	TargetChapter   int    `json:"target_chapter"`              // 预计回收章节号，必填
-	Importance      int    `json:"importance,omitempty"`        // 重要度 1-5
+	TargetChapter   int    `json:"target_chapter"`              // 目标章节号，必填
+	Importance      int    `json:"importance,omitempty"`        // 重要度 1-5（星级）
 	SourceChapterID int64  `json:"source_chapter_id,omitempty"` // 在哪章创建
 	Source          string `json:"source,omitempty"`            // "ai" | "user"
 }
@@ -76,6 +80,10 @@ func (a *App) CreateTimelineEntry(novelID int64, input CreateTimelineEntryInput)
 		Category:        input.Category,
 		Title:           input.Title,
 		Content:         input.Content,
+		Location:        input.Location,
+		EventTime:       input.EventTime,
+		Characters:      input.Characters,
+		RelatedChapters: input.RelatedChapters,
 		DetailJSON:      input.DetailJSON,
 		TargetChapter:   input.TargetChapter,
 		Importance:      input.Importance,
@@ -97,9 +105,14 @@ func (a *App) CreateTimelineEntry(novelID int64, input CreateTimelineEntryInput)
 
 // UpdateTimelineEntryInput 是 UpdateTimelineEntry 的参数。
 // 所有字段均为 optional，PATCH 只传要改的字段即可；传完整对象也行。
+// 注意：PatchAndSave 的 omitempty 限制——string 无法清空为 ""，需要清空地点/时间时前端传空格或改用其他方式。
 type UpdateTimelineEntryInput struct {
 	Title             string `json:"title,omitempty"`
 	Content           string `json:"content,omitempty"`
+	Location          string `json:"location,omitempty"`
+	EventTime         string `json:"event_time,omitempty"`
+	Characters        string `json:"characters,omitempty"`
+	RelatedChapters   string `json:"related_chapters,omitempty"`
 	DetailJSON        string `json:"detail_json,omitempty"`
 	TargetChapter     int    `json:"target_chapter,omitempty"`
 	Importance        int    `json:"importance,omitempty"`
@@ -112,6 +125,10 @@ func (a *App) UpdateTimelineEntry(novelID int64, entryID int64, input UpdateTime
 	var entry timeline.TimelineEntry
 	if err := storage.PatchAndSave(a.timeline.DB.WithContext(a.ctx), entryID, novelID, &input, &entry); err != nil {
 		return fmt.Errorf("update timeline entry: %w", err)
+	}
+	// 事件标题改名：同步该小说所有沙盘里关联形状的标签
+	if input.Title != "" {
+		a.SyncSandboxEntityName(novelID, "timeline", entryID, input.Title)
 	}
 	return nil
 }

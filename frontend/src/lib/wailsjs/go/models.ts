@@ -322,6 +322,10 @@ export namespace app {
 	    category: string;
 	    title: string;
 	    content?: string;
+	    location?: string;
+	    event_time?: string;
+	    characters?: string;
+	    related_chapters?: string;
 	    detail_json?: string;
 	    target_chapter: number;
 	    importance?: number;
@@ -337,6 +341,10 @@ export namespace app {
 	        this.category = source["category"];
 	        this.title = source["title"];
 	        this.content = source["content"];
+	        this.location = source["location"];
+	        this.event_time = source["event_time"];
+	        this.characters = source["characters"];
+	        this.related_chapters = source["related_chapters"];
 	        this.detail_json = source["detail_json"];
 	        this.target_chapter = source["target_chapter"];
 	        this.importance = source["importance"];
@@ -1112,6 +1120,10 @@ export namespace app {
 	export class UpdateTimelineEntryInput {
 	    title?: string;
 	    content?: string;
+	    location?: string;
+	    event_time?: string;
+	    characters?: string;
+	    related_chapters?: string;
 	    detail_json?: string;
 	    target_chapter?: number;
 	    importance?: number;
@@ -1126,6 +1138,10 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
 	        this.content = source["content"];
+	        this.location = source["location"];
+	        this.event_time = source["event_time"];
+	        this.characters = source["characters"];
+	        this.related_chapters = source["related_chapters"];
 	        this.detail_json = source["detail_json"];
 	        this.target_chapter = source["target_chapter"];
 	        this.importance = source["importance"];
@@ -2655,6 +2671,10 @@ export namespace timeline {
 	    status: string;
 	    title: string;
 	    content: string;
+	    location: string;
+	    event_time: string;
+	    characters: string;
+	    related_chapters: string;
 	    detail_json: string;
 	    target_chapter: number;
 	    importance: number;
@@ -2678,6 +2698,10 @@ export namespace timeline {
 	        this.status = source["status"];
 	        this.title = source["title"];
 	        this.content = source["content"];
+	        this.location = source["location"];
+	        this.event_time = source["event_time"];
+	        this.characters = source["characters"];
+	        this.related_chapters = source["related_chapters"];
 	        this.detail_json = source["detail_json"];
 	        this.target_chapter = source["target_chapter"];
 	        this.importance = source["importance"];

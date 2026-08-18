@@ -1064,8 +1064,6 @@ func applyIncremental(prompt string, shapes []arrangeShape, locs []location.Loca
 	reMove := regexp.MustCompile(`(?:把)?(.{1,12}?)(?:放到|移到|移动到|置于|移至)(.{1,12}?)的(.{1,4}?)[方边]`)
 	// 匹配：X移动到Y（无方位词 → 放到 Y 旁边）
 	reMoveNear := regexp.MustCompile(`(?:把)?(.{1,12}?)(?:放到|移到|移动到|移至)(.{1,12}?)$`)
-	// 匹配：在<Y>的<方位>新建/加一个<X>
-	reAdd := regexp.MustCompile(`在(.{1,12}?)(?:的)?(.{1,4}?)[方边](?:新建|建|加|放置|放)(?:一个|座|条|片)?(.{1,12}?)`)
 	// 匹配：把<X>放到<Y>旁边/附近
 	reNear := regexp.MustCompile(`把(.{1,12}?)(?:放到|移到|移动到)(.{1,12}?)(?:旁边|附近)`)
 
@@ -1166,28 +1164,41 @@ func applyIncremental(prompt string, shapes []arrangeShape, locs []location.Loca
 			t.Y = anchor.Y + anchor.H/2 - t.H/2
 			shapes[ti] = t
 		}
-	} else if m := reAdd.FindStringSubmatch(prompt); len(m) == 4 {
-		// 在<Y>的<方位>新建<X>
-		anchorIdx, ok := findOrCreate(m[1])
-		name := m[3]
-		if ok && !strings.Contains(prompt, "把") {
-			dx, dy, found := dirFor(m[2])
-			if !found {
-				dx, dy = 300, 0
+	} else if strings.Contains(prompt, "在") && regexp.MustCompile(`(?:新建|建|加|放置|放|增加)`).MatchString(prompt) {
+		// 在<Y>的<方位>新建/加<X>（两步解析：动作词分割 → 前段 anchor+方位，后段贪婪取名称）
+		actionLoc := regexp.MustCompile(`(?:新建|建|加|放置|放|增加)`).FindStringIndex(prompt)
+		front := prompt[:actionLoc[0]]
+		rest := regexp.MustCompile(`^(?:一个|座|条|片|处|个|名|位)?`).ReplaceAllString(prompt[actionLoc[1]:], "")
+		name := strings.TrimSpace(rest)
+		frontRe := regexp.MustCompile(`^在(.+?)(?:的)?((?:东|南|西|北|东南|西南|东北|西北|旁|边|附近|旁边|周围)[方边]?)?$`)
+		fm := frontRe.FindStringSubmatch(front)
+		anchorName := strings.TrimSpace(front)
+		dirWord := ""
+		if fm != nil {
+			anchorName = strings.TrimSpace(fm[1])
+			dirWord = fm[2]
+		}
+		if anchorName != "" && name != "" && !strings.Contains(prompt, "把") {
+			anchorIdx, ok := findOrCreate(anchorName)
+			if ok {
+				dx, dy, found := dirFor(dirWord)
+				if !found {
+					dx, dy = 320, 0 // 无方位词：默认放右侧（不重叠）
+				}
+				anchor := shapes[anchorIdx]
+				acx := anchor.X + anchor.W/2
+				acy := anchor.Y + anchor.H/2
+				// 新建：查设定里有没有同名
+				var shape, fill string
+				w, h := 120.0, 90.0
+				shape, fill = templateFor(name)
+				shapes = append(shapes, arrangeShape{
+					ID: fmt.Sprintf("new_%d", len(shapes)), Type: shape,
+					X: acx + dx - w/2, Y: acy + dy - h/2, W: w, H: h,
+					Fill: fill, FillOpacity: 0.35, Stroke: fill, StrokeWidth: 2,
+					Label: name, TextPos: "top",
+				})
 			}
-			anchor := shapes[anchorIdx]
-			acx := anchor.X + anchor.W/2
-			acy := anchor.Y + anchor.H/2
-			// 新建：查设定里有没有同名
-			var shape, fill string
-			w, h := 120.0, 90.0
-			shape, fill = templateFor(name)
-			shapes = append(shapes, arrangeShape{
-				ID: fmt.Sprintf("new_%d", len(shapes)), Type: shape,
-				X: acx + dx - w/2, Y: acy + dy - h/2, W: w, H: h,
-				Fill: fill, FillOpacity: 0.35, Stroke: fill, StrokeWidth: 2,
-				Label: name, TextPos: "top",
-			})
 		}
 	}
 

@@ -58,6 +58,7 @@ type ToolContext struct {
 	SkillStore    *skill.Store                                                   // 技能存储，read 工具用于读取内置 skill
 	SearchService *search.Service                                                // 搜索服务，write 工具用于更新正文缓存
 	WebSearch     func(ctx context.Context, query string) (*llm.WebSearchResult, error) // 网络搜索，由 agent 注入 DeepSeek 闭包；nil 表示未配置
+	Notify        func(event string, payload any)                               // 向前端推全局事件（如 locations:changed）；由 agent 包注入 wails EventsEmit；nil 表示不可用
 }
 
 // ── 结果 ──────────────────────────────────────────────

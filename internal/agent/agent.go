@@ -296,6 +296,11 @@ func (a *Agent) Run(ctx context.Context, opts RunOptions) (AgentLoopResult, erro
 						SkillStore:    a.skillStore,
 						SearchService: a.searchService.Load(),
 						WebSearch:     a.buildWebSearch(),
+						Notify: func(event string, payload any) {
+							if ctx != nil {
+								wails.EventsEmit(ctx, event, payload)
+							}
+						},
 					}
 					result := a.registry.Execute(ctx, name, rawArgs, tc, opts.AllowedTools)
 					a.logger.Info("tool executed", "tool", name, "success", result.Success, "phase", map[bool]string{true: "completed", false: "failed"}[result.Success])
@@ -306,7 +311,8 @@ func (a *Agent) Run(ctx context.Context, opts RunOptions) (AgentLoopResult, erro
 					}
 					display = a.buildDisplay(name, args, displayPhase(phase), opts.NovelID)
 					metadata := display.Metadata
-					if (name == "web_search" || name == "web_fetch") && result.Success && result.Data != nil {
+					// 工具成功结果 → 合并进 metadata（前端工具卡片显示结果摘要，如"创建了 N 个角色"）
+					if result.Success && result.Data != nil {
 						if metadata == nil {
 							metadata = make(map[string]any)
 						}

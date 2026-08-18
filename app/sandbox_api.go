@@ -250,3 +250,35 @@ func (a *App) commitSandbox(novelID int64, msg string) {
 		}
 	}
 }
+
+// SyncSandboxEntityName 实体改名后同步所有沙盘里关联形状的标签（label）。
+// entityType: "character" | "location" | "timeline"；按 entityType+entityId 精确匹配。
+func (a *App) SyncSandboxEntityName(novelID int64, entityType string, entityID int64, newName string) {
+	if entityID == 0 || newName == "" {
+		return
+	}
+	entries, err := os.ReadDir(sandboxDir(novelID))
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		id := strings.TrimSuffix(e.Name(), ".json")
+		sd, err := a.GetSandbox(novelID, id)
+		if err != nil {
+			continue
+		}
+		changed := false
+		for i := range sd.Shapes {
+			if sd.Shapes[i].EntityType == entityType && sd.Shapes[i].EntityID == entityID && sd.Shapes[i].Label != newName {
+				sd.Shapes[i].Label = newName
+				changed = true
+			}
+		}
+		if changed {
+			a.SaveSandbox(novelID, id, sd)
+		}
+	}
+}
